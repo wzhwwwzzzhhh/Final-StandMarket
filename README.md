@@ -1,4 +1,4 @@
-# 👗 Final-StandMarket 潮流服装商城
+# 👗 Final-StandMarket 末路衣橱（潮流服装商城）
 
 > **高并发秒杀电商系统** | Spring Boot + Redis + RabbitMQ + Vue 3
 
