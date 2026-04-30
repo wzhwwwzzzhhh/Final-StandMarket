@@ -1,0 +1,37 @@
+fashion:
+  datasource:
+    driver-class-name: com.mysql.cj.jdbc.Driver
+    host: localhost
+    port: 3306
+    database: fashion_shop
+    username: root
+    password: 你的数据库密码
+  alioss:
+    endpoint: oss-cn-beijing.aliyuncs.com
+    bucket-name: 你的OSS桶名称
+    access-key-id: 你的OSS AccessKeyId
+    access-key-secret: 你的OSS AccessKeySecret
+  redis:
+    host: localhost
+    port: 6379
+    password: 你的Redis密码
+    database: 0
+  rabbitmq:
+    host: 你的RabbitMQ地址
+    port: 5672
+    username: 你的RabbitMQ用户名
+    password: 你的RabbitMQ密码
+    virtual-host: /market
+  wechat:
+    appid: 你的微信AppId
+    secret: 你的微信Secret
+    mchid: 你的微信商户号
+    mch-serial-no: 你的微信证书序列号
+    api-v3-key: 你的微信API V3密钥
+    notify-url: 支付成功回调地址
+    refund-notify-url: 退款成功回调地址
+  ai:
+    provider: openai
+    base-url: https://api.openai.com/v1
+    api-key: 你的AI API密钥
+    model: gpt-3.5-turbo

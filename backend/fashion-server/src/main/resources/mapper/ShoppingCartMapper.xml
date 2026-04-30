@@ -1,0 +1,79 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="com.fashion.mapper.ShoppingCartMapper">
+    
+    <!-- 根据用户id和商品id查询购物车项 -->
+    <select id="findByUserIdAndProductIdAndSkuInfo" resultType="com.fashion.entity.ShoppingCart">
+        select * from shopping_cart 
+        where user_id = #{userId} 
+        and product_id = #{productId} 
+        and sku_info = #{skuInfo}
+    </select>
+    
+    <!-- 更新购物车项数量、金额、名称和图片 -->
+    <update id="updateNumberAndAmount">
+        update shopping_cart 
+        set number = #{number}, amount = #{amount}, name = #{name}, image = #{image} 
+        where id = #{id}
+    </update>
+    
+    <!-- 插入购物车项 -->
+    <insert id="insert" useGeneratedKeys="true" keyProperty="id">
+        insert into shopping_cart(
+            name,
+            image,
+            user_id,
+            product_id,
+            combination_id,
+            sku_info,
+            number,
+            amount,
+            create_time
+        ) values (
+            #{name},
+            #{image},
+            #{userId},
+            #{productId},
+            #{combinationId},
+            #{skuInfo},
+            #{number},
+            #{amount},
+            now()
+        )
+    </insert>
+    
+    <!-- 根据用户id查询购物车列表 -->
+    <select id="findByUserId" resultType="com.fashion.entity.ShoppingCart">
+        select * from shopping_cart 
+        where user_id = #{userId} 
+        order by create_time desc
+    </select>
+    
+    <!-- 根据id查询购物车项 -->
+    <select id="findById" resultType="com.fashion.entity.ShoppingCart">
+        select * from shopping_cart 
+        where id = #{id}
+    </select>
+    
+    <!-- 根据id删除购物车项 -->
+    <delete id="deleteById">
+        delete from shopping_cart where id = #{id}
+    </delete>
+    
+    <!-- 清空用户购物车 -->
+    <delete id="deleteByUserId">
+        delete from shopping_cart where user_id = #{userId}
+    </delete>
+    
+    <!-- 批量删除购物车项 -->
+    <delete id="batchDelete">
+        delete from shopping_cart where id in
+        <foreach collection="ids" item="id" open="(" separator="," close=")">
+            #{id}
+        </foreach>
+    </delete>
+    
+</mapper>

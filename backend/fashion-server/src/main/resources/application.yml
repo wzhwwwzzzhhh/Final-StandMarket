@@ -1,0 +1,78 @@
+server:
+  port: 8080
+
+spring:
+  profiles:
+    active: dev
+  main:
+    allow-circular-references: true
+  mvc:
+    pathmatch:
+      matching-strategy: ant_path_matcher
+  servlet:
+    multipart:
+      max-file-size: 10MB
+      max-request-size: 10MB
+  datasource:
+    druid:
+      driver-class-name: ${fashion.datasource.driver-class-name}
+      url: jdbc:mysql://${fashion.datasource.host}:${fashion.datasource.port}/${fashion.datasource.database}?serverTimezone=Asia/Shanghai&useUnicode=true&characterEncoding=utf-8&zeroDateTimeBehavior=convertToNull&useSSL=false&allowPublicKeyRetrieval=true
+      username: ${fashion.datasource.username}
+      password: ${fashion.datasource.password}
+  redis:
+    host: ${fashion.redis.host}
+    port: ${fashion.redis.port}
+    password: ${fashion.redis.password}
+    database: ${fashion.redis.database}
+  rabbitmq:
+    host: ${fashion.rabbitmq.host}
+    port: ${fashion.rabbitmq.port}
+    username: ${fashion.rabbitmq.username}
+    password: ${fashion.rabbitmq.password}
+    virtual-host: ${fashion.rabbitmq.virtual-host}
+    listener:
+      simple:
+        prefetch: 1
+        concurrency: 1
+        max-concurrency: 5
+mybatis:
+  #mapper配置文件
+  mapper-locations: classpath:mapper/*.xml
+  type-aliases-package: com.fashion.entity
+  configuration:
+    #开启驼峰命名
+    map-underscore-to-camel-case: true
+
+logging:
+  level:
+    com:
+      fashion:
+        mapper: debug
+        service: debug
+        controller: debug
+
+fashion:
+  jwt:
+    # 设置jwt签名加密时使用的秘钥
+    admin-secret-key: itcast
+    # 设置jwt过期时间
+    admin-ttl: 7200000
+    # 设置前端传递过来的令牌名称
+    admin-token-name: token
+    #用户端接口
+    user-secret-key: itheima
+    user-ttl: 7200000
+    user-token-name: authentication
+  alioss:
+    endpoint: ${fashion.alioss.endpoint}
+    access-key-secret: ${fashion.alioss.access-key-secret}
+    bucket-name: ${fashion.alioss.bucket-name}
+    access-key-id: ${fashion.alioss.access-key-id}
+  wechat:
+    appid: ${fashion.wechat.appid}
+    secret: ${fashion.wechat.secret}
+    mch_id: ${fashion.wechat.mch_id}
+    mch_serial_no: ${fashion.wechat.mch_serial_no}
+    api-v3-key: ${fashion.wechat.api-v3-key}
+    notify-url: ${fashion.wechat.notify-url}
+    refund-notify-url: ${fashion.wechat.refund-notify-url}

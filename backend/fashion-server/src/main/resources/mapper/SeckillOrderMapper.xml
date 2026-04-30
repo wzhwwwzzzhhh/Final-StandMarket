@@ -1,0 +1,173 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.fashion.mapper.SeckillOrderMapper">
+    
+    <!-- 新增秒杀订单 -->
+    <insert id="insert" parameterType="com.fashion.entity.SeckillOrder" keyProperty="id" useGeneratedKeys="true">
+        insert into seckill_order (user_id, coupon_id, order_number, status, create_time, pay_time)
+        values (#{userId}, #{couponId}, #{orderNumber}, #{status}, #{createTime}, #{payTime})
+    </insert>
+    
+    <!-- 根据id删除秒杀订单 -->
+    <delete id="deleteById" parameterType="java.lang.Long">
+        delete from seckill_order where id = #{id}
+    </delete>
+    
+    <!-- 更新秒杀订单信息 -->
+    <update id="update" parameterType="com.fashion.entity.SeckillOrder">
+        update seckill_order
+        <set>
+            <if test="userId != null">user_id = #{userId},</if>
+            <if test="couponId != null">coupon_id = #{couponId},</if>
+            <if test="orderNumber != null">order_number = #{orderNumber},</if>
+            <if test="status != null">status = #{status},</if>
+            <if test="createTime != null">create_time = #{createTime},</if>
+            <if test="payTime != null">pay_time = #{payTime}</if>
+        </set>
+        where id = #{id}
+    </update>
+    
+    <!-- 根据id查询秒杀订单 -->
+    <select id="selectById" parameterType="java.lang.Long" resultType="com.fashion.entity.SeckillOrder">
+        select id, user_id as userId, coupon_id as couponId, order_number as orderNumber, 
+               status, create_time as createTime, pay_time as payTime
+        from seckill_order
+        where id = #{id}
+    </select>
+    
+    <!-- 根据订单号查询秒杀订单 -->
+    <select id="selectByOrderNumber" parameterType="java.lang.String" resultType="com.fashion.entity.SeckillOrder">
+        select id, user_id as userId, coupon_id as couponId, order_number as orderNumber, 
+               status, create_time as createTime, pay_time as payTime
+        from seckill_order
+        where order_number = #{orderNumber}
+    </select>
+    
+    <!-- 根据用户id查询秒杀订单列表 -->
+    <select id="selectByUserId" parameterType="java.lang.Long" resultType="com.fashion.entity.SeckillOrder">
+        select id, user_id as userId, coupon_id as couponId, order_number as orderNumber, 
+               status, create_time as createTime, pay_time as payTime
+        from seckill_order
+        where user_id = #{userId}
+        order by create_time desc
+    </select>
+    
+    <!-- 根据用户id查询秒杀券列表（关联优惠券信息） -->
+    <select id="selectUserCoupons" parameterType="java.util.Map" resultType="com.fashion.dto.UserCouponDto">
+        select so.id, so.user_id as userId, so.coupon_id as couponId, so.order_number as orderNumber, 
+               so.status, so.create_time as createTime, so.pay_time as payTime,
+               sc.name as couponName, sc.original_price as originalPrice, sc.seckill_price as seckillPrice,
+               sc.start_time as startTime, sc.end_time as endTime
+        from seckill_order so
+        left join seckill_coupon sc on so.coupon_id = sc.id
+        where so.user_id = #{userId}
+        <if test="status != null">
+            and so.status = #{status}
+        </if>
+        order by so.create_time desc
+    </select>
+    
+    <!-- 根据用户id和秒杀券id查询秒杀订单 -->
+    <select id="selectByUserIdAndCouponId" resultType="com.fashion.entity.SeckillOrder">
+        select id, user_id as userId, coupon_id as couponId, order_number as orderNumber, 
+               status, create_time as createTime, pay_time as payTime
+        from seckill_order
+        where user_id = #{userId} and coupon_id = #{couponId}
+    </select>
+    
+    <!-- 更新订单状态 -->
+    <update id="updateStatus">
+        update seckill_order
+        set status = #{status}
+        where order_number = #{orderNumber}
+    </update>
+    
+    <!-- 更新支付时间 -->
+    <update id="updatePayTime">
+        update seckill_order
+        set pay_time = #{payTime}, status = status + 1
+        where order_number = #{orderNumber} and status &lt; 6
+    </update>
+    
+    <!-- 管理端：分页查询秒杀订单列表 -->
+    <select id="selectSeckillOrderPage" parameterType="java.util.Map" resultType="com.fashion.entity.SeckillOrder">
+        select so.id, so.user_id as userId, so.coupon_id as couponId, so.order_number as orderNumber, 
+               so.status, so.create_time as createTime, so.pay_time as payTime,
+               sc.name as couponName, sc.seckill_price as seckillPrice,
+               sa.name as activityName
+        from seckill_order so
+        left join seckill_coupon sc on so.coupon_id = sc.id
+        left join seckill_activity sa on sc.activity_id = sa.id
+        <where>
+            <if test="search != null and search != ''">
+                and (so.order_number like concat('%', #{search}, '%') or so.user_id like concat('%', #{search}, '%'))
+            </if>
+            <if test="status != null">
+                and so.status = #{status}
+            </if>
+            <if test="activityId != null">
+                and sc.activity_id = #{activityId}
+            </if>
+            <if test="startTime != null">
+                and so.create_time >= #{startTime}
+            </if>
+            <if test="endTime != null">
+                and so.create_time &lt;= #{endTime}
+            </if>
+        </where>
+        order by so.create_time desc
+        limit #{offset}, #{pageSize}
+    </select>
+    
+    <!-- 管理端：统计分页查询的订单总数 -->
+    <select id="countSeckillOrderPage" parameterType="java.util.Map" resultType="java.lang.Long">
+        select count(*)
+        from seckill_order so
+        left join seckill_coupon sc on so.coupon_id = sc.id
+        <where>
+            <if test="search != null and search != ''">
+                and (so.order_number like concat('%', #{search}, '%') or so.user_id like concat('%', #{search}, '%'))
+            </if>
+            <if test="status != null">
+                and so.status = #{status}
+            </if>
+            <if test="activityId != null">
+                and sc.activity_id = #{activityId}
+            </if>
+            <if test="startTime != null">
+                and so.create_time >= #{startTime}
+            </if>
+            <if test="endTime != null">
+                and so.create_time &lt;= #{endTime}
+            </if>
+        </where>
+    </select>
+    
+    <!-- 管理端：统计所有秒杀订单数量 -->
+    <select id="countAllSeckillOrders" resultType="java.lang.Long">
+        select count(*) from seckill_order
+    </select>
+    
+    <!-- 管理端：根据状态统计秒杀订单数量 -->
+    <select id="countSeckillOrdersByStatus" parameterType="java.lang.Integer" resultType="java.lang.Long">
+        select count(*) from seckill_order where status = #{status}
+    </select>
+    
+    <!-- 管理端：获取秒杀总销售额 -->
+    <select id="getTotalSeckillSalesAmount" resultType="java.math.BigDecimal">
+        select sum(sc.seckill_price) 
+        from seckill_order so
+        join seckill_coupon sc on so.coupon_id = sc.id
+        where so.status = 2
+    </select>
+    
+    <!-- 管理端：获取今日秒杀销售额 -->
+    <select id="getTodaySeckillSalesAmount" resultType="java.math.BigDecimal">
+        select sum(sc.seckill_price) 
+        from seckill_order so
+        join seckill_coupon sc on so.coupon_id = sc.id
+        where so.status = 2 and date(so.pay_time) = curdate()
+    </select>
+</mapper>

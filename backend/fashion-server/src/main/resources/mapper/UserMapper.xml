@@ -1,0 +1,65 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.fashion.mapper.UserMapper">
+    <!-- 新增用户 -->
+    <insert id="insert" parameterType="com.fashion.entity.User" keyProperty="id" useGeneratedKeys="true">
+        insert into user (openid, name, phone, sex, id_number, avatar, create_time, password)
+        values (#{openid}, #{name}, #{phone}, #{sex}, #{idNumber}, #{avatar}, #{createTime}, #{password})
+    </insert>
+
+    <!-- 根据id删除用户 -->
+    <delete id="deleteById" parameterType="java.lang.Long">
+        delete from user where id = #{id}
+    </delete>
+
+    <!-- 更新用户信息 -->
+    <update id="update" parameterType="com.fashion.entity.User">
+        update user
+        <set>
+            <if test="openid != null">openid = #{openid},</if>
+            <if test="name != null">name = #{name},</if>
+            <if test="phone != null">phone = #{phone},</if>
+            <if test="password != null">password = #{password},</if>
+            <if test="sex != null">sex = #{sex},</if>
+            <if test="idNumber != null">id_number = #{idNumber},</if>
+            <if test="avatar != null">avatar = #{avatar}</if>
+        </set>
+        where id = #{id}
+    </update>
+
+    <!-- 根据id查询用户 -->
+    <select id="selectById" parameterType="java.lang.Long" resultType="com.fashion.entity.User">
+        select id, openid, name, phone, password, sex, id_number as idNumber, avatar, create_time as createTime
+        from user
+        where id = #{id}
+    </select>
+
+    <!-- 分页查询用户 -->
+    <select id="list" resultType="com.fashion.entity.User">
+        select id, openid, name, phone, sex, id_number as idNumber, avatar, create_time as createTime
+        from user
+        <where>
+            <if test="name != null and name != ''">and name like concat('%', #{name}, '%')</if>
+            <if test="phone != null and phone != ''">and phone like concat('%', #{phone}, '%')</if>
+        </where>
+        order by id desc
+        limit #{page}, #{pageSize}
+    </select>
+
+    <!-- 查询用户总数 -->
+    <select id="count" resultType="java.lang.Integer">
+        select count(*)
+        from user
+        <where>
+            <if test="name != null and name != ''">and name like concat('%', #{name}, '%')</if>
+            <if test="phone != null and phone != ''">and phone like concat('%', #{phone}, '%')</if>
+        </where>
+    </select>
+    <select id="selectByPhone" resultType="com.fashion.entity.User">
+        select *
+        from user
+        where phone = #{phone}
+    </select>
+</mapper>

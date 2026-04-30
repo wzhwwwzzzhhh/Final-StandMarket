@@ -1,0 +1,70 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.fashion.mapper.SeckillCouponMapper">
+    <!-- 新增秒杀券 -->
+    <insert id="insert" parameterType="com.fashion.entity.SeckillCoupon" >
+        insert into seckill_coupon ( name, original_price, seckill_price, stock, limit_per_user, status, create_time, update_time, start_time, end_time)
+        values (#{name}, #{originalPrice}, #{seckillPrice}, #{stock}, #{limitPerUser}, #{status}, #{createTime})
+    </insert>
+
+    <!-- 根据id删除秒杀券 -->
+    <delete id="deleteById" parameterType="java.lang.Long">
+        delete from seckill_coupon where id = #{id}
+    </delete>
+
+    <!-- 更新秒杀券信息 -->
+    <update id="update" parameterType="com.fashion.entity.SeckillCoupon">
+        update seckill_coupon
+        <set>
+            <if test="name != null">name = #{name},</if>
+            <if test="originalPrice != null">original_price = #{originalPrice},</if>
+            <if test="seckillPrice != null">seckill_price = #{seckillPrice},</if>
+            <if test="stock != null">stock = #{stock},</if>
+            <if test="limitPerUser != null">limit_per_user = #{limitPerUser},</if>
+            <if test="status != null">status = #{status},</if>
+            <if test="startTime != null">start_time = #{startTime},</if>
+            <if test="endTime != null">end_time = #{endTime},</if>
+            <if test="updateTime != null">update_time = #{updateTime}</if>
+        </set>
+        where id = #{id}
+    </update>
+
+    <!-- 根据id查询秒杀券 -->
+    <select id="selectById" parameterType="java.lang.Long" resultType="com.fashion.entity.SeckillCoupon">
+        select id, name, original_price as originalPrice, seckill_price as seckillPrice, stock, limit_per_user as limitPerUser, status, start_time as startTime, end_time as endTime, create_time as createTime, update_time as updateTime
+        from seckill_coupon
+        where id = #{id}
+    </select>
+
+    <!-- 分页查询秒杀券 -->
+    <select id="list" resultType="com.fashion.entity.SeckillCoupon">
+        select id, name, original_price as originalPrice, seckill_price as seckillPrice, stock, limit_per_user as limitPerUser, status, start_time as startTime, end_time as endTime, create_time as createTime, update_time as updateTime
+        from seckill_coupon
+        <where>
+            <if test="name != null and name != ''">and name like concat('%', #{name}, '%')</if>
+        </where>
+        order by id desc
+        limit #{page}, #{pageSize}
+    </select>
+
+    <!-- 查询秒杀券总数 -->
+    <select id="count" resultType="java.lang.Integer">
+        select count(*)
+        from seckill_coupon
+        <where>
+            <if test="name != null and name != ''">and name like concat('%', #{name}, '%')</if>
+        </where>
+    </select>
+
+    <!-- 查询秒杀券列表（用户端） -->
+    <select id="listCoupons" resultType="com.fashion.entity.SeckillCoupon">
+        select id, name, original_price as originalPrice, seckill_price as seckillPrice, stock, limit_per_user as limitPerUser, status, start_time as startTime, end_time as endTime, create_time as createTime, update_time as updateTime
+        from seckill_coupon
+        where start_time &lt;= now()
+          and end_time &gt;= now()
+        and status = 1  -- 只查询有效状态的秒杀券
+        order by start_time desc
+    </select>
+</mapper>

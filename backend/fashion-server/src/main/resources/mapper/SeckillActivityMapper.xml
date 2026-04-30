@@ -1,0 +1,67 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.fashion.mapper.SeckillActivityMapper">
+    <!-- 条件查询 -->
+    <select id="selectByCondition" resultType="com.fashion.entity.SeckillActivity">
+        select * from seckill_activity
+        <where>
+            <if test="params.name != null and params.name != ''">
+                and name like concat('%', #{params.name}, '%')
+            </if>
+            <if test="params.status != null">
+                and status = #{params.status}
+            </if>
+            <if test="params.beginTime != null">
+                and start_time >= #{params.beginTime}
+            </if>
+            <if test="params.endTime != null">
+                and end_time &lt;= #{params.endTime}
+            </if>
+        </where>
+        order by create_time desc
+    </select>
+    
+    <!-- 根据名称查询秒杀活动列表 -->
+    <select id="listActivities" resultType="com.fashion.entity.SeckillActivity">
+        select * from seckill_activity
+        <where>
+            <if test="name != null and name != ''">
+                and name like concat('%', #{name}, '%')
+            </if>
+        </where>
+        order by create_time desc
+    </select>
+    
+    <!-- 根据ID查询秒杀活动 -->
+    <select id="getById" resultType="com.fashion.entity.SeckillActivity">
+        select * from seckill_activity where id = #{id}
+    </select>
+    
+    <!-- 新增秒杀活动 -->
+    <insert id="save" parameterType="com.fashion.entity.SeckillActivity" useGeneratedKeys="true" keyProperty="id">
+        insert into seckill_activity(name, description, start_time, end_time, status, create_time, update_time, create_user, update_user)
+        values(#{name}, #{description}, #{startTime}, #{endTime}, #{status}, #{createTime}, #{updateTime}, #{createUser}, #{updateUser})
+    </insert>
+    
+    <!-- 更新秒杀活动 -->
+    <update id="update" parameterType="com.fashion.entity.SeckillActivity">
+        update seckill_activity
+        <set>
+            <if test="name != null">name = #{name},</if>
+            <if test="description != null">description = #{description},</if>
+            <if test="startTime != null">start_time = #{startTime},</if>
+            <if test="endTime != null">end_time = #{endTime},</if>
+            <if test="status != null">status = #{status},</if>
+            <if test="updateTime != null">update_time = #{updateTime},</if>
+            <if test="updateUser != null">update_user = #{updateUser},</if>
+        </set>
+        where id = #{id}
+    </update>
+    
+    <!-- 删除秒杀活动 -->
+    <delete id="deleteById">
+        delete from seckill_activity where id = #{id}
+    </delete>
+</mapper>
