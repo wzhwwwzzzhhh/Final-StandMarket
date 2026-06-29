@@ -1,4 +1,4 @@
-import { createRouter, createWebHistory } from 'vue-router'
+import { createRouter, createWebHashHistory } from 'vue-router'
 
 const routes = [
   {
@@ -55,11 +55,16 @@ const routes = [
     path: '/user/list',
     name: 'UserList',
     component: () => import('../views/UserList.vue')
+  },
+  {
+    path: '/employee/list',
+    name: 'EmployeeList',
+    component: () => import('../views/EmployeeList.vue')
   }
 ]
 
 const router = createRouter({
-  history: createWebHistory(),
+  history: createWebHashHistory(),
   routes,
   scrollBehavior() {
     // 每次路由跳转时滚动到页面顶部

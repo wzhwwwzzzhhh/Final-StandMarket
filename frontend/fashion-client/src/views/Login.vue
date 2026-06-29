@@ -1,19 +1,15 @@
 <template>
   <div class="login-container">
-    <!-- 装饰元素 -->
-    <div class="decorative-element top-left"></div>
-    <div class="decorative-element bottom-right"></div>
-    <div class="decorative-element top-right"></div>
-    <div class="decorative-element bottom-left"></div>
-    
     <div class="login-form-wrapper">
-      <!-- 品牌标识 -->
-      <div class="brand-logo">
-        <h1 class="brand-name">时尚商城</h1>
-        <p class="brand-tagline">让时尚触手可及</p>
+      <div class="brand-section">
+        <h1 class="brand-name">
+          <span class="brand-stand">STAND</span>
+          <span class="brand-sep">/</span>
+          <span class="brand-market">MARKET</span>
+        </h1>
+        <p class="brand-tagline">// AUTHENTICATION_REQUIRED</p>
       </div>
       
-      <!-- 登录方式切换 -->
       <div class="login-tabs">
         <el-tabs v-model="activeTab" @tab-click="handleTabClick" class="custom-tabs">
           <el-tab-pane label="密码登录" name="password"></el-tab-pane>
@@ -27,13 +23,11 @@
           </el-input>
         </el-form-item>
         
-        <!-- 密码登录 -->
         <el-form-item v-if="activeTab === 'password'" prop="password" class="form-item">
           <el-input type="password" v-model="loginForm.password" placeholder="请输入密码" class="custom-input" prefix-icon="Lock">
           </el-input>
         </el-form-item>
         
-        <!-- 短信登录 -->
         <el-form-item v-else prop="code" class="form-item">
           <el-input v-model="loginForm.code" placeholder="请输入验证码" class="custom-input" prefix-icon="Message">
             <template #append>
@@ -52,8 +46,8 @@
         <el-form-item class="form-item">
           <el-button type="primary" @click="submitForm" class="login-button" :loading="loading">
             <template v-if="!loading">
-              <el-icon class="login-icon"><Check /></el-icon>
               <span>登录</span>
+              <span class="login-arrow">→</span>
             </template>
             <template v-else>登录中...</template>
           </el-button>
@@ -64,10 +58,9 @@
           <el-button type="text" @click="goRegister" class="register-button">注册新账号</el-button>
         </div>
         
-        <!-- 其他登录方式 -->
         <div class="other-login">
           <div class="divider">
-            <span>其他登录方式</span>
+            <span class="divider-text">其他登录方式</span>
           </div>
           <div class="social-login">
             <el-button type="text" class="social-button wechat">
@@ -91,7 +84,7 @@
 
 <script>
 import { userApi } from '@/api/user'
-import { Phone, Lock, Message, Check, ChatDotRound, Avatar, Position } from '@element-plus/icons-vue'
+import { Phone, Lock, Message, ChatDotRound, Avatar, Position } from '@element-plus/icons-vue'
 
 export default {
   name: 'Login',
@@ -99,14 +92,13 @@ export default {
     Phone,
     Lock,
     Message,
-    Check,
     ChatDotRound,
     Avatar,
     Position
   },
   data() {
     return {
-      activeTab: 'password', // 默认密码登录
+      activeTab: 'password',
       loginForm: {
         phone: '',
         password: '',
@@ -132,7 +124,6 @@ export default {
     }
   },
   mounted() {
-    // 从localStorage中获取记住的手机号
     const savedPhone = localStorage.getItem('savedPhone')
     if (savedPhone) {
       this.loginForm.phone = savedPhone
@@ -141,11 +132,9 @@ export default {
   },
   methods: {
     handleTabClick() {
-      // 切换登录方式时重置表单
       this.$refs.loginForm.resetFields()
     },
     getSmsCode() {
-      // 验证手机号
       const phoneRule = this.loginRules.phone
       for (const rule of phoneRule) {
         if (rule.required && !this.loginForm.phone) {
@@ -158,11 +147,9 @@ export default {
         }
       }
       
-      // 发送验证码
       userApi.sendSmsCode(this.loginForm.phone).then(response => {
         if (response.data.code === 1) {
           this.$message.success('验证码发送成功')
-          // 开始倒计时
           this.countdown = 60
           const timer = setInterval(() => {
             this.countdown--
@@ -184,7 +171,7 @@ export default {
           this.loading = true
           const loginData = {
             phone: this.loginForm.phone,
-            type: this.activeTab // 登录类型：password或sms
+            type: this.activeTab
           }
           
           if (this.activeTab === 'password') {
@@ -193,26 +180,16 @@ export default {
             loginData.code = this.loginForm.code
           }
           
-          console.log('发送的登录请求参数:', loginData)
           userApi.login(loginData).then(response => {
             this.loading = false
             console.log('登录响应:', response)
             if (response.data && response.data.code === 1) {
-              // 登录成功
-              console.log('登录响应data:', response.data)
-              console.log('登录响应data.data:', response.data.data)
               const { token, userInfo } = response.data.data || {}
-              console.log('获取的token:', token)
-              console.log('获取的userInfo:', userInfo)
               
               if (token && userInfo) {
-                // 保存token和用户信息到localStorage
                 localStorage.setItem('token', token)
                 localStorage.setItem('userInfo', JSON.stringify(userInfo))
-                console.log('token已保存到localStorage:', localStorage.getItem('token'))
-                console.log('localStorage中的所有数据:', localStorage)
                 
-                // 记住手机号
                 if (this.rememberMe) {
                   localStorage.setItem('savedPhone', this.loginForm.phone)
                 } else {
@@ -220,7 +197,6 @@ export default {
                 }
                 
                 this.$message.success('登录成功')
-                // 通知App组件更新用户状态
                 if (this.$root && this.$root.initUserStatus) {
                   this.$root.initUserStatus()
                 }
@@ -235,17 +211,13 @@ export default {
             this.loading = false
             this.$message.error('网络错误，请稍后重试')
             console.error('登录失败:', error)
-            console.error('错误响应:', error.response)
           })
         } else {
-          console.log('登录表单验证失败')
           return false
         }
       })
     },
     goRegister() {
-      console.log('跳转到注册页面')
-      // 这里可以跳转到注册页面
       this.$message.info('注册功能开发中')
     }
   }
@@ -253,331 +225,307 @@ export default {
 </script>
 
 <style scoped>
-/* 全局动画 */
-@keyframes fadeIn {
-  from {
-    opacity: 0;
-    transform: translateY(20px);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
-}
-
-@keyframes pulse {
-  0% {
-    transform: scale(1);
-  }
-  50% {
-    transform: scale(1.05);
-  }
-  100% {
-    transform: scale(1);
-  }
-}
-
-@keyframes float {
-  0%, 100% {
-    transform: translateY(0);
-  }
-  50% {
-    transform: translateY(-10px);
-  }
-}
+/* ============================================================
+   LOGIN — 机能风登录页
+   ============================================================ */
 
 .login-container {
   display: flex;
   justify-content: center;
   align-items: center;
   min-height: 100vh;
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-  background-size: cover;
-  background-position: center;
+  background: var(--bg-primary);
   position: relative;
   overflow: hidden;
-  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
 }
 
-/* 装饰元素 */
-.decorative-element {
+.login-container::before {
+  content: '';
   position: absolute;
-  border-radius: 50%;
-  background: rgba(255, 255, 255, 0.1);
-  animation: float 6s ease-in-out infinite;
-  z-index: 0;
-}
-
-.top-left {
-  top: 10%;
-  left: 10%;
-  width: 200px;
-  height: 200px;
-  animation-delay: 0s;
-}
-
-.bottom-right {
-  bottom: 10%;
-  right: 10%;
-  width: 250px;
-  height: 250px;
-  animation-delay: 2s;
-}
-
-.top-right {
-  top: 20%;
-  right: 15%;
-  width: 150px;
-  height: 150px;
-  animation-delay: 1s;
-}
-
-.bottom-left {
-  bottom: 20%;
-  left: 15%;
-  width: 180px;
-  height: 180px;
-  animation-delay: 3s;
+  top: -50%;
+  left: -50%;
+  width: 200%;
+  height: 200%;
+  background: 
+    repeating-linear-gradient(
+      0deg,
+      transparent,
+      transparent 2px,
+      rgba(209, 0, 255, 0.03) 2px,
+      rgba(209, 0, 255, 0.03) 4px
+    );
+  animation: scanline 8s linear infinite;
 }
 
 .login-form-wrapper {
   width: 420px;
-  padding: 50px;
-  background: rgba(255, 255, 255, 0.95);
-  border-radius: 20px;
-  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.2);
-  backdrop-filter: blur(10px);
+  padding: 50px 48px;
+  background: var(--bg-elevated);
+  border: 1px solid var(--border-subtle);
   z-index: 1;
-  animation: fadeIn 0.8s ease-out;
-  transition: all 0.3s ease;
-}
-
-.login-form-wrapper:hover {
-  box-shadow: 0 25px 70px rgba(0, 0, 0, 0.25);
-  transform: translateY(-5px);
-}
-
-/* 品牌标识 */
-.brand-logo {
-  text-align: center;
-  margin-bottom: 40px;
-  animation: fadeIn 1s ease-out 0.2s both;
-}
-
-.brand-name {
-  font-size: 32px;
-  font-weight: bold;
-  color: #333;
-  margin: 0 0 10px 0;
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
-  background-clip: text;
-}
-
-.brand-tagline {
-  font-size: 16px;
-  color: #666;
-  margin: 0;
-  font-weight: 300;
-}
-
-/* 标签页样式 */
-.custom-tabs {
-  margin-bottom: 30px;
-  animation: fadeIn 1s ease-out 0.4s both;
-}
-
-.custom-tabs .el-tabs__header {
-  margin: 0 0 30px 0;
-}
-
-.custom-tabs .el-tabs__nav {
-  justify-content: center;
-  border-bottom: 2px solid #f0f0f0;
-}
-
-.custom-tabs .el-tabs__item {
-  font-size: 16px;
-  font-weight: 600;
-  color: #666;
-  padding: 15px 30px;
-  margin: 0 20px;
-  transition: all 0.3s ease;
+  animation: floatIn 0.6s ease;
   position: relative;
 }
 
-.custom-tabs .el-tabs__item:hover {
-  color: #667eea;
+/* === 品牌标识 === */
+.brand-section {
+  text-align: center;
+  margin-bottom: 36px;
+  animation: floatIn 0.6s ease 0.1s backwards;
 }
 
-.custom-tabs .el-tabs__active-bar {
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-  height: 3px;
-  border-radius: 3px;
+.brand-name {
+  margin: 0 0 12px 0;
+  display: flex;
+  align-items: baseline;
+  justify-content: center;
+  gap: 4px;
 }
 
-.custom-tabs .el-tabs__item.is-active {
-  color: #667eea;
-  font-weight: bold;
+.brand-stand {
+  font-family: var(--font-heading);
+  font-size: 28px;
+  font-weight: 900;
+  color: var(--text-primary);
+  letter-spacing: 0.08em;
 }
 
-/* 表单样式 */
+.brand-sep {
+  font-family: var(--font-display);
+  font-size: 28px;
+  font-weight: 700;
+  color: var(--accent-purple);
+}
+
+.brand-market {
+  font-family: var(--font-heading);
+  font-size: 20px;
+  font-weight: 700;
+  color: var(--text-secondary);
+  letter-spacing: 0.06em;
+}
+
+.brand-tagline {
+  font-family: var(--font-display);
+  font-size: 12px;
+  color: var(--text-tertiary);
+  letter-spacing: 0.06em;
+  margin: 0;
+}
+
+/* === 标签页 === */
+.login-tabs {
+  animation: floatIn 0.6s ease 0.15s backwards;
+}
+
+.custom-tabs :deep(.el-tabs__header) {
+  margin: 0 0 28px 0;
+}
+
+.custom-tabs :deep(.el-tabs__nav-wrap::after) {
+  background: var(--border-subtle);
+  height: 1px;
+}
+
+.custom-tabs :deep(.el-tabs__item) {
+  font-family: var(--font-display);
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--text-tertiary);
+  padding: 0 24px 12px;
+  letter-spacing: 0.04em;
+  height: auto;
+  line-height: 1;
+  transition: var(--transition-fast);
+}
+
+.custom-tabs :deep(.el-tabs__item:hover) {
+  color: var(--text-secondary);
+}
+
+.custom-tabs :deep(.el-tabs__item.is-active) {
+  color: var(--accent-purple);
+}
+
+.custom-tabs :deep(.el-tabs__active-bar) {
+  background: var(--accent-purple);
+  height: 2px;
+}
+
+/* === 表单 === */
 .login-form {
-  animation: fadeIn 1s ease-out 0.6s both;
+  animation: floatIn 0.6s ease 0.2s backwards;
 }
 
 .form-item {
-  margin-bottom: 25px;
+  margin-bottom: 20px;
 }
 
-.custom-input {
-  border-radius: 12px;
-  border: 2px solid #f0f0f0;
-  padding: 15px 20px;
-  font-size: 16px;
-  transition: all 0.3s ease;
-  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.05);
+.custom-input :deep(.el-input__wrapper) {
+  background: var(--bg-surface);
+  border: 1px solid var(--border-subtle);
+  box-shadow: none;
+  padding: 12px 16px;
+  transition: var(--transition-fast);
 }
 
-.custom-input:hover {
-  border-color: #e0e0e0;
-  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.08);
+.custom-input :deep(.el-input__wrapper:hover) {
+  border-color: var(--accent-purple);
 }
 
-.custom-input:focus {
-  border-color: #667eea;
-  box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+.custom-input :deep(.el-input__wrapper.is-focus) {
+  border-color: var(--accent-purple);
+  box-shadow: none;
 }
 
-.custom-input .el-input__prefix {
-  color: #999;
-  font-size: 18px;
-  transition: color 0.3s ease;
-}
-
-.custom-input:focus .el-input__prefix {
-  color: #667eea;
-}
-
-/* 验证码按钮 */
-.code-button {
-  border-radius: 8px;
-  padding: 0 20px;
+.custom-input :deep(.el-input__inner) {
+  color: var(--text-primary);
+  font-family: var(--font-body);
   font-size: 14px;
-  font-weight: 600;
-  transition: all 0.3s ease;
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-  color: #fff;
-  border: none;
+}
+
+.custom-input :deep(.el-input__inner)::placeholder {
+  color: var(--text-tertiary);
+  font-family: var(--font-display);
+  font-size: 12px;
+}
+
+.custom-input :deep(.el-input__prefix-inner) {
+  color: var(--text-tertiary);
+}
+
+/* === 验证码按钮 === */
+.code-button {
+  background: var(--accent-purple) !important;
+  color: #fff !important;
+  border: none !important;
+  font-family: var(--font-display) !important;
+  font-size: 12px !important;
+  font-weight: 700 !important;
+  letter-spacing: 0.04em !important;
+  padding: 0 16px !important;
+  transition: var(--transition-fast);
 }
 
 .code-button:hover:not(:disabled) {
-  background: linear-gradient(135deg, #764ba2 0%, #667eea 100%);
-  transform: translateY(-2px);
-  box-shadow: 0 4px 15px rgba(102, 126, 234, 0.3);
+  box-shadow: 0 0 16px var(--accent-purple-dim);
 }
 
 .code-button.counting {
-  background: #999;
-  cursor: not-allowed;
+  background: var(--bg-surface) !important;
+  color: var(--text-tertiary) !important;
 }
 
-/* 表单选项 */
+/* === 表单选项 === */
 .form-options {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  margin-bottom: 30px;
-  animation: fadeIn 1s ease-out 0.8s both;
+  margin-bottom: 24px;
 }
 
-.remember-checkbox .el-checkbox__label {
-  font-size: 14px;
-  color: #666;
-  transition: color 0.3s ease;
-}
-
-.remember-checkbox .el-checkbox__input.is-checked .el-checkbox__inner {
-  background-color: #667eea;
-  border-color: #667eea;
+.remember-checkbox {
+  font-family: var(--font-display);
+  font-size: 12px;
+  color: var(--text-tertiary);
 }
 
 .forgot-password {
-  font-size: 14px;
-  color: #667eea;
-  font-weight: 500;
-  transition: all 0.3s ease;
+  font-family: var(--font-display);
+  font-size: 12px;
+  color: var(--text-tertiary);
+  transition: var(--transition-fast);
 }
 
 .forgot-password:hover {
-  color: #764ba2;
-  text-decoration: underline;
+  color: var(--accent-purple);
 }
 
-/* 登录按钮 */
+/* === 登录按钮 === */
 .login-button {
   width: 100%;
-  padding: 15px;
-  font-size: 18px;
-  font-weight: bold;
-  border-radius: 12px;
-  transition: all 0.3s ease;
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-  border: none;
-  box-shadow: 0 6px 20px rgba(102, 126, 234, 0.3);
+  padding: 14px;
+  background: var(--accent-purple) !important;
+  border: none !important;
+  color: #fff !important;
+  font-family: var(--font-heading) !important;
+  font-weight: 800 !important;
+  font-size: 15px !important;
+  letter-spacing: 0.06em !important;
+  transition: var(--transition-base);
+  position: relative;
+  overflow: hidden;
   display: flex;
   align-items: center;
   justify-content: center;
-  gap: 10px;
-  animation: fadeIn 1s ease-out 1s both;
+  gap: 8px;
 }
 
-.login-button:hover:not(:loading) {
-  background: linear-gradient(135deg, #764ba2 0%, #667eea 100%);
-  transform: translateY(-3px);
-  box-shadow: 0 8px 25px rgba(102, 126, 234, 0.4);
+.login-button::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(90deg, transparent, rgba(255,255,255,0.2), transparent);
+  transform: translateX(-100%);
+  transition: transform 0.5s;
 }
 
-.login-icon {
-  font-size: 20px;
+.login-button:hover:not(:disabled)::after {
+  transform: translateX(100%);
 }
 
-/* 注册部分 */
+.login-button:hover:not(:disabled) {
+  box-shadow: 0 0 24px var(--accent-purple-dim);
+}
+
+.login-arrow {
+  font-family: var(--font-display);
+  font-size: 16px;
+  transition: transform 0.3s;
+}
+
+.login-button:hover .login-arrow {
+  transform: translateX(4px);
+}
+
+/* === 注册部分 === */
 .register-section {
   text-align: center;
-  margin: 30px 0;
-  animation: fadeIn 1s ease-out 1.2s both;
+  margin: 24px 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
 }
 
 .register-text {
-  font-size: 14px;
-  color: #666;
-  margin-right: 10px;
+  font-family: var(--font-display);
+  font-size: 12px;
+  color: var(--text-tertiary);
 }
 
 .register-button {
-  font-size: 14px;
-  color: #667eea;
-  font-weight: 600;
-  transition: all 0.3s ease;
+  font-family: var(--font-display);
+  font-size: 12px;
+  color: var(--accent-purple);
+  font-weight: 700;
+  padding: 0;
 }
 
 .register-button:hover {
-  color: #764ba2;
-  text-decoration: underline;
+  color: var(--accent-lime);
 }
 
-/* 其他登录方式 */
+/* === 其他登录方式 === */
 .other-login {
-  animation: fadeIn 1s ease-out 1.4s both;
+  margin-top: 32px;
 }
 
 .divider {
   display: flex;
   align-items: center;
-  margin: 30px 0;
-  position: relative;
+  gap: 16px;
+  margin-bottom: 20px;
 }
 
 .divider::before,
@@ -585,134 +533,55 @@ export default {
   content: '';
   flex: 1;
   height: 1px;
-  background: #e0e0e0;
+  background: var(--border-subtle);
 }
 
-.divider span {
-  padding: 0 20px;
-  font-size: 14px;
-  color: #999;
+.divider-text {
+  font-family: var(--font-display);
+  font-size: 11px;
+  color: var(--text-tertiary);
+  letter-spacing: 0.04em;
   white-space: nowrap;
 }
 
 .social-login {
   display: flex;
   justify-content: center;
-  gap: 40px;
-  margin-top: 30px;
+  gap: 12px;
 }
 
 .social-button {
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 8px;
-  padding: 20px;
-  border-radius: 12px;
-  transition: all 0.3s ease;
-  background: #f8f9fa;
-  min-width: 80px;
+  gap: 6px;
+  font-family: var(--font-display) !important;
+  font-size: 10px !important;
+  color: var(--text-tertiary) !important;
+  padding: 12px 20px !important;
+  border: 1px solid var(--border-subtle) !important;
+  transition: var(--transition-fast);
 }
 
 .social-button:hover {
-  background: #e9ecef;
-  transform: translateY(-5px);
-  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.1);
+  border-color: var(--accent-purple) !important;
+  color: var(--accent-purple) !important;
 }
 
 .social-button .el-icon {
-  font-size: 24px;
-  margin-bottom: 5px;
+  font-size: 20px;
 }
 
-.social-button.wechat .el-icon {
-  color: #07C160;
-}
-
-.social-button.qq .el-icon {
-  color: #12B7F5;
-}
-
-.social-button.weibo .el-icon {
-  color: #E6162D;
-}
-
-.social-button span {
-  font-size: 14px;
-  color: #666;
-  font-weight: 500;
-}
-
-/* 响应式设计 */
-@media (max-width: 768px) {
-  .login-form-wrapper {
-    width: 90%;
-    max-width: 400px;
-    padding: 40px;
-  }
-  
-  .decorative-element {
-    transform: scale(0.7);
-  }
-  
-  .brand-name {
-    font-size: 28px;
-  }
-  
-  .custom-tabs .el-tabs__item {
-    padding: 12px 20px;
-    margin: 0 10px;
-  }
-  
-  .social-login {
-    gap: 30px;
-  }
-  
-  .social-button {
-    padding: 15px;
-    min-width: 70px;
-  }
-}
-
+/* === 响应式 === */
 @media (max-width: 480px) {
   .login-form-wrapper {
-    width: 95%;
-    padding: 30px;
+    width: 100%;
+    margin: 0 16px;
+    padding: 40px 24px;
   }
-  
-  .brand-name {
+
+  .brand-stand {
     font-size: 24px;
-  }
-  
-  .brand-tagline {
-    font-size: 14px;
-  }
-  
-  .custom-input {
-    padding: 12px 16px;
-    font-size: 14px;
-  }
-  
-  .login-button {
-    padding: 12px;
-    font-size: 16px;
-  }
-  
-  .social-login {
-    gap: 20px;
-  }
-  
-  .social-button {
-    padding: 12px;
-    min-width: 60px;
-  }
-  
-  .social-button .el-icon {
-    font-size: 20px;
-  }
-  
-  .social-button span {
-    font-size: 12px;
   }
 }
 </style>

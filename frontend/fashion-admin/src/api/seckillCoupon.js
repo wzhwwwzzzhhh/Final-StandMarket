@@ -11,8 +11,13 @@ const api = axios.create({
 
 // 秒杀活动相关API
 export const seckillActivityApi = {
-  // 获取秒杀活动列表
-  getActivityList: () => {
+  // 获取秒杀活动列表（分页）
+  getActivityList: (params) => {
+    return api.get('/admin/seckill/activity/page', { params })
+  },
+  
+  // 获取秒杀活动列表（不分页，用于下拉选择）
+  getSeckillActivityList: () => {
     return api.get('/admin/seckill/activity/list')
   },
   

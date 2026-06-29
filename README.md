@@ -64,13 +64,13 @@
 用户请求 → 前端限流 → Redis+Lua预减库存 → RabbitMQ异步下单 → 数据库落单
 ```
 
-| 技术方案               | 解决问题         | 效果             |
-| ------------------ | ------------ | -------------- |
-| **Redis + Lua 脚本** | 库存扣减原子性，防止超卖 | 1000+ QPS 稳定运行 |
-| **RabbitMQ 异步削峰**  | 流量缓冲，保护数据库   | 同步转异步，峰值削平     |
-| **Redisson 分布式锁**  | 防止用户重复秒杀     | 一人一单严格保证       |
+| 技术方案                     | 解决问题           | 效果                 |
+| ------------------------ | -------------- | ------------------ |
+| **Redis + Lua 脚本**       | 库存扣减原子性，防止超卖   | 1000+ QPS 稳定运行     |
+| **RabbitMQ 异步削峰**        | 流量缓冲，保护数据库     | 同步转异步，峰值削平         |
+| **Redisson 分布式锁**        | 防止用户重复秒杀       | 一人一单严格保证           |
 | **RabbitMQ 延迟队列 + 死信队列** | 未支付订单自动取消，释放库存 | 30分钟超时，CAS乐观锁保证原子性 |
-| **库存预热**           | 避免缓存击穿       | 活动开始前数据已就绪     |
+| **库存预热**                 | 避免缓存击穿         | 活动开始前数据已就绪         |
 
 ### 🛍️ 管理端功能
 
@@ -214,14 +214,14 @@ npm run dev
 
 ### 关键技术难点攻克
 
-| 难点         | 解决方案                    | 代码位置                                                                                                                         |
-| ---------- | ----------------------- | ---------------------------------------------------------------------------------------------------------------------------- |
-| **库存超卖**   | Lua 脚本原子扣减，CAS 检查       | [SeckillCouponServiceImpl.java](backend/fashion-server/src/main/java/com/fashion/service/impl/SeckillCouponServiceImpl.java) |
-| **重复秒杀**   | Redisson 分布式锁 + 数据库唯一索引 | [SeckillCouponServiceImpl.java](backend/fashion-server/src/main/java/com/fashion/service/impl/SeckillCouponServiceImpl.java) |
-| **流量冲击**   | RabbitMQ 异步削峰，同步转异步     | [DirectExchangeConfig.java](backend/fashion-server/src/main/java/com/fashion/config/DirectExchangeConfig.java)               |
-| **订单超时**   | RabbitMQ 延迟队列 → 死信队列 → CAS乐观锁更新状态 + 恢复库存 | [DirectExchangeConfig.java](backend/fashion-server/src/main/java/com/fashion/config/DirectExchangeConfig.java)、[SeckillCouponServiceImpl.java:254](backend/fashion-server/src/main/java/com/fashion/service/impl/SeckillCouponServiceImpl.java#L254) |                                                                |
-| **缓存穿透**   | 布隆过滤器 + 空值缓存            | [CacheClient.java](backend/fashion-common/src/main/java/com/fashion/utils/CacheClient.java)                                  |
-| **JWT 鉴权** | 双 Token 机制（管理端 + 用户端）   | [JwtUtil.java](backend/fashion-common/src/main/java/com/fashion/utils/JwtUtil.java)                                          |
+| 难点         | 解决方案                                     | 代码位置                                                                                                                                                                                                                                                 |
+| ---------- | ---------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **库存超卖**   | Lua 脚本原子扣减，CAS 检查                        | [SeckillCouponServiceImpl.java](backend/fashion-server/src/main/java/com/fashion/service/impl/SeckillCouponServiceImpl.java)                                                                                                                         |
+| **重复秒杀**   | Redisson 分布式锁 + 数据库唯一索引                  | [SeckillCouponServiceImpl.java](backend/fashion-server/src/main/java/com/fashion/service/impl/SeckillCouponServiceImpl.java)                                                                                                                         |
+| **流量冲击**   | RabbitMQ 异步削峰，同步转异步                      | [DirectExchangeConfig.java](backend/fashion-server/src/main/java/com/fashion/config/DirectExchangeConfig.java)                                                                                                                                       |
+| **订单超时**   | RabbitMQ 延迟队列 → 死信队列 → CAS乐观锁更新状态 + 恢复库存 | [DirectExchangeConfig.java](backend/fashion-server/src/main/java/com/fashion/config/DirectExchangeConfig.java)、[SeckillCouponServiceImpl.java:254](backend/fashion-server/src/main/java/com/fashion/service/impl/SeckillCouponServiceImpl.java#L254) |
+| **缓存穿透**   | 布隆过滤器 + 空值缓存                             | [CacheClient.java](backend/fashion-common/src/main/java/com/fashion/utils/CacheClient.java)                                                                                                                                                          |
+| **JWT 鉴权** | 双 Token 机制（管理端 + 用户端）                    | [JwtUtil.java](backend/fashion-common/src/main/java/com/fashion/utils/JwtUtil.java)                                                                                                                                                                  |
 
 ---
 

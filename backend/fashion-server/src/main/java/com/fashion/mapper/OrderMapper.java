@@ -66,4 +66,11 @@ public interface OrderMapper {
      * @return 订单列表
      */
     List<Orders> listUserOrders(@Param("userId") Long userId, @Param("status") Integer status);
+
+    /**
+     * 获取最近订单
+     * @param limit 数量
+     * @return 订单列表
+     */
+    List<Orders> selectRecentOrders(@Param("limit") int limit);
 }

@@ -202,7 +202,7 @@ public class SeckillCouponServiceImpl implements SeckillCouponService {
             message.setCouponId(couponId);
             message.setOrderNumber(orderNumber.toString());
 
-            rabbitTemplate.convertAndSend(DirectExchangeConfig.SeckillExchange, DirectExchangeConfig.SeckillQueue,message);
+            rabbitTemplate.convertAndSend(DirectExchangeConfig.SeckillExchange, DirectExchangeConfig.SeckillRoutingKey, message);
 
             // 创建简化响应对象
             resultDto = new SeckillSubmitResult();
@@ -294,8 +294,14 @@ public class SeckillCouponServiceImpl implements SeckillCouponService {
         String startTimeKey = "seckill:coupon:startTime:" + coupon.getId();
         String endTimeKey = "seckill:coupon:endTime:" + coupon.getId();
         stringRedisTemplate.opsForValue().set(stockKey, coupon.getStock().toString());
-        stringRedisTemplate.opsForValue().set(startTimeKey, coupon.getStartTime().toString());
-        stringRedisTemplate.opsForValue().set(endTimeKey, coupon.getEndTime().toString());
+        if (coupon.getStartTime() != null) {
+            long startTime = coupon.getStartTime().atZone(ZoneId.systemDefault()).toEpochSecond();
+            stringRedisTemplate.opsForValue().set(startTimeKey, String.valueOf(startTime));
+        }
+        if (coupon.getEndTime() != null) {
+            long endTime = coupon.getEndTime().atZone(ZoneId.systemDefault()).toEpochSecond();
+            stringRedisTemplate.opsForValue().set(endTimeKey, String.valueOf(endTime));
+        }
     }
 
     @Override

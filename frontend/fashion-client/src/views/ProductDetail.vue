@@ -421,108 +421,67 @@ export default {
 </script>
 
 <style scoped>
-/* 全局动画 */
-@keyframes fadeIn {
-  from {
-    opacity: 0;
-    transform: translateY(20px);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
-}
-
-@keyframes pulse {
-  0% {
-    transform: scale(1);
-  }
-  50% {
-    transform: scale(1.05);
-  }
-  100% {
-    transform: scale(1);
-  }
-}
-
-/* 主容器 */
 .product-detail {
-  max-width: 1200px;
+  max-width: 1400px;
   margin: 0 auto;
-  padding: 0;
+  padding: 0 var(--space-lg);
   min-height: 100vh;
-  background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
-  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-  animation: fadeIn 0.8s ease-out;
+  animation: floatIn 0.5s ease;
 }
 
-/* 顶部导航 */
+/* === 顶部导航 === */
 .top-nav {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 20px 30px;
-  background: #fff;
-  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
-  position: sticky;
-  top: 0;
-  z-index: 100;
+  padding: 12px 0;
+  margin-bottom: var(--space-lg);
+  border-bottom: 1px solid var(--border-subtle);
 }
 
 .back-button {
-  font-size: 20px;
-  color: #333;
-  padding: 8px 12px;
-  border-radius: 50%;
-  transition: all 0.3s ease;
+  font-size: 18px;
+  color: var(--text-secondary);
+  padding: 6px 10px;
+  transition: var(--transition-fast);
 }
 
 .back-button:hover {
-  background: #f0f2f5;
-  color: #667eea;
-  transform: translateX(-5px);
+  color: var(--accent-purple);
 }
 
 .page-title {
+  font-family: var(--font-heading);
+  font-weight: 900;
   font-size: 20px;
-  font-weight: bold;
   margin: 0;
-  color: #333;
+  color: var(--text-primary);
+  letter-spacing: 0.06em;
 }
 
 .nav-actions {
   display: flex;
-  gap: 16px;
+  gap: 12px;
 }
 
 .action-button {
-  font-size: 18px;
-  color: #666;
-  padding: 8px 12px;
-  border-radius: 50%;
-  transition: all 0.3s ease;
+  font-size: 16px;
+  color: var(--text-secondary);
+  padding: 6px 10px;
+  transition: var(--transition-fast);
 }
 
 .action-button:hover {
-  background: #f0f2f5;
-  color: #667eea;
-  transform: scale(1.1);
+  color: var(--accent-purple);
 }
 
-/* 加载和错误状态 */
+/* === 加载和错误状态 === */
 .loading-container {
-  padding: 60px 30px;
-}
-
-.loading-skeleton {
-  background: #fff;
-  border-radius: 16px;
-  padding: 30px;
-  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
+  padding: 40px 0;
 }
 
 .error-container {
-  padding: 60px 30px;
+  padding: 60px 0;
   text-align: center;
 }
 
@@ -532,83 +491,51 @@ export default {
 }
 
 .error-message {
-  font-size: 16px;
-  color: #666;
+  font-family: var(--font-heading);
+  font-size: 15px;
+  color: var(--text-secondary);
   margin-bottom: 20px;
 }
 
-.reload-button {
-  padding: 10px 30px;
-  border-radius: 25px;
-  font-size: 16px;
-  font-weight: 600;
-  transition: all 0.3s ease;
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-  border: none;
-}
-
-.reload-button:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 6px 20px rgba(102, 126, 234, 0.4);
-}
-
-/* 商品图片部分 */
+/* === 商品图片 === */
 .product-image-section {
-  padding: 30px;
-  background: #fff;
-  margin: 20px 30px;
-  border-radius: 20px;
-  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
-  transition: all 0.3s ease;
-}
-
-.product-image-section:hover {
-  box-shadow: 0 15px 40px rgba(0, 0, 0, 0.15);
+  margin-bottom: var(--space-lg);
 }
 
 .image-carousel {
-  margin-bottom: 20px;
-  border-radius: 16px;
-  overflow: hidden;
-  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.15);
+  margin-bottom: 16px;
+  border: 1px solid var(--border-card);
 }
 
 .carousel-image {
   width: 100%;
   height: 100%;
   object-fit: cover;
-  transition: transform 0.5s ease;
-}
-
-.carousel-image:hover {
-  transform: scale(1.05);
 }
 
 .image-thumbs {
   display: flex;
-  gap: 12px;
+  gap: 4px;
   justify-content: center;
-  margin-top: 20px;
 }
 
 .thumb-item {
-  width: 80px;
-  height: 80px;
-  border-radius: 8px;
+  width: 76px;
+  height: 76px;
   overflow: hidden;
   cursor: pointer;
-  transition: all 0.3s ease;
-  border: 3px solid transparent;
+  border: 2px solid transparent;
+  transition: var(--transition-base);
+  opacity: 0.5;
 }
 
 .thumb-item:hover {
-  transform: scale(1.05);
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+  opacity: 0.8;
 }
 
 .thumb-item.active {
-  border-color: #667eea;
-  box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.2);
+  border-color: var(--accent-purple);
+  opacity: 1;
 }
 
 .thumb-image {
@@ -617,282 +544,233 @@ export default {
   object-fit: cover;
 }
 
-/* 商品信息部分 */
+/* === 商品信息 === */
 .product-info {
-  padding: 30px;
-  background: #fff;
-  margin: 20px 30px;
-  border-radius: 20px;
-  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
-  transition: all 0.3s ease;
-}
-
-.product-info:hover {
-  box-shadow: 0 15px 40px rgba(0, 0, 0, 0.15);
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 2px;
+  margin-bottom: var(--space-xl);
 }
 
 .product-header {
-  margin-bottom: 30px;
+  grid-column: 1 / -1;
+  margin-bottom: 16px;
 }
 
 .product-name {
-  font-size: 28px;
-  font-weight: bold;
-  color: #333;
-  margin: 0 0 15px 0;
-  line-height: 1.3;
+  font-family: var(--font-heading);
+  font-weight: 900;
+  font-size: 32px;
+  color: var(--text-primary);
+  margin: 0 0 12px 0;
+  line-height: 1.1;
 }
 
 .product-tags {
   display: flex;
   flex-wrap: wrap;
-  gap: 10px;
-}
-
-.product-tag {
-  border-radius: 16px;
-  padding: 4px 16px;
-  font-size: 14px;
-  font-weight: 500;
-  background: #f8f9fa;
-  color: #667eea;
-  border: 1px solid #e3e6f0;
-  transition: all 0.3s ease;
-}
-
-.product-tag:hover {
-  background: #667eea;
-  color: #fff;
-  transform: translateY(-2px);
-  box-shadow: 0 4px 12px rgba(102, 126, 234, 0.3);
+  gap: 8px;
 }
 
 .product-price-section {
-  margin-bottom: 30px;
-  padding-bottom: 30px;
-  border-bottom: 1px solid #f0f0f0;
+  background-color: var(--bg-elevated);
+  border: 1px solid var(--border-card);
+  padding: 24px;
 }
 
 .price-container {
   display: flex;
-  align-items: center;
+  align-items: baseline;
   gap: 16px;
-  margin-bottom: 15px;
+  margin-bottom: 16px;
+  flex-wrap: wrap;
 }
 
 .price-label {
-  font-size: 16px;
-  font-weight: 600;
-  color: #333;
+  font-family: var(--font-display);
+  font-size: 12px;
+  color: var(--text-tertiary);
 }
 
 .current-price {
-  font-size: 36px;
-  font-weight: bold;
-  color: #ff4d4f;
+  font-family: var(--font-display);
+  font-size: 42px;
+  font-weight: 800;
+  color: var(--accent-lime);
+  animation: priceFlicker 3s infinite;
 }
 
 .original-price {
-  font-size: 20px;
-  color: #999;
+  font-family: var(--font-heading);
+  font-size: 18px;
+  color: var(--text-tertiary);
   text-decoration: line-through;
 }
 
 .discount-tag {
-  background: linear-gradient(135deg, #ff4d4f 0%, #ff7a45 100%);
+  background-color: var(--accent-red);
   color: #fff;
   padding: 4px 12px;
-  border-radius: 12px;
-  font-size: 14px;
-  font-weight: 600;
+  font-family: var(--font-display);
+  font-size: 12px;
+  font-weight: 700;
 }
 
 .sales-info {
   display: flex;
-  gap: 24px;
-  font-size: 14px;
-  color: #666;
-}
-
-.sales {
-  color: #e6a23c;
-  font-weight: 500;
-}
-
-.stock {
-  color: #67c23a;
-  font-weight: 500;
+  gap: 20px;
+  font-family: var(--font-display);
+  font-size: 12px;
+  color: var(--text-tertiary);
 }
 
 .stock.low-stock {
-  color: #ff4d4f;
-  animation: pulse 2s infinite;
+  color: var(--accent-red);
 }
 
 .product-description {
-  margin-bottom: 30px;
-  padding-bottom: 30px;
-  border-bottom: 1px solid #f0f0f0;
+  background-color: var(--bg-elevated);
+  border: 1px solid var(--border-card);
+  padding: 24px;
 }
 
 .section-title {
-  font-size: 18px;
-  font-weight: bold;
-  color: #333;
-  margin: 0 0 15px 0;
-  display: flex;
-  align-items: center;
-  gap: 8px;
+  font-family: var(--font-heading);
+  font-weight: 800;
+  font-size: 16px;
+  color: var(--text-primary);
+  margin: 0 0 14px 0;
+  letter-spacing: 0.04em;
 }
 
 .description-text {
-  font-size: 16px;
-  line-height: 1.6;
-  color: #666;
-  padding: 20px;
-  background: #f8f9fa;
-  border-radius: 12px;
-  border-left: 4px solid #667eea;
+  font-family: var(--font-heading);
+  font-size: 14px;
+  line-height: 1.7;
+  color: var(--text-secondary);
+  max-width: 50ch;
 }
 
-/* 商品规格 */
+/* === 商品规格 === */
 .specs-section {
-  margin-bottom: 30px;
-  padding-bottom: 30px;
-  border-bottom: 1px solid #f0f0f0;
+  grid-column: 1 / -1;
+  background-color: var(--bg-elevated);
+  border: 1px solid var(--border-card);
+  padding: 24px;
+  margin-top: 2px;
 }
 
 .spec-options {
   display: flex;
   flex-wrap: wrap;
-  gap: 16px;
+  gap: 8px;
 }
 
 .spec-option {
-  padding: 12px 24px;
-  border-radius: 25px;
-  border: 2px solid #f0f0f0;
-  background: #fff;
+  min-width: 56px;
+  height: 40px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0 20px;
+  border: 1px solid var(--border-subtle);
   cursor: pointer;
-  transition: all 0.3s ease;
-  font-size: 16px;
-  font-weight: 500;
-  color: #333;
+  font-family: var(--font-display);
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--text-secondary);
+  transition: var(--transition-fast);
+  background-color: var(--bg-card);
 }
 
 .spec-option:hover {
-  border-color: #667eea;
-  background: #f8f9fa;
-  transform: translateY(-2px);
+  border-color: var(--accent-purple);
+  color: var(--accent-purple);
 }
 
 .spec-option.active {
-  border-color: #667eea;
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  background-color: var(--accent-purple);
   color: #fff;
-  box-shadow: 0 4px 15px rgba(102, 126, 234, 0.3);
+  border-color: var(--accent-purple);
 }
 
-/* 数量选择 */
+/* === 数量选择 === */
 .quantity-section {
-  margin-bottom: 30px;
+  grid-column: 1 / -1;
+  background-color: var(--bg-elevated);
+  border: 1px solid var(--border-card);
+  padding: 24px;
+  margin-top: 2px;
 }
 
 .quantity-container {
   display: flex;
   align-items: center;
-  gap: 20px;
+  gap: 16px;
 }
 
 .quantity-input {
-  width: 120px;
-  border-radius: 12px;
-  border: 2px solid #f0f0f0;
-  overflow: hidden;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
-}
-
-.quantity-input .el-input-number__decrease,
-.quantity-input .el-input-number__increase {
-  background: #f8f9fa;
-  border: none;
-  width: 40px;
-  height: 40px;
-  font-size: 18px;
-  transition: all 0.3s ease;
-}
-
-.quantity-input .el-input-number__decrease:hover,
-.quantity-input .el-input-number__increase:hover {
-  background: #e3e6f0;
-  color: #667eea;
-}
-
-.quantity-input .el-input__inner {
-  border: none;
-  text-align: center;
-  font-size: 16px;
-  font-weight: 500;
-  height: 40px;
-  line-height: 40px;
+  width: 130px;
 }
 
 .stock-info {
-  font-size: 14px;
-  color: #666;
-  font-weight: 500;
+  font-family: var(--font-display);
+  font-size: 12px;
+  color: var(--text-tertiary);
 }
 
 .stock-info.out-of-stock {
-  color: #ff4d4f;
-  font-weight: 600;
+  color: var(--accent-red);
 }
 
-/* 操作按钮 */
+/* === 操作按钮 === */
 .action-buttons {
+  grid-column: 1 / -1;
   display: flex;
-  gap: 20px;
-  margin-top: 30px;
+  gap: 2px;
+  margin-top: 2px;
 }
 
 .buy-button,
 .cart-button {
   flex: 1;
   height: 56px;
-  border-radius: 28px;
-  font-size: 18px;
-  font-weight: 600;
-  transition: all 0.3s ease;
+  font-family: var(--font-heading);
+  font-weight: 800;
+  font-size: 16px;
+  letter-spacing: 0.06em;
+  transition: var(--transition-base);
   display: flex;
   align-items: center;
   justify-content: center;
-  gap: 10px;
-  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+  gap: 8px;
+  border-radius: var(--radius-none);
 }
 
 .buy-button {
-  background: #fff;
-  border: 2px solid #e0e0e0;
-  color: #333;
+  background-color: var(--bg-card);
+  border: 1px solid var(--border-subtle);
+  color: var(--text-primary);
 }
 
 .buy-button:hover:not(:disabled) {
-  border-color: #667eea;
-  color: #667eea;
-  transform: translateY(-2px);
-  box-shadow: 0 6px 20px rgba(102, 126, 234, 0.3);
+  border-color: var(--accent-purple);
+  color: var(--accent-purple);
 }
 
 .cart-button {
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  background-color: var(--accent-purple);
   border: none;
   color: #fff;
 }
 
 .cart-button:hover:not(:disabled) {
-  background: linear-gradient(135deg, #764ba2 0%, #667eea 100%);
-  transform: translateY(-2px);
-  box-shadow: 0 6px 20px rgba(102, 126, 234, 0.4);
+  box-shadow: 0 0 30px var(--accent-purple-dim);
+}
+
+.cart-button:active:not(:disabled) {
+  animation: hydraulicPress 0.2s ease;
+}
 }
 
 /* 商品评价 */

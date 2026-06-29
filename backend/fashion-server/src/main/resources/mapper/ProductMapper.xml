@@ -122,4 +122,13 @@
     <select id="listTopSales" resultType="com.fashion.entity.Product">
         select * from product where status = 1 order by sales desc limit 10
     </select>
+
+    <!-- 分类分布统计 -->
+    <select id="selectCategoryDistribution" resultType="java.util.Map">
+        SELECT c.name AS name, COUNT(p.id) AS product_count, IFNULL(SUM(p.sales), 0) AS total_sales
+        FROM category c
+        LEFT JOIN product p ON c.id = p.category_id
+        GROUP BY c.id, c.name
+        ORDER BY total_sales DESC
+    </select>
 </mapper>

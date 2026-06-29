@@ -1,12 +1,13 @@
 <template>
   <div class="seckill">
-
-    <!-- 秒杀券列表 -->
+    <!-- 限时优惠券 -->
     <div class="seckill-coupons">
-      <h3>限时优惠券</h3>
-      <!-- 状态筛选 -->
+      <h3 class="section-title">
+        <span class="title-icon">//</span>
+        限时优惠券
+      </h3>
       <div class="filter-section">
-        <el-radio-group v-model="filterStatus" @change="handleFilterChange">
+        <el-radio-group v-model="filterStatus" @change="handleFilterChange" class="status-filter">
           <el-radio-button :value="0">全部</el-radio-button>
           <el-radio-button :value="1">抢购中</el-radio-button>
           <el-radio-button :value="2">即将开始</el-radio-button>
@@ -23,44 +24,43 @@
       </div>
       <div v-else class="coupon-list">
         <el-card v-for="coupon in filteredCoupons" :key="coupon.id" shadow="hover" class="coupon-card">
-          <template #header>
-            <div class="coupon-header">
-              <span class="coupon-name">{{ coupon.name }}</span>
-              <el-tag :type="getCouponStatusType(coupon)" size="small">
-                {{ getCouponStatusText(coupon) }}
-              </el-tag>
-            </div>
-          </template>
-          <div class="coupon-info">
-            <div class="coupon-left">
+          <div class="coupon-body">
+            <div class="coupon-price-block">
               <div class="seckill-price">¥{{ coupon.seckillPrice }}</div>
               <div class="original-price">¥{{ coupon.originalPrice }}</div>
             </div>
-            <div class="coupon-right">
-              <div class="coupon-time">
-                <div class="time-item">
-                  <span class="time-label">起售时间：</span>
+            <div class="coupon-detail-block">
+              <div class="coupon-name">{{ coupon.name }}</div>
+              <div class="coupon-meta">
+                <div class="coupon-time">
+                  <span class="time-label">起售</span>
                   <span class="time-value">{{ formatDateTime(coupon.startTime) }}</span>
                 </div>
-                <div class="time-item">
-                  <span class="time-label">停售时间：</span>
+                <div class="coupon-time">
+                  <span class="time-label">停售</span>
                   <span class="time-value">{{ formatDateTime(coupon.endTime) }}</span>
                 </div>
               </div>
               <div class="coupon-countdown">
                 <template v-if="getCouponStatus(coupon) === 1">
-                  <span class="countdown-label">剩余时间：</span>
+                  <span class="countdown-label">剩余</span>
                   <el-countdown :value="new Date(coupon.endTime).getTime()" format="HH:mm:ss" @finish="handleCouponCountdownFinish(coupon.id)" />
                 </template>
                 <template v-else-if="getCouponStatus(coupon) === 2">
-                  <span class="countdown-label">距开始：</span>
+                  <span class="countdown-label">倒计时</span>
                   <el-countdown :value="new Date(coupon.startTime).getTime()" format="HH:mm:ss" @finish="handleCouponCountdownFinish(coupon.id)" />
                 </template>
               </div>
-              <div class="coupon-stock">库存: {{ coupon.stock }}</div>
+              <div class="coupon-footer">
+                <div class="coupon-stock">库存: {{ coupon.stock }}</div>
+                <el-tag :type="getCouponStatusType(coupon)" size="small" class="coupon-status-tag">
+                  {{ getCouponStatusText(coupon) }}
+                </el-tag>
+              </div>
               <el-button 
                 type="danger" 
                 size="small" 
+                class="seckill-btn"
                 @click="seckillCoupon(coupon.id)"
                 :disabled="!canSeckill(coupon)"
               >
@@ -72,9 +72,12 @@
       </div>
     </div>
 
-    <!-- 特价商品列表 -->
+    <!-- 特价商品 -->
     <div class="special-offers">
-      <h3>特价商品</h3>
+      <h3 class="section-title">
+        <span class="title-icon">#</span>
+        特价商品
+      </h3>
       <div v-if="loading" class="loading">
         <el-icon class="is-loading"><Loading /></el-icon>
         <span>加载中...</span>
@@ -83,8 +86,11 @@
         <el-empty description="暂无特价商品" />
       </div>
       <div v-else class="offer-list">
-        <el-card v-for="offer in specialOffers" :key="offer.id" shadow="hover">
-          <img :src="offer.image" :alt="offer.name" class="offer-image" />
+        <el-card v-for="offer in specialOffers" :key="offer.id" shadow="hover" class="offer-card">
+          <div class="offer-image-wrap">
+            <img :src="offer.image" :alt="offer.name" class="offer-image" />
+            <div v-if="offer.stock <= 0" class="offer-soldout">SOLD OUT</div>
+          </div>
           <div class="offer-info">
             <div class="offer-name">{{ offer.name }}</div>
             <div class="price-section">
@@ -95,6 +101,7 @@
             <el-button 
               type="danger" 
               size="small" 
+              class="seckill-btn"
               @click="seckillSpecialOffer(offer.id)"
               :disabled="offer.stock <= 0"
             >
@@ -167,13 +174,11 @@ export default {
     async loadSeckillData() {
       this.loading = true
       try {
-        // 直接获取所有秒杀券
         const couponResponse = await seckillApi.getSeckillCouponList()
         if (couponResponse.data.code === 1) {
           this.seckillCoupons = couponResponse.data.data || []
         }
         
-        // 获取特价商品
         try {
           const offerResponse = await seckillApi.getSpecialOfferList()
           if (offerResponse.data.code === 1) {
@@ -193,9 +198,7 @@ export default {
     getCouponStatus(coupon) {
       const now = this.now.getTime()
       
-      // 处理时间字段为null的情况
       if (!coupon.startTime || !coupon.endTime) {
-        // 如果时间字段为null，默认为已结束
         return 3
       }
       
@@ -275,8 +278,6 @@ export default {
         if (response.data.code === 1) {
           const order = response.data.data
           this.$message.success(`抢购请求已提交！订单号：${order.orderNumber}`)
-          
-          // 异步处理，开始轮询订单状态
           this.pollOrderStatus(order.orderNumber)
         } else {
           this.$message.error(response.data.msg || '抢购失败')
@@ -291,26 +292,17 @@ export default {
       }
     },
     
-    // 轮询订单状态
     async pollOrderStatus(orderNumber) {
-      const maxAttempts = 20 // 增加轮询次数，因为异步处理需要时间
-      const interval = 1000 // 1秒轮询一次
+      const maxAttempts = 20
+      const interval = 1000
       
       for (let attempt = 0; attempt < maxAttempts; attempt++) {
         try {
-          // 查询订单详情
           const response = await seckillApi.getSeckillOrderByNumber(orderNumber)
           if (response.data.code === 0) {
             const order = response.data.data
             
-            // 订单状态说明：
-            // 0: 处理中（异步处理尚未完成）
-            // 1: 待支付（异步处理完成，订单已创建）
-            // 2: 已支付
-            // 3: 已取消
-            
             if (order.status === 1 || order.status === 2) {
-              // 订单创建成功
               this.$message.success('抢购成功！')
               this.$router.push({
                 path: '/order',
@@ -318,25 +310,20 @@ export default {
               })
               return
             } else if (order.status === 3) {
-              // 订单被取消
               this.$message.error('订单处理失败，请重试')
               return
             }
-            // status为0时继续轮询
           } else {
-            // 订单不存在，可能是异步处理尚未完成
             console.log('订单尚未创建，继续轮询...')
           }
           
           await new Promise(resolve => setTimeout(resolve, interval))
         } catch (error) {
-          // 订单查询失败，可能是订单尚未创建，继续轮询
           console.log('订单查询失败，继续轮询...', error)
           await new Promise(resolve => setTimeout(resolve, interval))
         }
       }
       
-      // 轮询超时
       this.$message.warning('订单处理超时，请稍后查看订单状态')
     },
     async seckillSpecialOffer(offerId) {
@@ -364,458 +351,385 @@ export default {
 </script>
 
 <style scoped>
+/* ============================================================
+   SECKILL — 霓虹秒杀页
+   ============================================================ */
+
 .seckill {
   max-width: 1200px;
   margin: 0 auto;
-  padding: 20px;
-  animation: fade-enter-active 0.5s ease-out;
-  background: linear-gradient(135deg, #e9ecef 0%, #dee2e6 100%);
+  padding: 0 var(--space-lg);
   min-height: 100vh;
+  animation: floatIn 0.5s ease;
 }
 
-.countdown-section {
-  margin: 30px 0;
-  text-align: center;
-  padding: 30px;
-  background-color: #fff;
-  border-radius: 12px;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
-  transition: all 0.3s ease;
-}
-
-.countdown-section:hover {
-  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.12);
-  transform: translateY(-2px);
-}
-
-.countdown-section h2 {
-  font-size: 28px;
-  font-weight: bold;
-  color: #333;
-  margin-bottom: 20px;
-  position: relative;
-  display: inline-block;
-}
-
-.countdown-section h2::after {
-  content: '';
-  position: absolute;
-  bottom: -10px;
-  left: 50%;
-  transform: translateX(-50%);
-  width: 80px;
-  height: 3px;
-  background-color: #ff4d4f;
-  border-radius: 2px;
-}
-
-.countdown {
-  font-size: 24px;
-  font-weight: bold;
-  margin-top: 20px;
-  color: #ff4d4f;
+/* === 分区标题 === */
+.section-title {
+  font-family: var(--font-heading);
+  font-weight: 900;
+  font-size: 22px;
+  color: var(--text-primary);
+  letter-spacing: 0.06em;
+  margin-bottom: var(--space-xl);
+  padding-bottom: var(--space-md);
+  border-bottom: 1px solid var(--border-subtle);
   display: flex;
   align-items: center;
-  justify-content: center;
-  gap: 10px;
+  gap: 12px;
 }
 
-.countdown span {
-  color: #333;
+.title-icon {
+  font-family: var(--font-display);
+  color: var(--accent-purple);
   font-size: 18px;
 }
 
-.activity-time {
-  margin-top: 15px;
-  font-size: 14px;
-  color: #666;
-}
-
+/* === 筛选器 === */
 .filter-section {
-  margin-bottom: 20px;
-  display: flex;
-  align-items: center;
+  margin-bottom: var(--space-xl);
 }
 
-.seckill-coupons,
-.special-offers {
-  margin-top: 50px;
+.status-filter :deep(.el-radio-button__inner) {
+  background: var(--bg-surface);
+  border: 1px solid var(--border-subtle);
+  color: var(--text-secondary);
+  font-family: var(--font-display);
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  padding: 8px 20px;
+  transition: var(--transition-fast);
 }
 
-.seckill-coupons h3,
-.special-offers h3 {
-  font-size: 24px;
-  font-weight: bold;
-  color: #333;
-  margin-bottom: 20px;
-  position: relative;
-  padding-left: 20px;
+.status-filter :deep(.el-radio-button__original-radio:checked + .el-radio-button__inner) {
+  background: var(--accent-purple);
+  border-color: var(--accent-purple);
+  color: #fff;
+  box-shadow: none;
 }
 
-.seckill-coupons h3::before,
-.special-offers h3::before {
-  content: '';
-  position: absolute;
-  left: 0;
-  top: 50%;
-  transform: translateY(-50%);
-  width: 4px;
-  height: 24px;
-  background-color: #ff4d4f;
-  border-radius: 2px;
-}
-
+/* === 加载和空状态 === */
 .loading {
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  padding: 60px 0;
-  gap: 15px;
-  background-color: #fff;
-  border-radius: 12px;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+  padding: 80px 0;
+  gap: 16px;
+  background: var(--bg-elevated);
+  border: 1px solid var(--border-card);
 }
 
 .loading .el-icon {
   font-size: 32px;
-  color: #ff4d4f;
+  color: var(--accent-purple);
 }
 
 .loading span {
-  font-size: 16px;
-  color: #666;
-  margin-top: 10px;
+  font-family: var(--font-display);
+  font-size: 14px;
+  color: var(--text-tertiary);
+  letter-spacing: 0.04em;
 }
 
 .empty {
-  padding: 60px 0;
-  background-color: #fff;
-  border-radius: 12px;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+  padding: 80px 0;
+  background: var(--bg-elevated);
+  border: 1px solid var(--border-card);
 }
 
-.coupon-list,
-.offer-list {
+/* ============================================================
+   COUPON CARDS — 霓虹优惠券
+   ============================================================ */
+
+.coupon-list {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
-  gap: 25px;
-  margin-top: 30px;
+  grid-template-columns: repeat(auto-fill, minmax(360px, 1fr));
+  gap: 4px;
 }
 
-.el-card {
-  border-radius: 12px;
-  overflow: hidden;
-  transition: all 0.3s ease;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+.coupon-card {
+  background: var(--bg-card);
+  border: 1px solid var(--border-card);
+  transition: var(--transition-base);
 }
 
-.el-card:hover {
-  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.12);
-  transform: translateY(-5px);
+.coupon-card:hover {
+  border-color: var(--accent-purple);
+  z-index: 2;
 }
 
-.coupon-info {
+.coupon-card :deep(.el-card__body) {
+  padding: 0;
+}
+
+.coupon-body {
   display: flex;
-  justify-content: space-between;
+  padding: 24px;
+  gap: 20px;
+}
+
+.coupon-price-block {
+  display: flex;
+  flex-direction: column;
   align-items: center;
-  padding: 20px;
+  justify-content: center;
+  padding: 16px 20px;
+  background: var(--bg-surface);
+  min-width: 100px;
+  transition: var(--transition-fast);
 }
 
-.coupon-left {
-  text-align: center;
-  padding: 20px;
-  background-color: #f8f9fa;
-  border-radius: 8px;
-  min-width: 120px;
-  transition: all 0.3s ease;
-}
-
-.el-card:hover .coupon-left {
-  background-color: rgba(255, 77, 79, 0.1);
-  transform: scale(1.05);
+.coupon-card:hover .coupon-price-block {
+  background: var(--accent-purple-dim);
 }
 
 .seckill-price {
+  font-family: var(--font-display);
   font-size: 28px;
-  font-weight: bold;
-  color: #ff4d4f;
-  margin-bottom: 5px;
+  font-weight: 800;
+  color: var(--accent-lime);
+  animation: priceFlicker 3s infinite;
 }
 
 .original-price {
+  font-family: var(--font-display);
+  font-size: 13px;
+  color: var(--text-tertiary);
   text-decoration: line-through;
-  color: #999;
-  font-size: 14px;
+  margin-top: 4px;
 }
 
-.coupon-right {
+.coupon-detail-block {
   flex: 1;
-  margin-left: 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  min-width: 0;
 }
 
-.coupon-header {
+.coupon-detail-block .coupon-name {
+  font-family: var(--font-heading);
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--text-primary);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.coupon-meta {
   display: flex;
-  justify-content: space-between;
-  align-items: center;
+  flex-direction: column;
+  gap: 4px;
 }
 
 .coupon-time {
-  margin-bottom: 10px;
-}
-
-.time-item {
-  font-size: 13px;
-  color: #666;
-  margin-bottom: 5px;
+  display: flex;
+  gap: 8px;
 }
 
 .time-label {
-  color: #999;
+  font-family: var(--font-display);
+  font-size: 11px;
+  color: var(--text-tertiary);
+  letter-spacing: 0.04em;
+  min-width: 32px;
 }
 
 .time-value {
-  color: #666;
+  font-family: var(--font-display);
+  font-size: 11px;
+  color: var(--text-secondary);
 }
 
 .coupon-countdown {
   display: flex;
   align-items: center;
-  margin-bottom: 10px;
+  gap: 8px;
 }
 
 .countdown-label {
-  font-size: 14px;
-  color: #ff4d4f;
-  font-weight: bold;
-  margin-right: 5px;
+  font-family: var(--font-display);
+  font-size: 11px;
+  color: var(--accent-orange);
+  letter-spacing: 0.04em;
 }
 
-.coupon-name {
-  font-size: 18px;
-  font-weight: bold;
-  margin-bottom: 15px;
-  color: #333;
-  transition: color 0.3s ease;
-}
-
-.el-card:hover .coupon-name {
-  color: #ff4d4f;
+.coupon-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
 }
 
 .coupon-stock {
-  font-size: 14px;
-  color: #666;
-  margin-bottom: 15px;
-  background-color: #f8f9fa;
-  padding: 4px 12px;
-  border-radius: 12px;
-  display: inline-block;
-  transition: all 0.3s ease;
+  font-family: var(--font-display);
+  font-size: 12px;
+  color: var(--text-tertiary);
 }
 
-.el-card:hover .coupon-stock {
-  background-color: rgba(255, 77, 79, 0.1);
-  color: #ff4d4f;
+.coupon-status-tag {
+  font-family: var(--font-display);
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+}
+
+/* === 秒杀按钮 === */
+.seckill-btn {
+  width: 100%;
+  margin-top: 4px;
+  background: var(--accent-purple) !important;
+  border: none !important;
+  color: #fff !important;
+  font-family: var(--font-heading) !important;
+  font-weight: 800 !important;
+  font-size: 13px !important;
+  letter-spacing: 0.06em !important;
+  padding: 10px 0 !important;
+  transition: var(--transition-base);
+  position: relative;
+  overflow: hidden;
+}
+
+.seckill-btn::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(90deg, transparent, rgba(255,255,255,0.2), transparent);
+  transform: translateX(-100%);
+  transition: transform 0.5s;
+}
+
+.seckill-btn:hover:not(:disabled)::after {
+  transform: translateX(100%);
+}
+
+.seckill-btn:hover:not(:disabled) {
+  box-shadow: 0 0 20px var(--accent-purple-dim);
+}
+
+.seckill-btn:disabled {
+  background: var(--bg-surface) !important;
+  color: var(--text-tertiary) !important;
+  cursor: not-allowed;
+}
+
+/* ============================================================
+   OFFER CARDS — 特价商品
+   ============================================================ */
+
+.seckill-coupons,
+.special-offers {
+  margin-top: var(--space-xxl);
+}
+
+.offer-list {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 4px;
+}
+
+.offer-card {
+  background: var(--bg-card);
+  border: 1px solid var(--border-card);
+  transition: var(--transition-base);
+}
+
+.offer-card:hover {
+  border-color: var(--accent-purple);
+  z-index: 2;
+}
+
+.offer-card :deep(.el-card__body) {
+  padding: 0;
+}
+
+.offer-image-wrap {
+  position: relative;
+  overflow: hidden;
 }
 
 .offer-image {
   width: 100%;
-  height: 220px;
+  height: 200px;
   object-fit: cover;
-  transition: transform 0.3s ease;
-  border-radius: 12px 12px 0 0;
+  transition: var(--transition-slow);
 }
 
-.el-card:hover .offer-image {
-  transform: scale(1.05);
+.offer-card:hover .offer-image {
+  transform: scale(1.08);
+  filter: grayscale(60%);
+}
+
+.offer-soldout {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(0,0,0,0.7);
+  color: var(--accent-red);
+  font-family: var(--font-heading);
+  font-weight: 900;
+  font-size: 20px;
+  letter-spacing: 0.12em;
 }
 
 .offer-info {
-  margin-top: 15px;
-  padding: 0 20px 20px;
+  padding: 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
 }
 
 .offer-name {
-  font-size: 18px;
-  font-weight: bold;
-  margin-bottom: 15px;
-  color: #333;
-  transition: color 0.3s ease;
-}
-
-.el-card:hover .offer-name {
-  color: #ff4d4f;
+  font-family: var(--font-heading);
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--text-primary);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .price-section {
   display: flex;
-  align-items: center;
-  margin-bottom: 15px;
+  align-items: baseline;
+  gap: 8px;
 }
 
 .offer-price {
-  font-size: 24px;
-  font-weight: bold;
-  color: #ff4d4f;
-  margin-right: 15px;
-  transition: color 0.3s ease;
-}
-
-.el-card:hover .offer-price {
-  color: #ff7875;
+  font-family: var(--font-display);
+  font-size: 20px;
+  font-weight: 800;
+  color: var(--accent-lime);
 }
 
 .offer-stock {
-  font-size: 14px;
-  color: #666;
-  margin-bottom: 15px;
-  background-color: #f8f9fa;
-  padding: 4px 12px;
-  border-radius: 12px;
-  display: inline-block;
-  transition: all 0.3s ease;
+  font-family: var(--font-display);
+  font-size: 11px;
+  color: var(--text-tertiary);
 }
 
-.el-card:hover .offer-stock {
-  background-color: rgba(255, 77, 79, 0.1);
-  color: #ff4d4f;
-}
-
-.el-button {
-  transition: all 0.3s ease;
-  border-radius: 8px;
-  padding: 8px 20px;
-  font-size: 14px;
-  font-weight: 500;
-}
-
-.el-button:hover:not(:disabled) {
-  transform: translateY(-2px);
-  box-shadow: 0 4px 12px rgba(255, 77, 79, 0.3);
-}
-
-.el-button:disabled {
-  background-color: #f5f5f5;
-  border-color: #d9d9d9;
-  color: #bfbfbf;
-  cursor: not-allowed;
-}
-
-/* 响应式设计 */
+/* === 响应式 === */
 @media (max-width: 768px) {
   .seckill {
-    padding: 15px;
+    padding: 0 var(--space-md);
   }
-  
-  .countdown-section {
-    padding: 20px;
-  }
-  
-  .countdown-section h2 {
-    font-size: 24px;
-  }
-  
-  .countdown {
-    font-size: 20px;
-  }
-  
-  .seckill-coupons h3,
-  .special-offers h3 {
-    font-size: 20px;
-  }
-  
-  .loading,
-  .empty {
-    padding: 40px 0;
-  }
-  
-  .coupon-list,
-  .offer-list {
-    grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
-    gap: 20px;
-  }
-  
-  .coupon-info {
-    flex-direction: column;
-    align-items: flex-start;
-    gap: 15px;
-  }
-  
-  .coupon-left {
-    min-width: 100%;
-    text-align: center;
-  }
-  
-  .coupon-right {
-    margin-left: 0;
-    width: 100%;
-  }
-  
-  .offer-image {
-    height: 180px;
-  }
-}
 
-@media (max-width: 480px) {
-  .seckill {
-    padding: 10px;
-  }
-  
-  .countdown-section {
-    padding: 15px;
-  }
-  
-  .countdown-section h2 {
-    font-size: 20px;
-  }
-  
-  .countdown {
-    font-size: 18px;
-    flex-direction: column;
-    gap: 10px;
-  }
-  
-  .seckill-coupons h3,
-  .special-offers h3 {
-    font-size: 18px;
-    padding-left: 15px;
-  }
-  
-  .loading,
-  .empty {
-    padding: 30px 0;
-  }
-  
-  .coupon-list,
-  .offer-list {
+  .coupon-list {
     grid-template-columns: 1fr;
-    gap: 15px;
   }
-  
-  .coupon-info {
-    padding: 15px;
-  }
-  
-  .seckill-price {
-    font-size: 24px;
-  }
-  
-  .offer-image {
-    height: 150px;
-  }
-  
-  .offer-info {
-    padding: 0 15px 15px;
-  }
-  
-  .offer-price {
-    font-size: 20px;
-  }
-  
-  .el-button {
-    width: 100%;
+
+  .coupon-body {
+    flex-direction: column;
+    align-items: center;
     text-align: center;
+  }
+
+  .offer-list {
+    grid-template-columns: repeat(2, 1fr);
   }
 }
 </style>

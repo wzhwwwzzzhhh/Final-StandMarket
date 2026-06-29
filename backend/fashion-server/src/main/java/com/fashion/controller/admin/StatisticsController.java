@@ -3,16 +3,10 @@ package com.fashion.controller.admin;
 import com.fashion.entity.Orders;
 import com.fashion.entity.Product;
 import com.fashion.result.Result;
-import com.fashion.service.OrderService;
-import com.fashion.service.ProductService;
-import com.fashion.service.UserService;
+import com.fashion.service.StatisticsService;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.*;
 
-import java.math.BigDecimal;
-import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
@@ -24,42 +18,14 @@ import java.util.Map;
 public class StatisticsController {
 
     @Autowired
-    private OrderService orderService;
-
-    @Autowired
-    private ProductService productService;
-
-    @Autowired
-    private UserService userService;
+    private StatisticsService statisticsService;
 
     /**
-     * 销售统计
+     * 销售总览
      */
     @GetMapping("/sales")
     public Result<Map<String, Object>> sales() {
-        Map<String, Object> result = new HashMap<>();
-        
-        // 总订单数
-        long totalOrders = orderService.count();
-        result.put("totalOrders", totalOrders);
-        
-        // 总销售额
-        List<Orders> orderList = orderService.listPaidOrders();
-        BigDecimal totalSales = BigDecimal.ZERO;
-        for (Orders order : orderList) {
-            totalSales = totalSales.add(order.getAmount());
-        }
-        result.put("totalSales", totalSales);
-        
-        // 总商品数
-        long totalProducts = productService.count();
-        result.put("totalProducts", totalProducts);
-        
-        // 总用户数
-        long totalUsers = userService.count();
-        result.put("totalUsers", totalUsers);
-        
-        return Result.success(result);
+        return Result.success(statisticsService.getSalesOverview());
     }
 
     /**
@@ -67,7 +33,30 @@ public class StatisticsController {
      */
     @GetMapping("/product/sales")
     public Result<List<Product>> productSales() {
-        List<Product> list = productService.listTopSales();
-        return Result.success(list);
+        return Result.success(statisticsService.getTopSales());
+    }
+
+    /**
+     * 销售趋势
+     */
+    @GetMapping("/trend")
+    public Result<List<Map<String, Object>>> trend(@RequestParam(defaultValue = "7") int days) {
+        return Result.success(statisticsService.getSalesTrend(days));
+    }
+
+    /**
+     * 分类分布
+     */
+    @GetMapping("/category-distribution")
+    public Result<List<Map<String, Object>>> categoryDistribution() {
+        return Result.success(statisticsService.getCategoryDistribution());
+    }
+
+    /**
+     * 最近订单
+     */
+    @GetMapping("/recent-orders")
+    public Result<List<Orders>> recentOrders(@RequestParam(defaultValue = "5") int limit) {
+        return Result.success(statisticsService.getRecentOrders(limit));
     }
 }

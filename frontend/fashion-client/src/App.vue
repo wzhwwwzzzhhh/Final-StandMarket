@@ -1,961 +1,787 @@
 <template>
-  <div class="app">
+  <div class="app-shell">
+    <!-- 霓虹光束背景层 -->
+    <div class="neon-beam-layer">
+      <div class="neon-beam" v-for="n in 3" :key="n" :style="beamStyle(n)"></div>
+    </div>
+
     <!-- 导航栏 -->
-    <div class="navbar" :class="{ 'nav-scrolled': isScrolled }">
-      <div class="navbar-container">
-        <div class="logo">
-          <router-link to="/" class="logo-link">时尚服装</router-link>
+    <nav class="navbar" :class="{ 'nav-scrolled': isScrolled }">
+      <div class="navbar-inner">
+        <router-link to="/" class="logo-link">
+          <span class="logo-text">STAND</span>
+          <span class="logo-slash">/</span>
+          <span class="logo-sub">MARKET</span>
+        </router-link>
+
+        <!-- 桌面菜单 -->
+        <div class="desktop-nav">
+          <router-link to="/" class="nav-item" :class="{ active: $route.path === '/' }">
+            <span class="nav-label">首页</span>
+            <span class="nav-line"></span>
+          </router-link>
+          <router-link to="/product/list" class="nav-item" :class="{ active: $route.path.startsWith('/product') }">
+            <span class="nav-label">商品</span>
+            <span class="nav-line"></span>
+          </router-link>
+          <router-link to="/seckill" class="nav-item" :class="{ active: $route.path === '/seckill' }">
+            <span class="nav-label">秒杀</span>
+            <span class="nav-line"></span>
+          </router-link>
+          <router-link to="/special-offer" class="nav-item" :class="{ active: $route.path === '/special-offer' }">
+            <span class="nav-label">特价</span>
+            <span class="nav-line"></span>
+          </router-link>
+          <router-link to="/cart" class="nav-item nav-cart" :class="{ active: $route.path === '/cart' }">
+            <span class="nav-label">购物车</span>
+            <span class="cart-dot" v-if="cartCount > 0">{{ cartCount }}</span>
+            <span class="nav-line"></span>
+          </router-link>
+          <router-link to="/order" class="nav-item" :class="{ active: $route.path === '/order' }">
+            <span class="nav-label">订单</span>
+            <span class="nav-line"></span>
+          </router-link>
         </div>
-        
-        <!-- 桌面端菜单 -->
-        <div class="desktop-menu">
-          <el-menu 
-            :default-active="activeIndex" 
-            class="el-menu-demo" 
-            mode="horizontal" 
-            text-color="#fff" 
-            active-text-color="#ff4d4f"
-          >
-            <el-menu-item index="1">
-              <router-link to="/" class="nav-link">首页</router-link>
-            </el-menu-item>
-            <el-menu-item index="2">
-              <router-link to="/product/list" class="nav-link">商品列表</router-link>
-            </el-menu-item>
-            <el-menu-item index="3">
-              <router-link to="/seckill" class="nav-link">秒杀活动</router-link>
-            </el-menu-item>
-            <el-menu-item index="4">
-              <router-link to="/cart" class="nav-link">
-                购物车
-                <el-badge v-if="cartCount > 0" :value="cartCount" class="cart-badge" />
-              </router-link>
-            </el-menu-item>
-            <el-menu-item index="5">
-              <router-link to="/order" class="nav-link">订单管理</router-link>
-            </el-menu-item>
-          </el-menu>
-        </div>
-        
-        <!-- 移动端菜单按钮 -->
-        <div class="mobile-menu-btn" @click="toggleMobileMenu">
-          <el-icon :size="24"><Menu /></el-icon>
-        </div>
-        
-        <!-- 移动端菜单 -->
-        <div class="mobile-menu" v-if="isMobileMenuOpen">
-          <div class="mobile-menu-content">
-            <div class="mobile-menu-header">
-              <span>菜单</span>
-              <el-icon class="close-btn" @click="toggleMobileMenu"><Close /></el-icon>
-            </div>
-            <el-menu 
-              :default-active="activeIndex" 
-              class="mobile-menu-list" 
-              text-color="#333" 
-              active-text-color="#ff4d4f"
-            >
-              <el-menu-item index="1">
-                <router-link to="/" class="mobile-nav-link">首页</router-link>
-              </el-menu-item>
-              <el-menu-item index="2">
-                <router-link to="/product/list" class="mobile-nav-link">商品列表</router-link>
-              </el-menu-item>
-              <el-menu-item index="3">
-                <router-link to="/seckill" class="mobile-nav-link">秒杀活动</router-link>
-              </el-menu-item>
-              <el-menu-item index="4">
-                <router-link to="/cart" class="mobile-nav-link">
-                  购物车
-                  <el-badge v-if="cartCount > 0" :value="cartCount" class="cart-badge" />
-                </router-link>
-              </el-menu-item>
-              <el-menu-item index="5">
-                <router-link to="/order" class="mobile-nav-link">订单管理</router-link>
-              </el-menu-item>
-              <el-menu-item index="6" @click="goToLogin" v-if="!isLoggedIn">
-                <span class="mobile-nav-link">登录</span>
-              </el-menu-item>
-              <el-menu-item index="7" @click="goToRegister" v-if="!isLoggedIn">
-                <span class="mobile-nav-link">注册</span>
-              </el-menu-item>
-              <el-menu-item index="8" @click="goToProfile" v-if="isLoggedIn">
-                <span class="mobile-nav-link">个人中心</span>
-              </el-menu-item>
-              <el-menu-item index="9" @click="goToSettings" v-if="isLoggedIn">
-                <span class="mobile-nav-link">设置</span>
-              </el-menu-item>
-              <el-menu-item index="10" @click="logout" v-if="isLoggedIn">
-                <span class="mobile-nav-link">退出登录</span>
-              </el-menu-item>
-            </el-menu>
+
+        <!-- 用户区域 -->
+        <div class="user-zone">
+          <div v-if="isLoggedIn" class="user-menu" @click="toggleUserDropdown">
+            <span class="user-avatar">{{ userInitial }}</span>
+            <span class="user-name">{{ userName }}</span>
+            <span class="dropdown-arrow" :class="{ open: isUserDropdownOpen }">▾</span>
+          </div>
+          <router-link v-else to="/login" class="login-link">登录</router-link>
+
+          <div class="user-dropdown-panel" v-if="isUserDropdownOpen && isLoggedIn">
+            <div class="dropdown-item" @click="goToProfile">个人中心</div>
+            <div class="dropdown-item" @click="goToSettings">设置</div>
+            <div class="dropdown-divider"></div>
+            <div class="dropdown-item dropdown-danger" @click="logout">退出登录</div>
           </div>
         </div>
-        
-        <!-- 用户下拉菜单 -->
-        <div class="user-dropdown">
-          <span class="user-info" @click="toggleUserDropdown">
-            <el-avatar v-if="isLoggedIn" :size="32" class="user-avatar">{{ userInitial }}</el-avatar>
-            <span v-else class="login-text">登录</span>
-            <el-icon class="el-icon--right"><ArrowDown /></el-icon>
-          </span>
-          <div class="user-dropdown-menu" v-if="isUserDropdownOpen">
-            <template v-if="isLoggedIn">
-              <div class="dropdown-item" @click="goToProfile">
-                <el-icon><UserFilled /></el-icon>
-                <span>个人中心</span>
-              </div>
-              <div class="dropdown-item" @click="goToSettings">
-                <el-icon><Setting /></el-icon>
-                <span>设置</span>
-              </div>
-              <div class="dropdown-divider"></div>
-              <div class="dropdown-item" @click="logout">
-                <el-icon><SwitchButton /></el-icon>
-                <span>退出登录</span>
-              </div>
-            </template>
-            <template v-else>
-              <div class="dropdown-item" @click="goToLogin">
-                <el-icon><UserFilled /></el-icon>
-                <span>登录</span>
-              </div>
-              <div class="dropdown-item" @click="goToRegister">
-                <el-icon><User /></el-icon>
-                <span>注册</span>
-              </div>
-            </template>
-          </div>
+
+        <!-- 移动端切换 -->
+        <div class="mobile-toggle" @click="toggleMobileMenu">
+          <span class="toggle-bar"></span>
+          <span class="toggle-bar"></span>
+          <span class="toggle-bar"></span>
         </div>
       </div>
+    </nav>
+
+    <!-- 移动端菜单 -->
+    <div class="mobile-overlay" v-if="isMobileMenuOpen" @click.self="toggleMobileMenu">
+      <div class="mobile-panel">
+        <router-link v-for="item in mobileNavItems" :key="item.path" :to="item.path"
+          class="mobile-nav-item" @click="toggleMobileMenu">
+          {{ item.label }}
+        </router-link>
+        <div class="mobile-divider"></div>
+        <router-link v-if="!isLoggedIn" to="/login" class="mobile-nav-item" @click="toggleMobileMenu">登录</router-link>
+        <router-link v-if="isLoggedIn" to="/profile" class="mobile-nav-item" @click="toggleMobileMenu">个人中心</router-link>
+        <div v-if="isLoggedIn" class="mobile-nav-item mobile-logout" @click="logout">退出登录</div>
+      </div>
     </div>
-    
+
     <!-- 主要内容 -->
-    <div class="main-content">
+    <main class="main-content">
       <router-view v-slot="{ Component }">
-        <transition name="fade" mode="out-in">
+        <transition name="page" mode="out-in">
           <component :is="Component" />
         </transition>
       </router-view>
-    </div>
-    
-    <!-- 底部信息 -->
+    </main>
+
+    <!-- 页脚 -->
     <footer class="footer">
-      <div class="footer-content">
-        <div class="footer-section">
-          <h3>关于我们</h3>
-          <p>时尚服装品牌，致力于为您提供高品质的服装产品</p>
-          <p>我们追求时尚与舒适的完美结合，为您打造独特的个人风格</p>
+      <div class="footer-divider"></div>
+      <div class="footer-inner">
+        <div class="footer-brand">
+          <span class="footer-logo">STAND/MARKET</span>
+          <span class="footer-tagline">STREET TECHWEAR / 街头机能</span>
         </div>
-        <div class="footer-section">
-          <h3>联系我们</h3>
-          <p>客服电话：400-123-4567</p>
-          <p>邮箱：service@fashion.com</p>
-          <p>地址：北京市朝阳区时尚大厦1001室</p>
-        </div>
-        <div class="footer-section">
-          <h3>关注我们</h3>
-          <div class="social-icons">
-            <a href="#" class="social-icon"><el-icon><ChatLineRound /></el-icon> 微信</a>
-            <a href="#" class="social-icon"><el-icon><Link /></el-icon> 微博</a>
-            <a href="#" class="social-icon"><el-icon><Position /></el-icon> 抖音</a>
-            <a href="#" class="social-icon"><el-icon><VideoCamera /></el-icon> 小红书</a>
+        <div class="footer-links">
+          <div class="footer-col">
+            <span class="footer-heading">// 导航</span>
+            <router-link to="/product/list">全部商品</router-link>
+            <router-link to="/seckill">限时秒杀</router-link>
+            <router-link to="/special-offer">特价商品</router-link>
+            <router-link to="/cart">购物车</router-link>
           </div>
-        </div>
-        <div class="footer-section">
-          <h3>快速链接</h3>
-          <ul class="quick-links">
-            <li><a href="#">新品上市</a></li>
-            <li><a href="#">热卖商品</a></li>
-            <li><a href="#">会员中心</a></li>
-            <li><a href="#">售后服务</a></li>
-          </ul>
+          <div class="footer-col">
+            <span class="footer-heading">// 服务</span>
+            <a href="#">配送说明</a>
+            <a href="#">退换政策</a>
+            <a href="#">尺码指南</a>
+          </div>
+          <div class="footer-col">
+            <span class="footer-heading">// 联系</span>
+            <span class="footer-text">service@standmarket.com</span>
+            <span class="footer-text">400-888-0000</span>
+            <span class="footer-text">MON-FRI 10:00-22:00</span>
+          </div>
         </div>
       </div>
       <div class="footer-bottom">
-        <p>© 2026 时尚服装. 保留所有权利.</p>
-        <div class="footer-links">
-          <a href="#">隐私政策</a> | <a href="#">使用条款</a> | <a href="#">配送说明</a> | <a href="#">联系我们</a>
-        </div>
+        <span>© 2026 STAND/MARKET</span>
+        <span class="footer-sep">|</span>
+        <a href="#">PRIVACY</a>
+        <span class="footer-sep">|</span>
+        <a href="#">TERMS</a>
       </div>
     </footer>
+
+      <!-- AI 智能导购 -->
+      <AgentChat v-if="isLoggedIn" />
   </div>
 </template>
 
 <script>
-import { ArrowDown, UserFilled, Setting, SwitchButton, User, ChatLineRound, Link, Position, VideoCamera, Menu, Close } from '@element-plus/icons-vue'
 
 export default {
   name: 'App',
-  components: {
-    ArrowDown,
-    UserFilled,
-    Setting,
-    SwitchButton,
-    User,
-    ChatLineRound,
-    Link,
-    Position,
-    VideoCamera,
-    Menu,
-    Close
-  },
   data() {
     return {
-      activeIndex: '1',
       isScrolled: false,
       isLoggedIn: false,
-      userInitial: '管',
+      userInitial: '',
+      userName: '',
       isMobileMenuOpen: false,
-      isUserDropdownOpen: false
+      isUserDropdownOpen: false,
+      mobileNavItems: [
+        { path: '/', label: '首页' },
+        { path: '/product/list', label: '商品' },
+        { path: '/seckill', label: '秒杀' },
+        { path: '/special-offer', label: '特价' },
+        { path: '/cart', label: '购物车' },
+        { path: '/order', label: '订单' }
+      ]
     }
   },
   computed: {
     cartCount() {
       const cart = localStorage.getItem('cart')
       if (cart) {
-        const cartItems = JSON.parse(cart)
-        return cartItems.reduce((total, item) => total + item.quantity, 0)
+        try {
+          return JSON.parse(cart).reduce((t, i) => t + (i.quantity || 0), 0)
+        } catch {
+          return 0
+        }
       }
       return 0
     }
   },
   mounted() {
-    // 监听滚动事件
     window.addEventListener('scroll', this.handleScroll)
-    // 初始化登录状态和用户信息
+    document.addEventListener('click', this.handleClickOutside)
     this.initUserStatus()
   },
   beforeUnmount() {
     window.removeEventListener('scroll', this.handleScroll)
+    document.removeEventListener('click', this.handleClickOutside)
   },
   methods: {
     initUserStatus() {
-      // 检查是否有token
-      this.isLoggedIn = localStorage.getItem('token') !== null
-      // 获取用户信息
-      const userInfo = localStorage.getItem('userInfo')
-      if (userInfo) {
+      const token = localStorage.getItem('token')
+      this.isLoggedIn = token !== null
+      const raw = localStorage.getItem('userInfo')
+      if (raw) {
         try {
-          const parsedUserInfo = JSON.parse(userInfo)
-          console.log('解析的用户信息:', parsedUserInfo)
-          // 设置用户首字母，只使用name字段
-          if (parsedUserInfo.name) {
-            this.userInitial = parsedUserInfo.name.charAt(0).toUpperCase()
-            console.log('设置用户首字母:', this.userInitial)
-          }
-        } catch (error) {
-          console.error('解析用户信息失败:', error)
+          const info = JSON.parse(raw)
+          this.userName = info.name || info.username || ''
+          this.userInitial = this.userName ? this.userName.charAt(0).toUpperCase() : '?'
+        } catch {
+          /* ignore */
         }
-      }
-      console.log('初始化用户状态完成，isLoggedIn:', this.isLoggedIn)
-    },
-    handleSelect(key, keyPath) {
-      this.activeIndex = key
-    },
-    handleMobileSelect(key, keyPath) {
-      this.activeIndex = key
-      this.isMobileMenuOpen = false
-      // 处理移动端菜单的特殊点击
-      switch(key) {
-        case '6':
-          this.goToLogin()
-          break
-        case '7':
-          this.goToRegister()
-          break
-        case '8':
-          this.goToProfile()
-          break
-        case '9':
-          this.goToSettings()
-          break
-        case '10':
-          this.logout()
-          break
       }
     },
     handleScroll() {
-      // 当滚动超过50px时，改变导航栏样式
-      this.isScrolled = window.scrollY > 50
+      this.isScrolled = window.scrollY > 30
+    },
+    handleClickOutside(e) {
+      if (!e.target.closest('.user-zone')) {
+        this.isUserDropdownOpen = false
+      }
     },
     toggleMobileMenu() {
       this.isMobileMenuOpen = !this.isMobileMenuOpen
-      // 关闭用户下拉菜单
-      this.isUserDropdownOpen = false
+      if (this.isMobileMenuOpen) {
+        document.body.style.overflow = 'hidden'
+      } else {
+        document.body.style.overflow = ''
+      }
     },
     toggleUserDropdown() {
       this.isUserDropdownOpen = !this.isUserDropdownOpen
-      // 关闭移动端菜单
-      this.isMobileMenuOpen = false
-    },
-    goToLogin() {
-      this.$router.push('/login')
-      this.isUserDropdownOpen = false
-      this.isMobileMenuOpen = false
-    },
-    goToRegister() {
-      // 假设注册页面路由
-      this.$router.push('/register')
-      this.isUserDropdownOpen = false
-      this.isMobileMenuOpen = false
     },
     goToProfile() {
-      // 假设个人中心路由
       this.$router.push('/profile')
       this.isUserDropdownOpen = false
-      this.isMobileMenuOpen = false
     },
     goToSettings() {
-      // 假设设置页面路由
       this.$router.push('/settings')
       this.isUserDropdownOpen = false
-      this.isMobileMenuOpen = false
     },
     logout() {
-      // 调用后端退出登录接口
       import('./api/user.js').then(({ userApi }) => {
-        userApi.logout().then(() => {
-          // 清除本地存储
+        userApi.logout().finally(() => {
           localStorage.removeItem('token')
           localStorage.removeItem('userInfo')
           this.isLoggedIn = false
-          this.userInitial = '管'
-          this.$message.success('已退出登录')
+          this.userInitial = ''
+          this.userName = ''
           this.isUserDropdownOpen = false
           this.isMobileMenuOpen = false
-        }).catch(() => {
-          // 接口调用失败，仍然清除本地存储
-          localStorage.removeItem('token')
-          localStorage.removeItem('userInfo')
-          this.isLoggedIn = false
-          this.userInitial = '管'
-          this.$message.success('已退出登录')
-          this.isUserDropdownOpen = false
-          this.isMobileMenuOpen = false
+          this.$router.push('/')
         })
       })
+    },
+    beamStyle(n) {
+      const delay = (n - 1) * 5 + Math.random() * 3
+      const duration = 6 + Math.random() * 4
+      const top = 15 + (n - 1) * 30 + Math.random() * 10
+      return {
+        animationDelay: `${delay}s`,
+        animationDuration: `${duration}s`,
+        top: `${top}%`
+      }
     }
   }
 }
 </script>
 
 <style scoped>
-.app {
-  font-family: Avenir, Helvetica, Arial, sans-serif;
-  -webkit-font-smoothing: antialiased;
-  -moz-osx-font-smoothing: grayscale;
-  color: #2c3e50;
+/* ============================================================
+   APP SHELL — 街头机能风全局布局
+   ============================================================ */
+
+.app-shell {
   min-height: 100vh;
   display: flex;
   flex-direction: column;
-  background-color: #f0f2f5;
-  background-image: url("data:image/svg+xml,%3Csvg width='100' height='100' viewBox='0 0 100 100' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M11 18c3.866 0 7-3.134 7-7s-3.134-7-7-7-7 3.134-7 7 3.134 7 7 7zm48 25c3.866 0 7-3.134 7-7s-3.134-7-7-7-7 3.134-7 7 3.134 7 7 7zm-43-7c1.657 0 3-1.343 3-3s-1.343-3-3-3-3 1.343-3 3 1.343 3 3 3zm63 31c1.657 0 3-1.343 3-3s-1.343-3-3-3-3 1.343-3 3 1.343 3 3 3zM34 90c1.657 0 3-1.343 3-3s-1.343-3-3-3-3 1.343-3 3 1.343 3 3 3zm56-76c1.657 0 3-1.343 3-3s-1.343-3-3-3-3 1.343-3 3 1.343 3 3 3zM12 86c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm28-65c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm23-11c2.76 0 5-2.24 5-5s-2.24-5-5-5-5 2.24-5 5 2.24 5 5 5zm-6 60c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm29 22c2.76 0 5-2.24 5-5s-2.24-5-5-5-5 2.24-5 5 2.24 5 5 5zM32 63c2.76 0 5-2.24 5-5s-2.24-5-5-5-5 2.24-5 5 2.24 5 5 5zm57-13c2.76 0 5-2.24 5-5s-2.24-5-5-5-5 2.24-5 5 2.24 5 5 5zm-9-21c1.105 0 2-.895 2-2s-.895-2-2-2-2 .895-2 2 .895 2 2 2zM60 91c1.105 0 2-.895 2-2s-.895-2-2-2-2 .895-2 2 .895 2 2 2zM35 41c1.105 0 2-.895 2-2s-.895-2-2-2-2 .895-2 2 .895 2 2 2zM12 60c1.105 0 2-.895 2-2s-.895-2-2-2-2 .895-2 2 .895 2 2 2z' fill='%239C92AC' fill-opacity='0.1' fill-rule='evenodd'/%3E%3C/svg%3E");
+  background-color: var(--bg-primary);
+  position: relative;
 }
 
-/* 全局动画类 */
-.fade-enter-active,
-.fade-leave-active {
-  transition: opacity 0.3s ease, transform 0.3s ease;
+/* === 霓虹光束背景 === */
+.neon-beam-layer {
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: 0;
+  overflow: hidden;
 }
 
-.fade-enter-from,
-.fade-leave-to {
-  opacity: 0;
-  transform: translateY(10px);
+.neon-beam {
+  position: absolute;
+  left: -100%;
+  width: 60%;
+  height: 1px;
+  background: linear-gradient(
+    90deg,
+    transparent,
+    rgba(204, 255, 0, 0.08),
+    rgba(204, 255, 0, 0.15),
+    rgba(204, 255, 0, 0.08),
+    transparent
+  );
+  animation: beamSweep 10s linear infinite;
+  filter: blur(1px);
 }
 
-.slide-enter-active,
-.slide-leave-active {
-  transition: transform 0.3s ease;
-}
+/* ============================================================
+   NAVBAR — 悬浮导航，无边界
+   ============================================================ */
 
-.slide-enter-from {
-  transform: translateX(-100%);
-}
-
-.slide-leave-to {
-  transform: translateX(100%);
-}
-
-.bounce-enter-active {
-  animation: bounce-in 0.5s;
-}
-
-@keyframes bounce-in {
-  0% {
-    transform: scale(0.8);
-    opacity: 0;
-  }
-  60% {
-    transform: scale(1.05);
-    opacity: 1;
-  }
-  100% {
-    transform: scale(1);
-  }
-}
-
-.pulse {
-  animation: pulse 2s infinite;
-}
-
-@keyframes pulse {
-  0% {
-    transform: scale(1);
-  }
-  50% {
-    transform: scale(1.05);
-  }
-  100% {
-    transform: scale(1);
-  }
-}
-
-.shake {
-  animation: shake 0.5s ease-in-out;
-}
-
-@keyframes shake {
-  0%, 100% {
-    transform: translateX(0);
-  }
-  25% {
-    transform: translateX(-5px);
-  }
-  75% {
-    transform: translateX(5px);
-  }
-}
-
-.zoom-enter-active,
-.zoom-leave-active {
-  transition: transform 0.3s ease, opacity 0.3s ease;
-}
-
-.zoom-enter-from,
-.zoom-leave-to {
-  transform: scale(0.9);
-  opacity: 0;
-}
-
-/* 滚动条样式 */
-::-webkit-scrollbar {
-  width: 8px;
-  height: 8px;
-}
-
-::-webkit-scrollbar-track {
-  background: #f1f1f1;
-  border-radius: 4px;
-}
-
-::-webkit-scrollbar-thumb {
-  background: #888;
-  border-radius: 4px;
-}
-
-::-webkit-scrollbar-thumb:hover {
-  background: #555;
-}
-
-/* 导航栏样式 */
 .navbar {
-  border-bottom: none;
-  transition: all 0.3s ease;
   position: fixed;
   top: 0;
   left: 0;
   right: 0;
-  z-index: 1000;
-  height: 60px;
-  background-color: #1a1a1a;
+  z-index: var(--z-navbar);
+  height: 64px;
+  background-color: rgba(10, 10, 10, 0.92);
+  backdrop-filter: blur(12px);
+  transition: var(--transition-base);
 }
 
-.nav-scrolled {
-  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
-  background-color: rgba(26, 26, 26, 0.95);
-}
-
-.navbar-container {
-  max-width: 1200px;
+.navbar-inner {
+  max-width: 1400px;
   margin: 0 auto;
+  padding: 0 var(--space-lg);
+  height: 100%;
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 0 20px;
-  height: 100%;
 }
 
-.logo {
-  margin-right: 40px;
-}
-
+/* === LOGO === */
 .logo-link {
-  color: #fff;
+  display: flex;
+  align-items: baseline;
+  gap: 2px;
   text-decoration: none;
-  font-size: 20px;
-  font-weight: bold;
-  display: block;
-  height: 60px;
-  line-height: 60px;
-  padding: 0 20px;
-  transition: all 0.3s ease;
-  border-radius: 8px;
+  transform: skewX(-8deg);
+  transition: var(--transition-base);
 }
 
 .logo-link:hover {
-  color: #ff4d4f;
-  background-color: rgba(255, 255, 255, 0.1);
-  transform: translateY(-2px);
+  transform: skewX(-8deg) scale(1.05);
 }
 
-/* 桌面端菜单 */
-.desktop-menu {
-  flex: 1;
-  display: flex;
-  justify-content: center;
+.logo-text {
+  font-family: var(--font-heading);
+  font-weight: 900;
+  font-size: 22px;
+  color: var(--text-primary);
+  letter-spacing: 0.08em;
 }
 
-.desktop-menu .el-menu {
-  width: 100%;
+.logo-slash {
+  color: var(--accent-purple);
+  font-weight: 400;
+  font-size: 22px;
+  animation: neonPulse 2s ease-in-out infinite;
 }
 
-.desktop-menu .el-menu-item {
-  margin: 0 10px;
+.logo-sub {
+  font-family: var(--font-display);
+  font-weight: 700;
   font-size: 14px;
-  height: 60px;
-  line-height: 60px;
+  color: var(--text-secondary);
+  letter-spacing: 0.15em;
 }
 
-.el-menu-demo {
-  border-bottom: none;
-  width: 100%;
-  background-color: transparent;
-}
-
-.nav-link {
-  color: #fff;
-  text-decoration: none;
-  display: block;
-  padding: 0 20px;
-  height: 60px;
-  line-height: 60px;
-  transition: all 0.3s ease;
-  border-radius: 8px;
-  margin: 0 5px;
-}
-
-.nav-link:hover {
-  color: #ff4d4f;
-  background-color: rgba(255, 255, 255, 0.1);
-  transform: translateY(-2px);
-}
-
-.el-menu-item {
-  background-color: transparent !important;
-  border-radius: 8px;
-  margin: 0 10px;
-  transition: all 0.3s ease;
-}
-
-.el-menu-item:hover {
-  background-color: rgba(255, 255, 255, 0.1) !important;
-  transform: translateY(-2px);
-}
-
-.el-menu-item.is-active {
-  background-color: rgba(255, 77, 79, 0.2) !important;
-  color: #ff4d4f !important;
-  font-weight: bold;
-}
-
-/* 移动端菜单按钮 */
-.mobile-menu-btn {
-  display: none;
-  color: #fff;
-  cursor: pointer;
-  padding: 10px;
-  border-radius: 5px;
-  transition: background-color 0.3s ease;
-}
-
-.mobile-menu-btn:hover {
-  background-color: rgba(255, 255, 255, 0.1);
-}
-
-/* 移动端菜单 */
-.mobile-menu {
-  position: fixed;
-  top: 60px;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  background: #fff;
-  z-index: 999;
-  animation: slideInDown 0.3s ease;
-}
-
-@keyframes slideInDown {
-  from {
-    transform: translateY(-100%);
-  }
-  to {
-    transform: translateY(0);
-  }
-}
-
-.mobile-menu-content {
-  height: 100%;
+/* === 桌面导航 === */
+.desktop-nav {
   display: flex;
-  flex-direction: column;
-}
-
-.mobile-menu-header {
-  display: flex;
-  justify-content: space-between;
   align-items: center;
-  padding: 20px;
-  border-bottom: 1px solid #f0f0f0;
+  gap: 4px;
 }
 
-.mobile-menu-header span {
-  font-size: 18px;
-  font-weight: bold;
-  color: #333;
-}
-
-.close-btn {
-  color: #333;
-  cursor: pointer;
-  padding: 5px;
-  border-radius: 5px;
-  transition: background-color 0.3s ease;
-}
-
-.close-btn:hover {
-  background-color: #f0f0f0;
-}
-
-.mobile-menu-list {
-  flex: 1;
-  border-right: none;
-}
-
-.mobile-nav-link {
-  color: #333;
-  text-decoration: none;
-  display: block;
-  width: 100%;
-  height: 100%;
-  padding: 15px 20px;
-  transition: all 0.3s ease;
-}
-
-.mobile-nav-link:hover {
-  color: #ff4d4f;
-}
-
-/* 用户下拉菜单 */
-.user-dropdown {
+.nav-item {
   position: relative;
-  cursor: pointer;
-  margin-left: auto;
-  margin-right: 20px;
+  padding: 8px 20px;
+  text-decoration: none;
+  transition: var(--transition-base);
 }
 
-.user-info {
+.nav-label {
+  font-family: var(--font-heading);
+  font-weight: 700;
+  font-size: 14px;
+  color: var(--text-secondary);
+  letter-spacing: 0.06em;
+  transition: var(--transition-base);
+}
+
+.nav-line {
+  position: absolute;
+  bottom: 0;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 0;
+  height: 2px;
+  background-color: var(--accent-purple);
+  transition: var(--transition-base);
+}
+
+.nav-item:hover .nav-label,
+.nav-item.active .nav-label {
+  color: var(--text-primary);
+}
+
+.nav-item:hover .nav-line,
+.nav-item.active .nav-line {
+  width: 60%;
+}
+
+.nav-cart {
+  position: relative;
+}
+
+.cart-dot {
+  position: absolute;
+  top: 0;
+  right: 8px;
+  min-width: 18px;
+  height: 18px;
+  background-color: var(--accent-lime);
+  color: var(--bg-primary);
+  font-family: var(--font-display);
+  font-size: 11px;
+  font-weight: 700;
+  border-radius: 0;
   display: flex;
   align-items: center;
-  gap: 10px;
-  padding: 5px 15px;
-  border-radius: 20px;
-  transition: all 0.3s ease;
+  justify-content: center;
+  padding: 0 4px;
+  animation: neonPulse 2s ease-in-out infinite;
 }
 
-.user-info:hover {
-  background-color: rgba(255, 255, 255, 0.1);
+/* === 用户区域 === */
+.user-zone {
+  position: relative;
+}
+
+.user-menu {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 14px;
+  cursor: pointer;
+  transition: var(--transition-base);
+  border: 1px solid transparent;
+}
+
+.user-menu:hover {
+  border-color: var(--border-subtle);
 }
 
 .user-avatar {
-  background-color: #ff4d4f;
-}
-
-.login-text {
+  width: 30px;
+  height: 30px;
+  background-color: var(--accent-purple);
   color: #fff;
+  font-family: var(--font-heading);
+  font-weight: 800;
   font-size: 14px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 
-.user-dropdown-menu {
+.user-name {
+  font-family: var(--font-heading);
+  font-weight: 600;
+  font-size: 13px;
+  color: var(--text-secondary);
+}
+
+.dropdown-arrow {
+  color: var(--text-tertiary);
+  font-size: 12px;
+  transition: var(--transition-fast);
+}
+
+.dropdown-arrow.open {
+  transform: rotate(180deg);
+  color: var(--accent-purple);
+}
+
+.login-link {
+  font-family: var(--font-heading);
+  font-weight: 700;
+  font-size: 14px;
+  color: var(--text-secondary);
+  text-decoration: none;
+  padding: 8px 18px;
+  border: 1px solid var(--border-subtle);
+  transition: var(--transition-base);
+}
+
+.login-link:hover {
+  color: var(--text-primary);
+  border-color: var(--accent-purple);
+}
+
+/* 用户下拉面板 */
+.user-dropdown-panel {
   position: absolute;
-  top: 100%;
+  top: calc(100% + 8px);
   right: 0;
-  margin-top: 10px;
-  background: #fff;
-  border-radius: 8px;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
   min-width: 180px;
-  z-index: 1001;
-  animation: fadeIn 0.3s ease;
-}
-
-@keyframes fadeIn {
-  from {
-    opacity: 0;
-    transform: translateY(-10px);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
+  background-color: var(--bg-elevated);
+  border: 1px solid var(--border-subtle);
+  z-index: var(--z-overlay);
+  animation: floatIn 0.2s ease;
 }
 
 .dropdown-item {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  padding: 10px 15px;
-  color: #333;
+  padding: 12px 20px;
+  font-family: var(--font-heading);
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-secondary);
   cursor: pointer;
-  transition: background-color 0.3s ease;
+  transition: var(--transition-fast);
 }
 
 .dropdown-item:hover {
-  background-color: #f0f0f0;
+  background-color: rgba(209, 0, 255, 0.1);
+  color: var(--text-primary);
 }
 
 .dropdown-divider {
   height: 1px;
-  background-color: #f0f0f0;
-  margin: 5px 0;
+  background-color: var(--border-subtle);
 }
 
-.cart-badge {
-  position: absolute;
-  top: 10px;
-  right: 10px;
+.dropdown-danger {
+  color: var(--accent-red);
 }
 
-/* 主要内容样式 */
-.main-content {
-  flex: 1;
-  padding: 80px 0 40px;
+.dropdown-danger:hover {
+  background-color: rgba(255, 42, 42, 0.1);
 }
 
-/* 页脚样式 */
-.footer {
-  background-color: #1a1a1a;
-  color: #fff;
-  padding: 60px 0 30px;
-  margin-top: 40px;
+/* === 移动端切换按钮 === */
+.mobile-toggle {
+  display: none;
+  flex-direction: column;
+  gap: 5px;
+  cursor: pointer;
+  padding: 8px;
 }
 
-.footer-content {
-  max-width: 1200px;
-  margin: 0 auto;
-  display: flex;
-  justify-content: space-around;
-  flex-wrap: wrap;
-  gap: 40px;
-}
-
-.footer-section {
-  margin-bottom: 30px;
-  min-width: 200px;
-  flex: 1;
-  max-width: 280px;
-}
-
-.footer-section h3 {
-  margin-bottom: 20px;
-  color: #ff4d4f;
-  font-size: 16px;
-  font-weight: bold;
-  position: relative;
-  padding-bottom: 10px;
-}
-
-.footer-section h3::after {
-  content: '';
-  position: absolute;
-  bottom: 0;
-  left: 0;
-  width: 40px;
+.toggle-bar {
+  width: 22px;
   height: 2px;
-  background-color: #ff4d4f;
+  background-color: var(--text-primary);
+  transition: var(--transition-base);
 }
 
-.footer-section p {
-  margin: 10px 0;
-  color: #ccc;
-  font-size: 14px;
-  line-height: 1.5;
-}
-
-.social-icons {
+/* === 移动端覆盖面板 === */
+.mobile-overlay {
+  position: fixed;
+  inset: 0;
+  top: 64px;
+  background-color: rgba(0, 0, 0, 0.85);
+  backdrop-filter: blur(8px);
+  z-index: var(--z-overlay);
   display: flex;
   flex-direction: column;
-  gap: 10px;
-  margin-top: 15px;
 }
 
-.social-icon {
-  color: #ccc;
-  text-decoration: none;
+.mobile-panel {
+  flex: 1;
   display: flex;
-  align-items: center;
-  gap: 10px;
-  padding: 5px 0;
-  transition: all 0.3s ease;
+  flex-direction: column;
+  padding: var(--space-lg);
+  gap: 0;
 }
 
-.social-icon:hover {
-  color: #ff4d4f;
-  transform: translateX(5px);
-}
-
-.quick-links {
-  list-style: none;
-  padding: 0;
-  margin: 15px 0 0;
-}
-
-.quick-links li {
-  margin-bottom: 10px;
-}
-
-.quick-links a {
-  color: #ccc;
+.mobile-nav-item {
+  font-family: var(--font-heading);
+  font-weight: 800;
+  font-size: 18px;
+  color: var(--text-secondary);
   text-decoration: none;
-  font-size: 14px;
-  transition: all 0.3s ease;
-  display: block;
-  padding: 5px 0;
+  padding: 16px 0;
+  border-bottom: 1px solid var(--border-card);
+  transition: var(--transition-base);
 }
 
-.quick-links a:hover {
-  color: #ff4d4f;
-  transform: translateX(5px);
+.mobile-nav-item:hover {
+  color: var(--accent-purple);
+  padding-left: 12px;
 }
 
-.footer-bottom {
-  text-align: center;
-  padding-top: 30px;
-  border-top: 1px solid #333;
-  margin-top: 30px;
-  color: #999;
+.mobile-divider {
+  height: 1px;
+  background-color: var(--border-subtle);
+  margin: 8px 0;
 }
 
-.footer-bottom p {
-  margin-bottom: 15px;
-  font-size: 14px;
+.mobile-logout {
+  color: var(--accent-red);
+  cursor: pointer;
+}
+
+/* ============================================================
+   MAIN CONTENT
+   ============================================================ */
+
+.main-content {
+  flex: 1;
+  padding-top: 64px;
+  position: relative;
+  z-index: 1;
+}
+
+/* 页面切换动画 */
+.page-enter-active,
+.page-leave-active {
+  transition: opacity 0.25s ease, transform 0.25s ease;
+}
+
+.page-enter-from {
+  opacity: 0;
+  transform: translateY(8px);
+}
+
+.page-leave-to {
+  opacity: 0;
+  transform: translateY(-8px);
+}
+
+/* ============================================================
+   FOOTER — 极简工业风
+   ============================================================ */
+
+.footer {
+  position: relative;
+  z-index: 1;
+  padding: 0;
+  margin-top: var(--space-2xl);
+}
+
+.footer-divider {
+  width: 100%;
+  height: 1px;
+  background-color: var(--border-subtle);
+}
+
+.footer-inner {
+  max-width: 1400px;
+  margin: 0 auto;
+  padding: var(--space-xl) var(--space-lg);
+  display: flex;
+  justify-content: space-between;
+  gap: var(--space-xl);
+  flex-wrap: wrap;
+}
+
+.footer-brand {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-sm);
+}
+
+.footer-logo {
+  font-family: var(--font-heading);
+  font-weight: 900;
+  font-size: 18px;
+  color: var(--text-primary);
+  letter-spacing: 0.08em;
+}
+
+.footer-tagline {
+  font-family: var(--font-display);
+  font-size: 11px;
+  color: var(--accent-purple);
+  letter-spacing: 0.2em;
 }
 
 .footer-links {
+  display: flex;
+  gap: var(--space-xl);
+  flex-wrap: wrap;
+}
+
+.footer-col {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.footer-heading {
+  font-family: var(--font-display);
   font-size: 12px;
+  color: var(--accent-purple);
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  margin-bottom: 4px;
 }
 
-.footer-links a {
-  color: #999;
-  text-decoration: none;
-  margin: 0 5px;
-  transition: color 0.3s ease;
+.footer-col a {
+  font-family: var(--font-heading);
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-secondary);
+  transition: var(--transition-fast);
 }
 
-.footer-links a:hover {
-  color: #ff4d4f;
+.footer-col a:hover {
+  color: var(--text-primary);
 }
 
-/* 响应式设计 */
+.footer-text {
+  font-family: var(--font-heading);
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--text-tertiary);
+}
+
+.footer-bottom {
+  max-width: 1400px;
+  margin: 0 auto;
+  padding: var(--space-md) var(--space-lg);
+  border-top: 1px solid var(--border-card);
+  display: flex;
+  align-items: center;
+  gap: var(--space-sm);
+  font-family: var(--font-display);
+  font-size: 11px;
+  color: var(--text-tertiary);
+}
+
+.footer-bottom a {
+  color: var(--text-tertiary);
+  transition: var(--transition-fast);
+}
+
+.footer-bottom a:hover {
+  color: var(--accent-purple);
+}
+
+.footer-sep {
+  color: var(--text-tertiary);
+  opacity: 0.4;
+}
+
+/* ============================================================
+   RESPONSIVE
+   ============================================================ */
+
 @media (max-width: 768px) {
-  .desktop-menu {
+  .desktop-nav {
     display: none;
   }
-  
-  .mobile-menu-btn {
-    display: block;
+
+  .mobile-toggle {
+    display: flex;
   }
-  
-  .logo {
-    margin-right: 20px;
+
+  .user-zone .user-menu,
+  .user-zone .login-link {
+    display: none;
   }
-  
-  .logo-link {
+
+  .logo-text {
     font-size: 18px;
-    padding: 0 10px;
   }
-  
-  .footer-content {
+
+  .logo-sub {
+    font-size: 11px;
+  }
+
+  .footer-inner {
     flex-direction: column;
-    align-items: center;
-    text-align: center;
+    gap: var(--space-lg);
   }
-  
-  .footer-section {
-    max-width: 100%;
+
+  .footer-links {
+    gap: var(--space-lg);
   }
-  
-  .footer-section h3::after {
-    left: 50%;
-    transform: translateX(-50%);
-  }
-  
-  .social-icon {
+
+  .footer-bottom {
+    flex-wrap: wrap;
     justify-content: center;
-  }
-  
-  .quick-links li {
-    text-align: center;
-  }
-  
-  .quick-links a:hover {
-    transform: none;
   }
 }
 
 @media (max-width: 480px) {
-  .navbar-container {
-    padding: 0 10px;
+  .navbar-inner {
+    padding: 0 var(--space-md);
   }
-  
+
   .logo-link {
-    font-size: 16px;
+    transform: skewX(-6deg);
   }
-  
-  .user-info {
-    padding: 5px 10px;
-  }
-  
-  .login-text {
-    font-size: 12px;
-  }
-  
-  .footer-content {
-    gap: 20px;
-  }
-  
-  .footer-section {
-    min-width: 150px;
-  }
-  
-  .footer-section h3 {
-    font-size: 14px;
-  }
-  
-  .footer-section p {
-    font-size: 12px;
-  }
-  
-  .quick-links a {
-    font-size: 12px;
-  }
-  
-  .footer-bottom p {
-    font-size: 12px;
-  }
-  
-  .footer-links {
-    font-size: 10px;
+
+  .footer-inner {
+    padding: var(--space-lg) var(--space-md);
   }
 }
 </style>

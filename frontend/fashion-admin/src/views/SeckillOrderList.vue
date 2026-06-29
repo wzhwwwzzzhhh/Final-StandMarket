@@ -280,8 +280,8 @@ export default {
         }
         
         const response = await seckillApi.getSeckillOrderList(params)
-        if (response.data.code === 0) {
-          this.orders = response.data.data.list || []
+        if (response.data.code === 1) {
+          this.orders = response.data.data.records || []
           this.total = response.data.data.total || 0
         } else {
           this.$message.error('加载秒杀订单失败')
@@ -298,7 +298,7 @@ export default {
     async loadActivities() {
       try {
         const response = await seckillApi.getSeckillActivityList()
-        if (response.data.code === 0) {
+        if (response.data.code === 1) {
           this.activities = response.data.data || []
         }
       } catch (error) {
@@ -310,7 +310,7 @@ export default {
     async loadStatistics() {
       try {
         const response = await seckillApi.getSeckillOrderStatistics()
-        if (response.data.code === 0) {
+        if (response.data.code === 1) {
           const stats = response.data.data
           this.pendingOrdersCount = stats.pendingOrdersCount || 0
           this.totalAmount = stats.totalAmount || 0

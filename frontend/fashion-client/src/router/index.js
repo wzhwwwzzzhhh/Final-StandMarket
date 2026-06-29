@@ -75,6 +75,11 @@ const routes = [
     path: '/upload',
     name: 'UploadTest',
     component: () => import('../views/UploadTest.vue')
+  },
+  {
+    path: '/special-offer',
+    name: 'SpecialOfferList',
+    component: () => import('../views/SpecialOfferList.vue')
   }
 ]
 

@@ -24,5 +24,15 @@ export const orderApi = {
   // 修改订单状态
   updateOrderStatus: (id, data) => {
     return api.put(`/admin/order/${id}/status`, data)
+  },
+
+  // 查询支付信息
+  getPaymentInfo: (id) => {
+    return api.get(`/admin/order/${id}/payment`)
+  },
+
+  // 确认收款（管理员手动确认）
+  confirmPayment: (id) => {
+    return api.put(`/admin/order/${id}/confirm-payment`)
   }
 }

@@ -83,17 +83,27 @@
             <span class="order-time">{{ scope.row.orderTime }}</span>
           </template>
         </el-table-column>
-        <el-table-column label="操作" width="200" align="center">
+        <el-table-column label="操作" width="280" align="center">
           <template #default="scope">
             <div class="action-buttons">
               <el-button type="primary" size="small" class="view-button" @click="handleView(scope.row)">
                 <el-icon><View /></el-icon>
                 查看
               </el-button>
-              <el-button 
-                :type="getProcessButtonType(scope.row.status)" 
-                size="small" 
-                class="process-button" 
+              <el-button
+                v-if="scope.row.status === 1"
+                type="success"
+                size="small"
+                class="payment-button"
+                @click="handleConfirmPayment(scope.row)"
+              >
+                <el-icon><Check /></el-icon>
+                确认收款
+              </el-button>
+              <el-button
+                :type="getProcessButtonType(scope.row.status)"
+                size="small"
+                class="process-button"
                 @click="handleProcess(scope.row)"
                 :disabled="scope.row.status >= 4"
               >
@@ -140,6 +150,32 @@
           <div class="detail-item">
             <span class="detail-label">下单时间：</span>
             <span class="detail-value">{{ currentOrder.orderTime }}</span>
+          </div>
+        </div>
+        <!-- 支付信息 -->
+        <div class="order-detail-payment" v-if="paymentInfo">
+          <h4 class="detail-title">支付信息</h4>
+          <div class="payment-grid">
+            <div class="payment-item">
+              <span class="payment-label">支付流水号</span>
+              <span class="payment-value">{{ paymentInfo.payNo }}</span>
+            </div>
+            <div class="payment-item">
+              <span class="payment-label">支付金额</span>
+              <span class="payment-value">¥{{ paymentInfo.amount }}</span>
+            </div>
+            <div class="payment-item">
+              <span class="payment-label">支付方式</span>
+              <span class="payment-value">{{ paymentInfo.payMethod === 1 ? '微信支付' : '支付宝' }}</span>
+            </div>
+            <div class="payment-item">
+              <span class="payment-label">支付状态</span>
+              <el-tag :type="getPayStatusType(paymentInfo.status)">{{ getPayStatusText(paymentInfo.status) }}</el-tag>
+            </div>
+            <div class="payment-item" v-if="paymentInfo.payTime">
+              <span class="payment-label">支付时间</span>
+              <span class="payment-value">{{ paymentInfo.payTime }}</span>
+            </div>
           </div>
         </div>
         <div class="order-detail-body">
@@ -192,11 +228,11 @@ export default {
       total: 0,
       orders: [],
       dialogVisible: false,
-      currentOrder: null
+      currentOrder: null,
+      paymentInfo: null
     }
   },
   created() {
-    // 初始化数据
     this.getOrderList()
   },
   computed: {
@@ -244,6 +280,12 @@ export default {
       orderApi.getOrderById(row.id).then(response => {
         this.currentOrder = response.data.data
         this.dialogVisible = true
+        // 加载支付信息
+        orderApi.getPaymentInfo(row.id).then(res => {
+          this.paymentInfo = res.data.data
+        }).catch(() => {
+          this.paymentInfo = null
+        })
       }).catch(error => {
         console.error('获取订单详情失败:', error)
         this.$message.error('获取订单详情失败')
@@ -345,6 +387,45 @@ export default {
       }
     },
     
+    // 获取支付状态类型
+    getPayStatusType(status) {
+      switch (status) {
+        case 0: return 'info'
+        case 1: return 'warning'
+        case 2: return 'success'
+        case 3: return 'danger'
+        default: return 'info'
+      }
+    },
+
+    // 获取支付状态文本
+    getPayStatusText(status) {
+      switch (status) {
+        case 0: return '待支付'
+        case 1: return '支付中'
+        case 2: return '已支付'
+        case 3: return '支付失败'
+        default: return '未知'
+      }
+    },
+
+    // 确认收款
+    handleConfirmPayment(row) {
+      this.$confirm(`确定确认订单 ${row.number} 的收款吗？`, '提示', {
+        confirmButtonText: '确定',
+        cancelButtonText: '取消',
+        type: 'warning'
+      }).then(() => {
+        orderApi.confirmPayment(row.id).then(response => {
+          this.$message.success('确认收款成功')
+          this.getOrderList()
+        }).catch(error => {
+          console.error('确认收款失败:', error)
+          this.$message.error('确认收款失败')
+        })
+      }).catch(() => {})
+    },
+
     // 页面大小变化
     handleSizeChange(val) {
       this.pageSize = val
@@ -843,6 +924,59 @@ export default {
   display: flex;
   justify-content: flex-end;
   gap: 12px;
+}
+
+/* 支付信息 */
+.order-detail-payment {
+  margin-bottom: 20px;
+  padding-bottom: 20px;
+  border-bottom: 1px solid #f0f0f0;
+}
+
+.payment-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+  gap: 12px;
+}
+
+.payment-item {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 12px 16px;
+  background: #f8f9fa;
+  border-radius: 8px;
+}
+
+.payment-label {
+  font-size: 12px;
+  color: #999;
+  font-weight: 500;
+}
+
+.payment-value {
+  font-size: 14px;
+  color: #333;
+  font-weight: 600;
+}
+
+.payment-button {
+  border-radius: 8px;
+  padding: 6px 12px;
+  font-size: 12px;
+  font-weight: 600;
+  transition: all 0.3s ease;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  border: none;
+  color: #fff;
+}
+
+.payment-button:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
 }
 
 /* 响应式设计 */

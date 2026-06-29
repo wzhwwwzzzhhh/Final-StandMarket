@@ -39,6 +39,15 @@ public class SeckillActivityController {
     }
 
     /**
+     * 查询所有秒杀活动列表（不分页，用于下拉选择）
+     */
+    @GetMapping("/list")
+    public Result<List<SeckillActivity>> list() {
+        List<SeckillActivity> activities = seckillActivityService.listActivities(null);
+        return Result.success(activities);
+    }
+
+    /**
      * 删除秒杀活动
      */
     @DeleteMapping

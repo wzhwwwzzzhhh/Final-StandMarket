@@ -65,7 +65,7 @@ export default {
         pageSize: this.pageSize
       }
       
-      seckillActivityApi.getSeckillActivityList(params).then(response => {
+      seckillActivityApi.getActivityList(params).then(response => {
         this.activities = response.data.data.records
         this.total = response.data.data.total
       }).catch(error => {

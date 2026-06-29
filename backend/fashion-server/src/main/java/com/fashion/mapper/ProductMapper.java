@@ -86,4 +86,10 @@ public interface ProductMapper {
      * @return 商品列表
      */
     List<Product> listTopSales();
+
+    /**
+     * 分类分布统计
+     * @return 分类分布列表
+     */
+    List<Map<String, Object>> selectCategoryDistribution();
 }

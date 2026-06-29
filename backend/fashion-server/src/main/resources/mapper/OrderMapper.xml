@@ -103,4 +103,13 @@
         </if>
         order by order_time desc
     </select>
+
+    <!-- 获取最近订单 -->
+    <select id="selectRecentOrders" resultType="com.fashion.entity.Orders">
+        SELECT o.*, u.name AS userName
+        FROM orders o
+        LEFT JOIN user u ON o.user_id = u.id
+        ORDER BY o.order_time DESC
+        LIMIT #{limit}
+    </select>
 </mapper>

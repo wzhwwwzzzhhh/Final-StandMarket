@@ -9,6 +9,9 @@ import org.springframework.amqp.core.Queue;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 
+import java.util.HashMap;
+import java.util.Map;
+
 @Configuration
 public class DirectExchangeConfig {
     public static  final String SeckillQueue = "market.mq";
@@ -33,7 +36,9 @@ public class DirectExchangeConfig {
 
     @Bean
     public Queue SeckillQueue(){
-        return new Queue(SeckillQueue);
+        Map<String, Object> args = new HashMap<>();
+        args.put("x-queue-mode", "lazy");
+        return new Queue(SeckillQueue, true, false, false, args);
     }
 
     @Bean
@@ -47,7 +52,12 @@ public class DirectExchangeConfig {
     }
     @Bean
     public Queue delayQueue(){
-        return new Queue(delayQueue);
+        Map<String, Object> args = new HashMap<>();
+        args.put("x-message-ttl", 900000);
+        args.put("x-dead-letter-exchange", deadExchange);
+        args.put("x-dead-letter-routing-key", deadRoutingKey);
+        args.put("x-queue-mode", "lazy");
+        return new Queue(delayQueue, true, false, false, args);
     }
     @Bean
     public Binding bindingDelayQueue(){
@@ -60,7 +70,9 @@ public class DirectExchangeConfig {
     }
     @Bean
     public Queue deadQueue(){
-        return new Queue(deadQueue);
+        Map<String, Object> args = new HashMap<>();
+        args.put("x-queue-mode", "lazy");
+        return new Queue(deadQueue, true, false, false, args);
     }
     @Bean
     public Binding bindingDeadQueue(){
