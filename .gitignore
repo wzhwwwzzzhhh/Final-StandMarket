@@ -18,6 +18,8 @@ node_modules/
 # Python 虚拟环境
 .venv/
 venv/
+__pycache__/
+*.pyc
 
 # Claude 项目配置
 .claude/
