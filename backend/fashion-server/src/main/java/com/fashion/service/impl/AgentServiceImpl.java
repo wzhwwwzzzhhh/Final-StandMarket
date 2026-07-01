@@ -6,6 +6,9 @@ import com.fashion.service.AgentService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.HttpEntity;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.MediaType;
 import org.springframework.stereotype.Service;
 import org.springframework.web.client.ResourceAccessException;
 import org.springframework.web.client.RestClientException;
@@ -23,8 +26,11 @@ public class AgentServiceImpl implements AgentService {
     @Override
     public AgentChatResponse chat(AgentChatRequest request) {
         try {
+            HttpHeaders headers = new HttpHeaders();
+            headers.setContentType(MediaType.APPLICATION_JSON);
+            HttpEntity<AgentChatRequest> entity = new HttpEntity<>(request, headers);
             AgentChatResponse response = restTemplate.postForObject(
-                    PYTHON_AGENT_URL, request, AgentChatResponse.class);
+                    PYTHON_AGENT_URL, entity, AgentChatResponse.class);
             if (response == null) {
                 log.warn("Python agent returned null response");
                 return fallbackResponse("抱歉，AI 助手暂时无法回复，请稍后再试。");

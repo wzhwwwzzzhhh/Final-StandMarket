@@ -16,8 +16,6 @@ import java.util.concurrent.ThreadPoolExecutor;
 import java.util.concurrent.TimeUnit;
 import java.util.function.Function;
 
-import static cn.hutool.poi.excel.sax.AttributeName.t;
-
 @Component
 @Slf4j
 public class CacheClient {

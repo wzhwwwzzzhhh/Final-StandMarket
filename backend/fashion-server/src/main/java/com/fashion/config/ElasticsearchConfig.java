@@ -10,6 +10,6 @@ public class ElasticsearchConfig {
 
     @Bean
     public RestClient esRestClient() {
-        return RestClient.builder(HttpHost.create("http://localhost:9200")).build();
+        return RestClient.builder(HttpHost.create("http://localhost:19200")).build();
     }
 }

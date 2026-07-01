@@ -11,7 +11,7 @@ class Settings(BaseSettings):
     host: str = "0.0.0.0"
     port: int = 8000
 
-    model_config = {"protected_namespaces": ("settings_",)}
+    model_config = {"protected_namespaces": ("settings_",), "env_file": ".env"}
 
 
 settings = Settings()
