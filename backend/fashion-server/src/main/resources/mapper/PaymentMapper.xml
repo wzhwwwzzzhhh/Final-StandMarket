@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.fashion.mapper.PaymentMapper">
+
+    <insert id="insert" useGeneratedKeys="true" keyProperty="id">
+        INSERT INTO payment(order_id, order_type, pay_no, amount, pay_method, status, create_time)
+        VALUES (#{orderId}, #{orderType}, #{payNo}, #{amount}, #{payMethod}, #{status}, #{createTime})
+    </insert>
+
+    <select id="getByPayNo" resultType="com.fashion.entity.Payment">
+        SELECT * FROM payment WHERE pay_no = #{payNo}
+    </select>
+
+    <select id="getByOrderId" resultType="com.fashion.entity.Payment">
+        SELECT * FROM payment WHERE order_id = #{orderId} ORDER BY create_time DESC LIMIT 1
+    </select>
+
+    <update id="updateStatus">
+        UPDATE payment SET status = #{status} WHERE id = #{id}
+    </update>
+
+    <update id="updatePayTime">
+        UPDATE payment SET pay_time = #{payTime} WHERE id = #{id}
+    </update>
+
+</mapper>
