@@ -32,6 +32,11 @@ public class Payment implements Serializable {
     private String payNo;
 
     /**
+     * 支付宝交易号
+     */
+    private String tradeNo;
+
+    /**
      * 支付金额
      */
     private BigDecimal amount;

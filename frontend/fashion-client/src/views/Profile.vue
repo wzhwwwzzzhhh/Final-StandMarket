@@ -159,6 +159,7 @@
 
 <script>
 import { Timer, Van, Message, Star, Grid, Position, Ticket, Clock, Headset, Setting, Camera, Edit, ArrowRight, SwitchButton, Refresh } from '@element-plus/icons-vue'
+import favoriteApi from '@/api/favorite'
 
 export default {
   name: 'Profile',
@@ -214,6 +215,7 @@ export default {
   },
   mounted() {
     this.loadUserInfo()
+    this.loadFavoriteCount()
   },
   methods: {
     loadUserInfo() {
@@ -246,13 +248,20 @@ export default {
       this.$router.push('/address')
     },
     goToFavorites() {
-      this.$message.info('收藏功能开发中')
+      this.$router.push('/favorite')
     },
     goToCoupons() {
       this.$router.push('/my-coupons')
     },
     goToHistory() {
       this.$message.info('浏览历史功能开发中')
+    },
+    loadFavoriteCount() {
+      favoriteApi.count().then(response => {
+        if (response.data.code === 1) {
+          this.userInfo.favoriteCount = response.data.data.count
+        }
+      }).catch(() => {})
     },
     goToCustomerService() {
       this.$message.info('客服中心功能开发中')

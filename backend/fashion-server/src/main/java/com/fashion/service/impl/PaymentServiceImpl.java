@@ -86,4 +86,15 @@ public class PaymentServiceImpl implements PaymentService {
     public Payment getByOrderId(Long orderId) {
         return paymentMapper.getByOrderId(orderId);
     }
+
+    @Override
+    @Transactional
+    public void updatePaySuccess(Long id, String tradeNo, LocalDateTime payTime) {
+        paymentMapper.updateStatus(id, 2);
+        if (tradeNo != null) {
+            paymentMapper.updateTradeNo(id, tradeNo);
+        }
+        paymentMapper.updatePayTime(id, payTime);
+        log.info("支付记录更新成功 id={}, tradeNo={}", id, tradeNo);
+    }
 }

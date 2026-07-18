@@ -11,8 +11,8 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.http.HttpEntity;
 import org.springframework.http.HttpStatus;
-import org.springframework.http.ResponseEntity;
-import org.springframework.web.client.RestClientException;
+import org.springframework.web.client.HttpServerErrorException;
+import org.springframework.web.client.ResourceAccessException;
 import org.springframework.web.client.RestTemplate;
 
 import static org.junit.jupiter.api.Assertions.*;
@@ -34,7 +34,7 @@ class AgentServiceImplTest {
     @BeforeEach
     void setUp() {
         request = new AgentChatRequest();
-        request.setUserId(1L);
+        request.setUserId(1);
         request.setSessionId("test-session");
         request.setMessage("帮我找一件连衣裙");
     }
@@ -46,18 +46,18 @@ class AgentServiceImplTest {
         mockResponse.setReply("为您推荐以下连衣裙...");
         mockResponse.setSessionId("test-session");
 
-        when(restTemplate.postForEntity(
+        when(restTemplate.postForObject(
                 anyString(),
                 any(HttpEntity.class),
                 eq(AgentChatResponse.class)
-        )).thenReturn(new ResponseEntity<>(mockResponse, HttpStatus.OK));
+        )).thenReturn(mockResponse);
 
         AgentChatResponse result = agentService.chat(request);
 
         assertNotNull(result);
         assertEquals("为您推荐以下连衣裙...", result.getReply());
         assertEquals("test-session", result.getSessionId());
-        verify(restTemplate, times(1)).postForEntity(
+        verify(restTemplate, times(1)).postForObject(
                 anyString(),
                 any(HttpEntity.class),
                 eq(AgentChatResponse.class)
@@ -67,63 +67,65 @@ class AgentServiceImplTest {
     @Test
     @DisplayName("测试 Python Agent 服务返回非 2xx 状态码")
     void testChatNon2xxStatus() {
-        when(restTemplate.postForEntity(
+        when(restTemplate.postForObject(
                 anyString(),
                 any(HttpEntity.class),
                 eq(AgentChatResponse.class)
-        )).thenReturn(new ResponseEntity<>(HttpStatus.INTERNAL_SERVER_ERROR));
+        )).thenThrow(new HttpServerErrorException(HttpStatus.INTERNAL_SERVER_ERROR));
 
         AgentChatResponse result = agentService.chat(request);
 
         assertNotNull(result);
-        assertEquals("抱歉，智能客服暂时不可用，请稍后再试。", result.getReply());
-        assertEquals("test-session", result.getSessionId());
+        assertEquals("AI 助手暂时不可用，请稍后再试。", result.getReply());
+        assertEquals("", result.getSessionId());
     }
 
     @Test
     @DisplayName("测试 Python Agent 服务返回 null body")
     void testChatNullBody() {
-        when(restTemplate.postForEntity(
+        when(restTemplate.postForObject(
                 anyString(),
                 any(HttpEntity.class),
                 eq(AgentChatResponse.class)
-        )).thenReturn(new ResponseEntity<>(null, HttpStatus.OK));
+        )).thenReturn(null);
 
         AgentChatResponse result = agentService.chat(request);
 
         assertNotNull(result);
-        assertEquals("抱歉，智能客服暂时不可用，请稍后再试。", result.getReply());
+        assertEquals("抱歉，AI 助手暂时无法回复，请稍后再试。", result.getReply());
+        assertEquals("", result.getSessionId());
     }
 
     @Test
     @DisplayName("测试 Python Agent 服务连接超时")
     void testChatTimeout() {
-        when(restTemplate.postForEntity(
+        when(restTemplate.postForObject(
                 anyString(),
                 any(HttpEntity.class),
                 eq(AgentChatResponse.class)
-        )).thenThrow(new RestClientException("Connection timed out"));
+        )).thenThrow(new ResourceAccessException("Connection timed out"));
 
         AgentChatResponse result = agentService.chat(request);
 
         assertNotNull(result);
-        assertEquals("抱歉，智能客服暂时不可用，请稍后再试。", result.getReply());
-        assertEquals("test-session", result.getSessionId());
+        assertEquals("AI 助手连接超时，请检查网络后重试。", result.getReply());
+        assertEquals("", result.getSessionId());
     }
 
     @Test
     @DisplayName("测试 Python Agent 服务连接被拒绝")
     void testChatConnectionRefused() {
-        when(restTemplate.postForEntity(
+        when(restTemplate.postForObject(
                 anyString(),
                 any(HttpEntity.class),
                 eq(AgentChatResponse.class)
-        )).thenThrow(new RestClientException("Connection refused"));
+        )).thenThrow(new ResourceAccessException("Connection refused: connect"));
 
         AgentChatResponse result = agentService.chat(request);
 
         assertNotNull(result);
-        assertEquals("抱歉，智能客服暂时不可用，请稍后再试。", result.getReply());
+        assertEquals("AI 助手连接超时，请检查网络后重试。", result.getReply());
+        assertEquals("", result.getSessionId());
     }
 
     @Test
@@ -135,11 +137,11 @@ class AgentServiceImplTest {
         mockResponse.setReply("您好，有什么可以帮您的？");
         mockResponse.setSessionId("new-session-123");
 
-        when(restTemplate.postForEntity(
+        when(restTemplate.postForObject(
                 anyString(),
                 any(HttpEntity.class),
                 eq(AgentChatResponse.class)
-        )).thenReturn(new ResponseEntity<>(mockResponse, HttpStatus.OK));
+        )).thenReturn(mockResponse);
 
         AgentChatResponse result = agentService.chat(request);
 

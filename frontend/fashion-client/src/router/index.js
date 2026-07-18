@@ -80,6 +80,21 @@ const routes = [
     path: '/special-offer',
     name: 'SpecialOfferList',
     component: () => import('../views/SpecialOfferList.vue')
+  },
+  {
+    path: '/favorite',
+    name: 'FavoriteList',
+    component: () => import('../views/FavoriteList.vue')
+  },
+  {
+    path: '/add-review/:orderId/:productId',
+    name: 'AddReview',
+    component: () => import('../views/AddReview.vue')
+  },
+  {
+    path: '/pay/result',
+    name: 'PayResult',
+    component: () => import('../views/PayResult.vue')
   }
 ]
 

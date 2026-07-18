@@ -91,4 +91,19 @@ public interface OrderService {
      * @param id 订单ID
      */
     void confirm(Long id);
+
+    /**
+     * 支付成功更新订单状态
+     * @param id 订单ID
+     */
+    void updatePaySuccess(Long id);
+
+    /**
+     * 支付宝回调处理（支付记录 + 订单状态在一个事务中）
+     * @param orderId 订单ID
+     * @param paymentId 支付记录ID
+     * @param tradeNo 支付宝交易号
+     * @param payTime 支付时间
+     */
+    void handlePayCallback(Long orderId, Long paymentId, String tradeNo, java.time.LocalDateTime payTime);
 }

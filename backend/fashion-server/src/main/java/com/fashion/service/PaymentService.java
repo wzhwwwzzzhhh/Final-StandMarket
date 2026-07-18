@@ -24,4 +24,9 @@ public interface PaymentService {
      * 根据订单ID查询支付记录
      */
     Payment getByOrderId(Long orderId);
+
+    /**
+     * 更新支付成功
+     */
+    void updatePaySuccess(Long id, String tradeNo, java.time.LocalDateTime payTime);
 }

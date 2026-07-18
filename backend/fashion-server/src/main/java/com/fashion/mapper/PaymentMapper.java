@@ -15,5 +15,7 @@ public interface PaymentMapper {
 
     int updateStatus(@Param("id") Long id, @Param("status") Integer status);
 
+    int updateTradeNo(@Param("id") Long id, @Param("tradeNo") String tradeNo);
+
     int updatePayTime(@Param("id") Long id, @Param("payTime") java.time.LocalDateTime payTime);
 }

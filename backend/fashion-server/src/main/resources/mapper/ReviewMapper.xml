@@ -1,0 +1,78 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.fashion.mapper.ReviewMapper">
+    <insert id="insert" parameterType="com.fashion.entity.Review" useGeneratedKeys="true" keyProperty="id">
+        insert into review(user_id, product_id, order_id, rating, content, images, status, create_time, update_time)
+        values(#{userId}, #{productId}, #{orderId}, #{rating}, #{content}, #{images}, #{status}, #{createTime}, #{updateTime})
+    </insert>
+
+    <select id="selectById" resultType="com.fashion.entity.Review">
+        select * from review where id = #{id}
+    </select>
+
+    <select id="selectByProductId" resultType="com.fashion.entity.Review">
+        select r.*, u.name as user_name
+        from review r
+        left join user u on r.user_id = u.id
+        where r.product_id = #{productId}
+          and r.status = #{status}
+        <if test="rating != null and rating != 0">
+            <if test="rating == 3">
+                and r.rating &lt;= 3
+            </if>
+            <if test="rating != 3">
+                and r.rating = #{rating}
+            </if>
+        </if>
+        order by r.create_time desc
+    </select>
+
+    <select id="selectByUserId" resultType="com.fashion.entity.Review">
+        select r.*, p.name as product_name
+        from review r
+        left join product p on r.product_id = p.id
+        where r.user_id = #{userId}
+        order by r.create_time desc
+    </select>
+
+    <select id="selectByOrderId" resultType="com.fashion.entity.Review">
+        select * from review where order_id = #{orderId} limit 1
+    </select>
+
+    <select id="selectAll" resultType="com.fashion.entity.Review">
+        select r.*, u.name as user_name, p.name as product_name
+        from review r
+        left join user u on r.user_id = u.id
+        left join product p on r.product_id = p.id
+        <where>
+            <if test="keyword != null and keyword != ''">
+                and p.name like concat('%', #{keyword}, '%')
+            </if>
+        </where>
+        order by r.create_time desc
+    </select>
+
+    <update id="updateStatus">
+        update review set status = #{status}, update_time = now()
+        where id = #{id}
+    </update>
+
+    <delete id="deleteById">
+        delete from review where id = #{id}
+    </delete>
+
+    <select id="selectRatingStats" resultType="java.util.Map">
+        select
+            coalesce(round(avg(rating), 1), 0) as avg_rating,
+            count(*) as total_count,
+            sum(case when rating = 5 then 1 else 0 end) as star5,
+            sum(case when rating = 4 then 1 else 0 end) as star4,
+            sum(case when rating = 3 then 1 else 0 end) as star3,
+            sum(case when rating = 2 then 1 else 0 end) as star2,
+            sum(case when rating = 1 then 1 else 0 end) as star1
+        from review
+        where product_id = #{productId} and status = 1
+    </select>
+</mapper>

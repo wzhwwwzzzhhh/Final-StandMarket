@@ -89,3 +89,10 @@ fashion:
     api-v3-key: ${fashion.wechat.api-v3-key}
     notify-url: ${fashion.wechat.notify-url}
     refund-notify-url: ${fashion.wechat.refund-notify-url}
+  alipay:
+    app-id: ${fashion.alipay.app-id}
+    app-private-key: ${fashion.alipay.app-private-key}
+    alipay-public-key: ${fashion.alipay.alipay-public-key}
+    gateway-url: ${fashion.alipay.gateway-url}
+    notify-url: ${fashion.alipay.notify-url}
+    return-url: ${fashion.alipay.return-url}

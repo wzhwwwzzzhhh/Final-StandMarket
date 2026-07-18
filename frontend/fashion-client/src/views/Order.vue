@@ -65,6 +65,9 @@
               <el-button v-if="order.status === 3" type="primary" size="small" @click="handleConfirm(order.id)">
                 确认收货
               </el-button>
+              <el-button v-if="order.status === 4" type="success" size="small" @click="handleReview(order)">
+                去评价
+              </el-button>
               <el-button size="small" @click="handleViewDetail(order.id)">
                 查看详情
               </el-button>
@@ -162,6 +165,7 @@
 
 <script>
 import { orderApi, cartApi } from '@/api/product'
+import { paymentApi } from '@/api/payment'
 
 export default {
   name: 'Order',
@@ -248,25 +252,53 @@ export default {
       })
     },
     handlePay(orderId) {
-      this.$confirm('确认支付该订单？', '提示', {
-        confirmButtonText: '确定',
-        cancelButtonText: '取消',
-        type: 'warning'
-      }).then(() => {
-        this.loading = true
-        orderApi.payOrder(orderId).then(response => {
-          if (response.data.code === 1) {
-            this.$message.success('支付成功')
-            this.loadOrders()
-          } else {
-            this.$message.error(response.data.msg || '支付失败')
-          }
-        }).catch(error => {
-          console.error('支付失败:', error)
-          this.$message.error('支付失败')
-        }).finally(() => {
-          this.loading = false
-        })
+      // 找到该订单，判断支付方式
+      const order = this.orders.find(o => o.id === orderId)
+      const isAlipay = order && order.payMethod === 2
+
+      this.$confirm(
+        isAlipay ? '即将跳转到支付宝支付' : '确认支付该订单？',
+        '支付确认',
+        { confirmButtonText: '确定', cancelButtonText: '取消', type: 'warning' }
+      ).then(() => {
+        if (isAlipay) {
+          // 支付宝支付 — 调后端获取表单后跳转
+          this.loading = true
+          paymentApi.alipayPay(orderId).then(response => {
+            if (response.data.code === 1 && response.data.data) {
+              const formHtml = response.data.data.form
+              // 动态创建 form 并提交，跳转到支付宝沙箱
+              const div = document.createElement('div')
+              div.innerHTML = formHtml
+              document.body.appendChild(div)
+              document.querySelector('#alipay_submit')?.click() || div.querySelector('form')?.submit()
+              document.body.removeChild(div)
+            } else {
+              this.$message.error(response.data.msg || '支付调用失败')
+            }
+          }).catch(error => {
+            console.error('支付宝支付失败:', error)
+            this.$message.error('支付调用失败')
+          }).finally(() => {
+            this.loading = false
+          })
+        } else {
+          // 微信支付 — 保持原有 mock 逻辑
+          this.loading = true
+          orderApi.payOrder(orderId).then(response => {
+            if (response.data.code === 1) {
+              this.$message.success('支付成功')
+              this.loadOrders()
+            } else {
+              this.$message.error(response.data.msg || '支付失败')
+            }
+          }).catch(error => {
+            console.error('支付失败:', error)
+            this.$message.error('支付失败')
+          }).finally(() => {
+            this.loading = false
+          })
+        }
       }).catch(() => {})
     },
     handleCancel(orderId) {
@@ -329,6 +361,15 @@ export default {
         this.$message.error('获取订单详情失败')
         this.detailVisible = false
       })
+    },
+    handleReview(order) {
+      // 取订单中第一个商品去评价
+      const productId = order.items && order.items.length > 0 ? order.items[0].productId : null
+      if (productId) {
+        this.$router.push(`/add-review/${order.id}/${productId}`)
+      } else {
+        this.$message.warning('该订单暂无商品可评价')
+      }
     },
     getStatusText(status) {
       const statusMap = {

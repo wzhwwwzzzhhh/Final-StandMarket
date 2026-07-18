@@ -45,6 +45,7 @@ public class SeckillCouponServiceImpl implements SeckillCouponService {
     private RedissonClient redissonClient;
     @Autowired
     private UniqueID uniqueID;
+
     @Autowired
     private RabbitTemplate rabbitTemplate;
     @Autowired

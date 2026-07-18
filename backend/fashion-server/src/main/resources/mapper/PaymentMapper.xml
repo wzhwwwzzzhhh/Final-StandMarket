@@ -20,6 +20,10 @@
         UPDATE payment SET status = #{status} WHERE id = #{id}
     </update>
 
+    <update id="updateTradeNo">
+        UPDATE payment SET trade_no = #{tradeNo} WHERE id = #{id}
+    </update>
+
     <update id="updatePayTime">
         UPDATE payment SET pay_time = #{payTime} WHERE id = #{id}
     </update>

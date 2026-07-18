@@ -150,7 +150,7 @@
               <div class="rating-stars">
                 <el-rate v-model="averageRating" disabled :max="5" :colors="['#ff4d4f']" />
               </div>
-              <span class="review-count">{{ reviews.length }} 条评价</span>
+              <span class="review-count">{{ reviewTotal }} 条评价</span>
             </div>
             <el-select v-model="reviewFilter" class="review-filter">
               <el-option label="全部评价" value="all" />
@@ -160,23 +160,33 @@
             </el-select>
           </div>
         </div>
-        <div class="review-list">
-          <div class="review-item" v-for="review in filteredReviews" :key="review.id">
+        <div class="review-list" v-loading="reviewLoading">
+          <div class="review-item" v-for="review in reviewList" :key="review.id">
             <div class="review-header">
               <div class="reviewer-info">
-                <el-avatar class="reviewer-avatar">{{ review.reviewer.charAt(0) }}</el-avatar>
-                <span class="reviewer-name">{{ review.reviewer }}</span>
+                <el-avatar class="reviewer-avatar">{{ (review.userName || '匿名用户').charAt(0) }}</el-avatar>
+                <span class="reviewer-name">{{ review.userName || '匿名用户' }}</span>
               </div>
-              <span class="review-time">{{ review.time }}</span>
-              <el-rate v-model="review.rating" disabled :max="5" :colors="['#ff4d4f']" size="small" />
+              <span class="review-time">{{ review.createTime }}</span>
+              <el-rate :model-value="review.rating" disabled :max="5" :colors="['#ff4d4f']" size="small" />
             </div>
             <div class="review-content">{{ review.content }}</div>
-            <div class="review-images" v-if="review.images && review.images.length > 0">
-              <img v-for="(img, index) in review.images" :key="index" :src="img" :alt="`Review image ${index + 1}`" class="review-image" />
+            <div class="review-images" v-if="review.images && review.images !== ''">
+              <img v-for="(img, idx) in parseReviewImages(review.images)" :key="idx" :src="img" :alt="`Review image ${idx + 1}`" class="review-image" />
             </div>
           </div>
-          <div v-if="filteredReviews.length === 0" class="no-reviews">
+          <div v-if="reviewList.length === 0" class="no-reviews">
             <el-empty description="暂无评价" :image-size="80" />
+          </div>
+          <div v-if="reviewTotal > reviewPageSize" class="pagination-wrap">
+            <el-pagination
+              background
+              layout="prev, pager, next"
+              :total="reviewTotal"
+              :page-size="reviewPageSize"
+              :current-page="reviewPage"
+              @current-change="handleReviewPageChange"
+            />
           </div>
         </div>
       </div>
@@ -221,6 +231,8 @@
 <script>
 import { ArrowLeft, Share, Star, StarFilled, Shop, ShoppingCart, Refresh } from '@element-plus/icons-vue'
 import { productApi, cartApi } from '@/api/product'
+import favoriteApi from '@/api/favorite'
+import reviewApi from '@/api/review'
 
 export default {
   name: 'ProductDetail',
@@ -249,32 +261,12 @@ export default {
       specs: ['S', 'M', 'L', 'XL', 'XXL'],
       selectedSpec: 'M',
       quantity: 1,
-      reviews: [
-        {
-          id: 1,
-          reviewer: '用户1',
-          time: '2026-04-01 10:00:00',
-          rating: 5,
-          content: '商品质量很好，颜色和描述一致，穿着舒适，非常满意！',
-          images: []
-        },
-        {
-          id: 2,
-          reviewer: '用户2',
-          time: '2026-04-02 14:30:00',
-          rating: 4,
-          content: '商品整体不错，就是尺码稍微偏大，不过不影响穿着。',
-          images: []
-        },
-        {
-          id: 3,
-          reviewer: '用户3',
-          time: '2026-04-03 09:15:00',
-          rating: 5,
-          content: '物流速度很快，包装完好，商品质量超出预期，值得购买！',
-          images: []
-        }
-      ],
+      reviewList: [],
+      reviewStats: null,
+      reviewTotal: 0,
+      reviewPage: 1,
+      reviewPageSize: 10,
+      reviewLoading: false,
       relatedProducts: [
         {
           id: 1,
@@ -310,25 +302,19 @@ export default {
     }
   },
   created() {
-    // 获取商品详情
     this.getProductDetail()
+    this.checkFavorite()
+  },
+  watch: {
+    reviewFilter() {
+      this.reviewPage = 1
+      this.loadReviews()
+    }
   },
   computed: {
     // 平均评分
     averageRating() {
-      if (this.reviews.length === 0) return 0
-      const totalRating = this.reviews.reduce((sum, review) => sum + review.rating, 0)
-      return Math.round(totalRating / this.reviews.length * 10) / 10
-    },
-    // 过滤后的评价
-    filteredReviews() {
-      if (this.reviewFilter === 'all') {
-        return this.reviews
-      } else if (this.reviewFilter === '3') {
-        return this.reviews.filter(review => review.rating <= 3)
-      } else {
-        return this.reviews.filter(review => review.rating === parseInt(this.reviewFilter))
-      }
+      return this.reviewStats ? parseFloat(this.reviewStats.avg_rating) || 0 : 0
     }
   },
   methods: {
@@ -350,6 +336,8 @@ export default {
             `https://trae-api-cn.mchost.guru/api/ide/v1/text_to_image?prompt=${encodeURIComponent(this.product.name + ' detail view 2')}&image_size=landscape_4_3`,
             `https://trae-api-cn.mchost.guru/api/ide/v1/text_to_image?prompt=${encodeURIComponent(this.product.name + ' detail view 3')}&image_size=landscape_4_3`
           ]
+          this.loadReviews()
+          this.loadReviewStats()
         } else {
           this.error = response.data.msg || '获取商品详情失败'
         }
@@ -399,10 +387,34 @@ export default {
         }
       })
     },
+    // 检查收藏状态
+    checkFavorite() {
+      const productId = this.$route.params.id
+      if (!productId) return
+      favoriteApi.check(productId).then(response => {
+        if (response.data.code === 1) {
+          this.isFavorite = response.data.data.favorited
+        }
+      }).catch(() => {})
+    },
     // 切换收藏状态
     toggleFavorite() {
-      this.isFavorite = !this.isFavorite
-      this.$message.success(this.isFavorite ? '已收藏' : '已取消收藏')
+      const productId = this.$route.params.id
+      if (this.isFavorite) {
+        favoriteApi.remove(productId).then(response => {
+          if (response.data.code === 1) {
+            this.isFavorite = false
+            this.$message.success('已取消收藏')
+          }
+        }).catch(() => {})
+      } else {
+        favoriteApi.add(productId).then(response => {
+          if (response.data.code === 1) {
+            this.isFavorite = true
+            this.$message.success('已收藏')
+          }
+        }).catch(() => {})
+      }
     },
     // 分享商品
     shareProduct() {
@@ -415,6 +427,44 @@ export default {
     // 导航到其他商品
     navigateToProduct(productId) {
       this.$router.push(`/product/detail/${productId}`)
+    },
+    // 加载商品评价
+    loadReviews() {
+      const productId = this.$route.params.id
+      if (!productId) return
+      this.reviewLoading = true
+      const params = { page: this.reviewPage, size: this.reviewPageSize }
+      if (this.reviewFilter !== 'all') {
+        params.rating = this.reviewFilter === '3' ? 3 : parseInt(this.reviewFilter)
+      }
+      reviewApi.list(productId, params).then(response => {
+        if (response.data.code === 1) {
+          this.reviewList = response.data.data.records || []
+          this.reviewTotal = response.data.data.total || 0
+        }
+      }).catch(() => {}).finally(() => {
+        this.reviewLoading = false
+      })
+    },
+    // 加载评分统计
+    loadReviewStats() {
+      const productId = this.$route.params.id
+      if (!productId) return
+      reviewApi.stats(productId).then(response => {
+        if (response.data.code === 1) {
+          this.reviewStats = response.data.data
+        }
+      }).catch(() => {})
+    },
+    // 评价分页切换
+    handleReviewPageChange(page) {
+      this.reviewPage = page
+      this.loadReviews()
+    },
+    // 安全解析 JSON 图片数组
+    parseReviewImages(images) {
+      if (!images) return []
+      try { return JSON.parse(images) } catch { return [] }
     }
   }
 }

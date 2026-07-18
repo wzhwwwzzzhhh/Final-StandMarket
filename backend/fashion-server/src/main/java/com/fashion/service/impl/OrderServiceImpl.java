@@ -9,6 +9,7 @@ import com.fashion.context.BaseContext;
 import com.fashion.dto.OrderCreateDTO;
 import com.fashion.service.OrderService;
 import org.springframework.beans.factory.annotation.Autowired;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import java.math.BigDecimal;
@@ -18,6 +19,7 @@ import java.util.List;
 import java.util.Map;
 
 @Service
+@Slf4j
 public class OrderServiceImpl implements OrderService {
 
     @Autowired
@@ -201,5 +203,37 @@ public class OrderServiceImpl implements OrderService {
         order.setStatus(4);
         order.setDeliveryTime(LocalDateTime.now());
         orderMapper.update(order);
+    }
+
+    @Transactional
+    @Override
+    public void updatePaySuccess(Long id) {
+        Orders order = orderMapper.getById(id);
+        if (order == null) {
+            throw new RuntimeException("订单不存在");
+        }
+        order.setPayStatus(1);
+        order.setCheckoutTime(LocalDateTime.now());
+        order.setStatus(2);
+        orderMapper.update(order);
+        log.info("订单支付成功更新 orderId={}, number={}", id, order.getNumber());
+    }
+
+    @Transactional
+    @Override
+    public void handlePayCallback(Long orderId, Long paymentId, String tradeNo, LocalDateTime payTime) {
+        // 更新支付记录
+        paymentService.updatePaySuccess(paymentId, tradeNo, payTime);
+        // 更新订单状态（同一个事务中）
+        Orders order = orderMapper.getById(orderId);
+        if (order != null) {
+            order.setPayStatus(1);
+            order.setCheckoutTime(payTime);
+            order.setStatus(2);
+            orderMapper.update(order);
+            log.info("支付宝回调处理完成 orderId={}, tradeNo={}", orderId, tradeNo);
+        } else {
+            log.warn("支付宝回调订单不存在 orderId={}", orderId);
+        }
     }
 }

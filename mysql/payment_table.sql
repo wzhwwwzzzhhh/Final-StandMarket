@@ -7,6 +7,7 @@ CREATE TABLE IF NOT EXISTS `payment` (
   `amount` decimal(10,2) NOT NULL COMMENT '支付金额',
   `pay_method` tinyint(4) DEFAULT '1' COMMENT '支付方式 1微信 2支付宝',
   `status` tinyint(4) NOT NULL DEFAULT '0' COMMENT '支付状态 0待支付 1支付中 2成功 3失败',
+  `trade_no` varchar(64) DEFAULT NULL COMMENT '支付宝交易号',
   `pay_time` datetime DEFAULT NULL COMMENT '支付时间',
   `create_time` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
   PRIMARY KEY (`id`),
