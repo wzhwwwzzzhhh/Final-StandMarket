@@ -101,14 +101,24 @@
                 确认收款
               </el-button>
               <el-button
-                :type="getProcessButtonType(scope.row.status)"
+                v-if="scope.row.status === 2"
+                type="warning"
+                size="small"
+                class="process-button"
+                @click="handleDeliver(scope.row)"
+              >
+                <el-icon><Van /></el-icon>
+                发货
+              </el-button>
+              <el-button
+                v-if="scope.row.status === 3"
+                type="primary"
                 size="small"
                 class="process-button"
                 @click="handleProcess(scope.row)"
-                :disabled="scope.row.status >= 4"
               >
                 <el-icon><Check /></el-icon>
-                {{ getProcessButtonText(scope.row.status) }}
+                完成
               </el-button>
             </div>
           </template>
@@ -178,6 +188,24 @@
             </div>
           </div>
         </div>
+        <!-- 物流信息 -->
+        <div class="order-detail-section" v-if="currentOrder.status >= 3 && currentOrder.trackingNumber">
+          <h4 class="detail-title">物流信息</h4>
+          <div class="tracking-grid">
+            <div class="tracking-item">
+              <span class="tracking-label">快递公司</span>
+              <span class="tracking-value">{{ currentOrder.trackingCompany }}</span>
+            </div>
+            <div class="tracking-item">
+              <span class="tracking-label">快递单号</span>
+              <span class="tracking-value">{{ currentOrder.trackingNumber }}</span>
+            </div>
+            <div class="tracking-item" v-if="currentOrder.deliveryTime">
+              <span class="tracking-label">发货时间</span>
+              <span class="tracking-value">{{ currentOrder.deliveryTime }}</span>
+            </div>
+          </div>
+        </div>
         <div class="order-detail-body">
           <h4 class="detail-title">商品信息</h4>
           <div class="product-list">
@@ -204,12 +232,43 @@
         </span>
       </template>
     </el-dialog>
+
+    <!-- 发货对话框 -->
+    <el-dialog
+      v-model="deliverDialogVisible"
+      title="发货"
+      width="500px"
+      class="order-dialog"
+    >
+      <el-form
+        ref="deliverFormRef"
+        :model="deliverForm"
+        :rules="deliverRules"
+        label-width="100px"
+        class="deliver-form"
+      >
+        <el-form-item label="快递公司" prop="trackingCompany">
+          <el-select v-model="deliverForm.trackingCompany" placeholder="请选择快递公司" style="width: 100%">
+            <el-option v-for="company in deliveryCompanies" :key="company" :label="company" :value="company" />
+          </el-select>
+        </el-form-item>
+        <el-form-item label="快递单号" prop="trackingNumber">
+          <el-input v-model="deliverForm.trackingNumber" placeholder="请输入快递单号" />
+        </el-form-item>
+      </el-form>
+      <template #footer>
+        <span class="dialog-footer">
+          <el-button @click="deliverDialogVisible = false">取消</el-button>
+          <el-button type="primary" @click="submitDeliver" :loading="deliverLoading">确认发货</el-button>
+        </span>
+      </template>
+    </el-dialog>
   </div>
 </template>
 
 <script>
 import { orderApi } from '../api/order'
-import { Search, Download, View, Check } from '@element-plus/icons-vue'
+import { Search, Download, View, Check, Van } from '@element-plus/icons-vue'
 
 export default {
   name: 'OrderList',
@@ -217,7 +276,8 @@ export default {
     Search,
     Download,
     View,
-    Check
+    Check,
+    Van
   },
   data() {
     return {
@@ -229,7 +289,23 @@ export default {
       orders: [],
       dialogVisible: false,
       currentOrder: null,
-      paymentInfo: null
+      paymentInfo: null,
+      // 发货表单
+      deliverDialogVisible: false,
+      deliverLoading: false,
+      currentDeliverOrder: null,
+      deliverForm: {
+        trackingCompany: '',
+        trackingNumber: ''
+      },
+      deliverRules: {
+        trackingCompany: [{ required: true, message: '请选择快递公司', trigger: 'change' }],
+        trackingNumber: [
+          { required: true, message: '请输入快递单号', trigger: 'blur' },
+          { min: 6, max: 30, message: '快递单号长度在 6 到 30 个字符', trigger: 'blur' }
+        ]
+      },
+      deliveryCompanies: ['顺丰速运', '中通快递', '圆通速递', '韵达快递', '京东物流', 'EMS', '极兔速递', '申通快递', '德邦快递']
     }
   },
   created() {
@@ -359,34 +435,43 @@ export default {
       }
     },
     
-    // 获取处理按钮类型
-    getProcessButtonType(status) {
-      switch (status) {
-        case 1:
-          return 'warning'
-        case 2:
-          return 'primary'
-        case 3:
-          return 'success'
-        default:
-          return 'default'
-      }
+    // 打开发货对话框
+    handleDeliver(row) {
+      this.currentDeliverOrder = row
+      this.deliverForm.trackingCompany = ''
+      this.deliverForm.trackingNumber = ''
+      this.deliverDialogVisible = true
+      this.$nextTick(() => {
+        this.$refs.deliverFormRef?.clearValidate()
+      })
     },
-    
-    // 获取处理按钮文本
-    getProcessButtonText(status) {
-      switch (status) {
-        case 1:
-          return '发货'
-        case 2:
-          return '完成'
-        case 3:
-          return '完成'
-        default:
-          return '处理'
-      }
+
+    // 提交发货
+    submitDeliver() {
+      this.$refs.deliverFormRef.validate(valid => {
+        if (!valid) return
+        this.deliverLoading = true
+        orderApi.deliver({
+          id: this.currentDeliverOrder.id,
+          trackingCompany: this.deliverForm.trackingCompany,
+          trackingNumber: this.deliverForm.trackingNumber
+        }).then(response => {
+          if (response.data.code === 1) {
+            this.$message.success('发货成功')
+            this.deliverDialogVisible = false
+            this.getOrderList()
+          } else {
+            this.$message.error(response.data.msg || '发货失败')
+          }
+        }).catch(error => {
+          console.error('发货失败:', error)
+          this.$message.error('发货失败')
+        }).finally(() => {
+          this.deliverLoading = false
+        })
+      })
     },
-    
+
     // 获取支付状态类型
     getPayStatusType(status) {
       switch (status) {
@@ -927,10 +1012,44 @@ export default {
 }
 
 /* 支付信息 */
-.order-detail-payment {
+.order-detail-payment,
+.order-detail-section {
   margin-bottom: 20px;
   padding-bottom: 20px;
   border-bottom: 1px solid #f0f0f0;
+}
+
+/* 物流信息 */
+.tracking-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+  gap: 12px;
+}
+
+.tracking-item {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 12px 16px;
+  background: #f8f9fa;
+  border-radius: 8px;
+}
+
+.tracking-label {
+  font-size: 12px;
+  color: #999;
+  font-weight: 500;
+}
+
+.tracking-value {
+  font-size: 14px;
+  color: #333;
+  font-weight: 600;
+}
+
+/* 发货表单 */
+.deliver-form {
+  padding: 20px 10px;
 }
 
 .payment-grid {

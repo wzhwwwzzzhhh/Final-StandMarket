@@ -153,5 +153,10 @@ export const orderApi = {
   // 确认收货
   confirmOrder: (id, config) => {
     return api.put(`/user/order/confirm/${id}`, null, config)
+  },
+
+  // 查询物流信息
+  getTracking: (orderId) => {
+    return api.get(`/user/order/tracking/${orderId}`)
   }
 }

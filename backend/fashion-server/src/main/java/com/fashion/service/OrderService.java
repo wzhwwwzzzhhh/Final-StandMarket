@@ -106,4 +106,12 @@ public interface OrderService {
      * @param payTime 支付时间
      */
     void handlePayCallback(Long orderId, Long paymentId, String tradeNo, java.time.LocalDateTime payTime);
+
+    /**
+     * 发货
+     * @param id 订单ID
+     * @param trackingCompany 快递公司
+     * @param trackingNumber 快递单号
+     */
+    void deliver(Long id, String trackingCompany, String trackingNumber);
 }

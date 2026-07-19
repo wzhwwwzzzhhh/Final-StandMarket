@@ -221,6 +221,24 @@ public class OrderServiceImpl implements OrderService {
 
     @Transactional
     @Override
+    public void deliver(Long id, String trackingCompany, String trackingNumber) {
+        Orders order = orderMapper.getById(id);
+        if (order == null) {
+            throw new RuntimeException("订单不存在");
+        }
+        if (order.getStatus() != 2) {
+            throw new RuntimeException("只有待发货订单可以发货，当前状态：" + order.getStatus());
+        }
+        order.setTrackingCompany(trackingCompany);
+        order.setTrackingNumber(trackingNumber);
+        order.setDeliveryTime(LocalDateTime.now());
+        order.setStatus(3);
+        orderMapper.update(order);
+        log.info("订单发货成功 orderId={}, company={}, number={}", id, trackingCompany, trackingNumber);
+    }
+
+    @Transactional
+    @Override
     public void handlePayCallback(Long orderId, Long paymentId, String tradeNo, LocalDateTime payTime) {
         // 更新支付记录
         paymentService.updatePaySuccess(paymentId, tradeNo, payTime);

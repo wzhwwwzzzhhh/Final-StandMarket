@@ -48,6 +48,10 @@
             <div v-else class="empty-products">
               暂无商品信息
             </div>
+            <!-- 物流信息 -->
+            <div v-if="order.status === 3 && order.trackingNumber" class="tracking-badge">
+              📦 {{ order.trackingCompany }}：{{ order.trackingNumber }}
+            </div>
           </div>
 
           <div class="order-footer">
@@ -136,6 +140,22 @@
           <div class="detail-row">
             <span class="label">收货地址：</span>
             <span>{{ orderDetail.address }}</span>
+          </div>
+        </div>
+
+        <div class="detail-section" v-if="orderDetail.status >= 3 && orderDetail.trackingNumber">
+          <h3>物流信息</h3>
+          <div class="detail-row">
+            <span class="label">快递公司：</span>
+            <span>{{ orderDetail.trackingCompany }}</span>
+          </div>
+          <div class="detail-row">
+            <span class="label">快递单号：</span>
+            <span>{{ orderDetail.trackingNumber }}</span>
+          </div>
+          <div class="detail-row" v-if="orderDetail.deliveryTime">
+            <span class="label">发货时间：</span>
+            <span>{{ formatTime(orderDetail.deliveryTime) }}</span>
           </div>
         </div>
 
@@ -630,6 +650,18 @@ export default {
   color: var(--text-tertiary);
   font-family: var(--font-display);
   font-size: 13px;
+}
+
+.tracking-badge {
+  margin-top: 12px;
+  padding: 10px 14px;
+  background: var(--bg-surface);
+  border: 1px solid var(--accent-lime);
+  color: var(--accent-lime);
+  font-family: var(--font-display);
+  font-size: 13px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
 }
 
 /* === 订单底部 === */

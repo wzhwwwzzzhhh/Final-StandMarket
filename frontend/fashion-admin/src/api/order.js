@@ -34,5 +34,10 @@ export const orderApi = {
   // 确认收款（管理员手动确认）
   confirmPayment: (id) => {
     return api.put(`/admin/order/${id}/confirm-payment`)
+  },
+
+  // 发货
+  deliver: (data) => {
+    return api.put('/admin/order/deliver', data)
   }
 }

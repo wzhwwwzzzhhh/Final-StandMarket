@@ -10,6 +10,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.*;
 
 import java.time.LocalDateTime;
+import java.util.Map;
 
 /**
  * 订单管理
@@ -101,6 +102,34 @@ public class OrderController {
         order.setStatus(2);
         orderService.update(order);
         return Result.success("确认收款成功");
+    }
+
+    /**
+     * 发货
+     */
+    @PutMapping("/deliver")
+    public Result<String> deliver(@RequestBody Map<String, Object> params) {
+        Object idObj = params.get("id");
+        if (idObj == null) {
+            return Result.error("订单ID不能为空");
+        }
+        Long id = Long.valueOf(idObj.toString());
+        String trackingCompany = (String) params.get("trackingCompany");
+        String trackingNumber = (String) params.get("trackingNumber");
+
+        if (trackingCompany == null || trackingCompany.trim().isEmpty()) {
+            return Result.error("快递公司不能为空");
+        }
+        if (trackingNumber == null || trackingNumber.trim().isEmpty()) {
+            return Result.error("快递单号不能为空");
+        }
+
+        try {
+            orderService.deliver(id, trackingCompany.trim(), trackingNumber.trim());
+            return Result.success("发货成功");
+        } catch (RuntimeException e) {
+            return Result.error(e.getMessage());
+        }
     }
 
     /**

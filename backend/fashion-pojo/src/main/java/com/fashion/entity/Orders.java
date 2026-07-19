@@ -143,6 +143,16 @@ public class Orders implements Serializable {
     private BigDecimal seckillPrice;
 
     /**
+     * 快递公司
+     */
+    private String trackingCompany;
+
+    /**
+     * 快递单号
+     */
+    private String trackingNumber;
+
+    /**
      * 原价
      */
     private BigDecimal originalPrice;
