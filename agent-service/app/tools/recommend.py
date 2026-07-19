@@ -17,16 +17,27 @@ OUTFIT_RULES = {
 
 
 def recommend_outfit(query: str, size: int = 4) -> list[dict]:
-    """根据用户查询做搭配推荐，返回搭配组合"""
+    """根据用户查询做搭配推荐，返回搭配组合（IK + 拼音双通道搜索）"""
     body = {
         "query": {
-            "multi_match": {
-                "query": query,
-                "fields": ["name^3", "description^2", "tag"],
-                "fuzziness": "AUTO"
+            "bool": {
+                "should": [
+                    {"multi_match": {
+                        "query": query,
+                        "fields": ["name^3", "description"],
+                        "type": "best_fields",
+                        "analyzer": "ik_smart"
+                    }},
+                    {"multi_match": {
+                        "query": query,
+                        "fields": ["name.pinyin"],
+                        "analyzer": "pinyin_analyzer"
+                    }},
+                ]
             }
         },
-        "size": size
+        "size": size,
+        "sort": ["_score"],
     }
     try:
         resp = es.search(index="products", body=body)
@@ -44,7 +55,7 @@ def get_complementary(item_name: str, category_id: int) -> list[dict]:
                 "must": [{"range": {"price": {"gte": 50, "lte": 500}}}]
             }
         },
-        "size": 3
+        "size": 3,
     }
     try:
         resp = es.search(index="products", body=body)

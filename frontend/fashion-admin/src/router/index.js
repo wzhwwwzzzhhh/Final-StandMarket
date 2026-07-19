@@ -70,6 +70,11 @@ const routes = [
     path: '/refund/list',
     name: 'RefundList',
     component: () => import('../views/RefundList.vue')
+  },
+  {
+    path: '/es/sync',
+    name: 'EsSyncControl',
+    component: () => import('../views/EsSyncControl.vue')
   }
 ]
 

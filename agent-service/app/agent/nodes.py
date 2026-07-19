@@ -27,8 +27,9 @@ def recognize_intent(state: dict) -> dict:
 
 def search_product_node(state: dict) -> dict:
     """商品搜索节点：意图为 search 时执行"""
-    results = search_products(state["message"])
-    state["search_results"] = results
+    result = search_products(state["message"])
+    state["search_results"] = result.get("hits", [])
+    state["search_total"] = result.get("total", 0)
     return state
 
 
