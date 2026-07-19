@@ -3,6 +3,7 @@ package com.fashion.mapper;
 import com.fashion.entity.Product;
 import org.apache.ibatis.annotations.Mapper;
 import org.apache.ibatis.annotations.Param;
+import org.apache.ibatis.annotations.Update;
 import java.util.List;
 import java.util.Map;
 
@@ -60,6 +61,15 @@ public interface ProductMapper {
      * @return 影响行数
      */
     int deleteById(Long id);
+
+    /**
+     * 恢复商品库存（退款用）
+     * @param productId 商品ID
+     * @param delta 恢复数量
+     * @return 影响行数
+     */
+    @Update("UPDATE product SET stock = stock + #{delta} WHERE id = #{productId}")
+    int restoreStock(@Param("productId") Long productId, @Param("delta") Integer delta);
     
     /**
      * 根据分类ID查询商品列表

@@ -63,6 +63,11 @@
                 <span class="menu-text">订单统计</span>
               </template>
             </el-menu-item>
+            <el-menu-item index="3-3">
+              <template #title>
+                <span class="menu-text">退款管理</span>
+              </template>
+            </el-menu-item>
           </el-sub-menu>
           
           <el-sub-menu index="4">
@@ -263,6 +268,10 @@ export default {
         case '3-1':
           this.$router.push('/order/list')
           this.pageTitle = '订单列表'
+          break
+        case '3-3':
+          this.$router.push('/refund/list')
+          this.pageTitle = '退款管理'
           break
         case '4-1':
           this.$router.push('/seckill/activity')

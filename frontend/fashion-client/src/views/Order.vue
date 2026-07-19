@@ -15,6 +15,7 @@
         <el-tab-pane label="待收货" name="3"></el-tab-pane>
         <el-tab-pane label="已完成" name="4"></el-tab-pane>
         <el-tab-pane label="已取消" name="5"></el-tab-pane>
+        <el-tab-pane label="退款中" name="6"></el-tab-pane>
       </el-tabs>
     </div>
 
@@ -69,6 +70,9 @@
               <el-button v-if="order.status === 3" type="primary" size="small" @click="handleConfirm(order.id)">
                 确认收货
               </el-button>
+              <el-button v-if="order.status === 3 || order.status === 4" size="small" type="warning" @click="handleRefund(order)">
+                申请退款
+              </el-button>
               <el-button v-if="order.status === 4" type="success" size="small" @click="handleReview(order)">
                 去评价
               </el-button>
@@ -83,6 +87,37 @@
         <el-empty description="暂无订单"></el-empty>
       </div>
     </div>
+
+    <!-- 退款原因弹窗 -->
+    <el-dialog
+      v-model="refundDialogVisible"
+      title="申请退款"
+      width="450px"
+      :close-on-click-modal="false"
+    >
+      <div class="refund-dialog">
+        <div class="refund-info">
+          <p>订单号：{{ refundOrder?.number }}</p>
+          <p>退款金额：<span class="amount">¥{{ refundOrder?.amount }}</span></p>
+        </div>
+        <el-form>
+          <el-form-item label="退款原因">
+            <el-input
+              v-model="refundReason"
+              type="textarea"
+              :rows="4"
+              placeholder="请填写退款原因"
+              maxlength="500"
+              show-word-limit
+            ></el-input>
+          </el-form-item>
+        </el-form>
+      </div>
+      <template #footer>
+        <el-button @click="refundDialogVisible = false">取消</el-button>
+        <el-button type="warning" :loading="refundSubmitting" @click="submitRefund">提交申请</el-button>
+      </template>
+    </el-dialog>
 
     <el-dialog
       v-model="detailVisible"
@@ -186,6 +221,7 @@
 <script>
 import { orderApi, cartApi } from '@/api/product'
 import { paymentApi } from '@/api/payment'
+import { refundApi } from '@/api/refund'
 
 export default {
   name: 'Order',
@@ -195,7 +231,11 @@ export default {
       orders: [],
       orderDetail: null,
       detailVisible: false,
-      loading: false
+      loading: false,
+      refundDialogVisible: false,
+      refundOrder: null,
+      refundReason: '',
+      refundSubmitting: false
     }
   },
   mounted() {
@@ -391,13 +431,43 @@ export default {
         this.$message.warning('该订单暂无商品可评价')
       }
     },
+    handleRefund(order) {
+      this.refundOrder = order
+      this.refundReason = ''
+      this.refundDialogVisible = true
+    },
+    submitRefund() {
+      if (!this.refundReason.trim()) {
+        this.$message.warning('请填写退款原因')
+        return
+      }
+      this.refundSubmitting = true
+      refundApi.apply({
+        orderId: this.refundOrder.id,
+        reason: this.refundReason.trim()
+      }).then(response => {
+        if (response.data.code === 1) {
+          this.$message.success('退款申请已提交')
+          this.refundDialogVisible = false
+          this.loadOrders()
+        } else {
+          this.$message.error(response.data.msg || '提交失败')
+        }
+      }).catch(error => {
+        console.error('申请退款失败:', error)
+        this.$message.error('申请退款失败')
+      }).finally(() => {
+        this.refundSubmitting = false
+      })
+    },
     getStatusText(status) {
       const statusMap = {
         1: '待付款',
         2: '待发货',
         3: '待收货',
         4: '已完成',
-        5: '已取消'
+        5: '已取消',
+        6: '退款中'
       }
       return statusMap[status] || '未知状态'
     },
@@ -783,5 +853,24 @@ export default {
     width: 100%;
     justify-content: flex-end;
   }
+}
+
+/* === 退款 dialog === */
+.refund-dialog {
+  padding: 10px 0;
+}
+
+.refund-info {
+  margin-bottom: 16px;
+  font-family: var(--font-display);
+  font-size: 14px;
+  color: var(--text-primary);
+  line-height: 1.8;
+}
+
+.refund-info .amount {
+  color: var(--accent-lime);
+  font-weight: 800;
+  font-size: 18px;
 }
 </style>

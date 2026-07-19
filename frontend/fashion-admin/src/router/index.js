@@ -65,6 +65,11 @@ const routes = [
     path: '/review/list',
     name: 'ReviewList',
     component: () => import('../views/ReviewList.vue')
+  },
+  {
+    path: '/refund/list',
+    name: 'RefundList',
+    component: () => import('../views/RefundList.vue')
   }
 ]
 
