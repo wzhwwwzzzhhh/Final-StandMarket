@@ -85,6 +85,11 @@ public interface OrderService {
      * @param id 订单ID
      */
     void pay(Long id);
+
+    /**
+     * 定时任务：自动取消超时未支付且绑定了通用优惠券的订单并释放券
+     */
+    void autoCancelTimeoutCouponOrders();
     
     /**
      * 确认收货

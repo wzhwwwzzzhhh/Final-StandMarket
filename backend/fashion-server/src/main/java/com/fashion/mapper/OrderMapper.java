@@ -73,4 +73,11 @@ public interface OrderMapper {
      * @return 订单列表
      */
     List<Orders> selectRecentOrders(@Param("limit") int limit);
+
+    /**
+     * 查询超时未支付且绑定了通用优惠券的订单（用于定时自动取消并释放券）
+     * @param minutes 超时分钟数
+     * @return 订单列表
+     */
+    List<Orders> selectTimeoutCouponOrders(@Param("minutes") int minutes);
 }

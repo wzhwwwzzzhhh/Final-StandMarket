@@ -1,539 +1,343 @@
 <template>
   <div class="my-coupons">
     <!-- 页面标题 -->
-    <div class="header">
-      <h2>我的优惠券</h2>
-      <p class="subtitle">查看您拥有的秒杀券</p>
+    <div class="page-header">
+      <span class="kicker">// MY COUPON WALLET</span>
+      <h2 class="title">我的优惠券</h2>
+      <p class="subtitle">下单结算时可选择一张可用券抵扣</p>
     </div>
 
-    <!-- 加载状态 -->
+    <!-- 状态筛选 -->
+    <div class="filter-section">
+      <el-radio-group v-model="filter" @change="loadCoupons">
+        <el-radio-button label="">全部</el-radio-button>
+        <el-radio-button label="0">未使用</el-radio-button>
+        <el-radio-button label="1">已使用</el-radio-button>
+        <el-radio-button label="2">已过期</el-radio-button>
+      </el-radio-group>
+      <el-button type="primary" plain size="small" class="go-center" @click="$router.push('/coupon-center')">
+        去领券中心
+      </el-button>
+    </div>
+
     <div v-if="loading" class="loading-container">
       <el-skeleton :rows="6" animated />
     </div>
 
-    <!-- 优惠券列表 -->
     <div v-else class="coupons-content">
-      <!-- 状态筛选 -->
-      <div class="filter-section">
-        <el-radio-group v-model="filter.status" @change="handleFilterChange">
-          <el-radio-button label="">全部</el-radio-button>
-          <el-radio-button label="1">可用</el-radio-button>
-          <el-radio-button label="2">已使用</el-radio-button>
-          <el-radio-button label="3">已过期</el-radio-button>
-        </el-radio-group>
+      <div v-if="coupons.length === 0" class="empty">
+        <el-empty description="暂无优惠券">
+          <el-button type="primary" plain @click="$router.push('/coupon-center')">去领券</el-button>
+        </el-empty>
       </div>
 
-      <!-- 优惠券列表 -->
-      <div class="coupons-list" v-loading="listLoading">
-        <div v-if="coupons.length === 0" class="empty">
-          <el-empty description="暂无优惠券" />
-        </div>
-        
-        <div v-else class="coupons-grid">
-          <div 
-            v-for="coupon in filteredCoupons" 
-            :key="coupon.id" 
-            class="coupon-card"
-            :class="getCouponStatusClass(coupon)"
-          >
-            <div class="coupon-header">
-              <div class="coupon-name">{{ coupon.couponName || '秒杀券' }}</div>
-              <div class="coupon-status" :class="'status-' + getCouponStatus(coupon)">
-                {{ getCouponStatusText(coupon) }}
-              </div>
-            </div>
+      <div v-else class="coupon-grid">
+        <div
+          v-for="coupon in coupons"
+          :key="coupon.id"
+          class="coupon-card"
+          :class="[`status-${coupon.status}`, `type-${coupon.templateType}`]"
+        >
+          <div class="coupon-left">
+            <template v-if="coupon.templateType === 2">
+              <span class="value-num">{{ coupon.discount }}</span>
+              <span class="value-unit">折</span>
+            </template>
+            <template v-else>
+              <span class="value-symbol">¥</span>
+              <span class="value-num">{{ coupon.discount }}</span>
+            </template>
+            <span class="value-threshold">{{ thresholdText(coupon) }}</span>
+          </div>
 
-            <div class="coupon-body">
-              <div class="price-section">
-                <span class="seckill-price">¥{{ coupon.seckillPrice || 0 }}</span>
-                <span class="original-price">原价：¥{{ coupon.originalPrice }}</span>
-              </div>
-              
-              <div class="coupon-info">
-                <div class="info-item">
-                  <el-icon><Calendar /></el-icon>
-                  <span>创建时间：{{ formatTime(coupon.createTime) }}</span>
-                </div>
-                <div v-if="coupon.payTime" class="info-item">
-                  <el-icon><Clock /></el-icon>
-                  <span>支付时间：{{ formatTime(coupon.payTime) }}</span>
-                </div>
-                <div v-if="coupon.orderNumber" class="info-item">
-                  <el-icon><Document /></el-icon>
-                  <span>订单号：{{ coupon.orderNumber }}</span>
-                </div>
-              </div>
+          <div class="coupon-right">
+            <div class="coupon-name">{{ coupon.templateName }}</div>
+            <div class="coupon-tags">
+              <el-tag size="small" effect="plain" :type="typeTagType(coupon.templateType)">{{ typeText(coupon.templateType) }}</el-tag>
+              <el-tag size="small" :type="statusTagType(coupon.status)" effect="plain">{{ statusText(coupon.status) }}</el-tag>
             </div>
+            <div class="coupon-meta">
+              <span>有效期至 {{ formatTime(coupon.expireTime) }}</span>
+              <span v-if="coupon.useOrderId">核销单#{{ coupon.useOrderId }}</span>
+            </div>
+          </div>
 
-            <div class="coupon-footer">
-              <div class="coupon-actions">
-                <el-button 
-                  v-if="getCouponStatus(coupon) === 1" 
-                  type="primary" 
-                  size="small"
-                  @click="handleUse(coupon)"
-                >
-                  立即支付
-                </el-button>
-                <el-button 
-                  v-else-if="getCouponStatus(coupon) === 2" 
-                  type="success" 
-                  size="small"
-                  @click="handleUseCoupon(coupon)"
-                >
-                  立即使用
-                </el-button>
-                <el-button 
-                  v-else-if="getCouponStatus(coupon) === 3" 
-                  type="info" 
-                  size="small"
-                  disabled
-                >
-                  已取消
-                </el-button>
-                <el-button 
-                  v-else-if="getCouponStatus(coupon) === 4" 
-                  type="warning" 
-                  size="small"
-                  disabled
-                >
-                  已使用
-                </el-button>
-                <el-button 
-                  v-else-if="getCouponStatus(coupon) === 5" 
-                  type="info" 
-                  size="small"
-                  disabled
-                >
-                  已过期
-                </el-button>
-                <el-button type="default" size="small" @click="handleDetail(coupon)">
-                  查看详情
-                </el-button>
-              </div>
-            </div>
+          <div class="coupon-action">
+            <el-button
+              v-if="coupon.status === 0"
+              type="primary"
+              size="small"
+              round
+              @click="$router.push('/product/list')"
+            >
+              去使用
+            </el-button>
           </div>
         </div>
       </div>
-
-      <!-- 分页 -->
-      <div class="pagination">
-        <el-pagination
-          v-model:current-page="pagination.current"
-          v-model:page-size="pagination.size"
-          :page-sizes="[10, 20, 50]"
-          :total="pagination.total"
-          layout="total, sizes, prev, pager, next, jumper"
-          @size-change="handleSizeChange"
-          @current-change="handleCurrentChange"
-        />
-      </div>
     </div>
-
-    <!-- 优惠券详情对话框 -->
-    <el-dialog v-model="showDetailDialog" title="优惠券详情" width="500px">
-      <div v-if="selectedCoupon" class="coupon-detail">
-        <div class="detail-item">
-          <label>券名称：</label>
-          <span>{{ selectedCoupon.couponName || '秒杀券' }}</span>
-        </div>
-        <div class="detail-item">
-          <label>原价：</label>
-          <span>¥{{ selectedCoupon.originalPrice }}</span>
-        </div>
-        <div class="detail-item">
-          <label>秒杀价：</label>
-          <span>¥{{ selectedCoupon.seckillPrice || 0 }}</span>
-        </div>
-        <div class="detail-item">
-          <label>有效期：</label>
-          <span>{{ formatTime(selectedCoupon.startTime) }} - {{ formatTime(selectedCoupon.endTime) }}</span>
-        </div>
-        <div class="detail-item">
-          <label>购买时间：</label>
-          <span>{{ formatTime(selectedCoupon.createTime) }}</span>
-        </div>
-        <div class="detail-item">
-          <label>订单号：</label>
-          <span>{{ selectedCoupon.orderNumber }}</span>
-        </div>
-        <div class="detail-item">
-          <label>状态：</label>
-          <span :class="'status-' + getCouponStatus(selectedCoupon)">
-            {{ getCouponStatusText(selectedCoupon) }}
-          </span>
-        </div>
-      </div>
-    </el-dialog>
   </div>
 </template>
 
 <script setup>
-import { ref, computed, onMounted } from 'vue'
-import { useRouter } from 'vue-router'
-import { ElMessage, ElMessageBox } from 'element-plus'
-import { Clock, Calendar, Document } from '@element-plus/icons-vue'
-import { seckillApi } from '../api/seckill'
+import { ref, onMounted } from 'vue'
+import { ElMessage } from 'element-plus'
+import { couponApi } from '../api/coupon'
 
-const router = useRouter()
-
-// 响应式数据
 const loading = ref(false)
-const listLoading = ref(false)
+const filter = ref('')
 const coupons = ref([])
-const selectedCoupon = ref(null)
-const showDetailDialog = ref(false)
 
-// 筛选条件
-const filter = ref({
-  status: '' // 1:可用, 2:已使用, 3:已过期
-})
+const typeText = (type) => ({ 1: '满减', 2: '折扣', 3: '现金' }[type] || '优惠券')
+const typeTagType = (type) => ({ 1: 'danger', 2: 'warning', 3: 'success' }[type] || 'primary')
 
-// 分页
-const pagination = ref({
-  current: 1,
-  size: 10,
-  total: 0
-})
+const statusText = (status) => ({ 0: '未使用', 1: '已使用', 2: '已过期', 3: '已锁定' }[status] || '未知')
+const statusTagType = (status) => ({ 0: 'success', 1: 'info', 2: 'warning', 3: 'danger' }[status] || 'info')
 
-// 计算属性：筛选后的优惠券
-const filteredCoupons = computed(() => {
-  if (!filter.value.status) {
-    return coupons.value
-  }
-  
-  return coupons.value.filter(coupon => {
-    const status = getCouponStatus(coupon)
-    return status.toString() === filter.value.status
-  })
-})
+const thresholdText = (coupon) => {
+  if (!coupon.threshold || Number(coupon.threshold) === 0) return '无门槛'
+  return `满${coupon.threshold}可用`
+}
 
-// 方法
 const formatTime = (time) => {
-  if (!time) return ''
-  return new Date(time).toLocaleString()
+  if (!time) return '-'
+  return String(time).replace('T', ' ').slice(0, 16)
 }
 
-// 获取优惠券状态（秒杀订单状态：1-待支付 2-已支付待使用 3-已取消 4-已使用 5-已过期）
-const getCouponStatus = (coupon) => {
-  return coupon.status || 1
-}
-
-// 获取优惠券状态文本
-const getCouponStatusText = (coupon) => {
-  const status = getCouponStatus(coupon)
-  switch (status) {
-    case 1: return '待支付'
-    case 2: return '待使用'
-    case 3: return '已取消'
-    case 4: return '已使用'
-    case 5: return '已过期'
-    default: return '未知'
-  }
-}
-
-// 获取优惠券状态类名
-const getCouponStatusClass = (coupon) => {
-  const status = getCouponStatus(coupon)
-  return `status-${status}`
-}
-
-// 筛选变化
-const handleFilterChange = () => {
-  pagination.value.current = 1
-  loadCoupons()
-}
-
-// 分页大小变化
-const handleSizeChange = (size) => {
-  pagination.value.size = size
-  pagination.value.current = 1
-  loadCoupons()
-}
-
-// 当前页变化
-const handleCurrentChange = (current) => {
-  pagination.value.current = current
-  loadCoupons()
-}
-
-// 立即支付
-const handleUse = async (coupon) => {
-  try {
-    await ElMessageBox.confirm('确定要支付该订单吗？', '支付确认', {
-      confirmButtonText: '确定',
-      cancelButtonText: '取消',
-      type: 'warning'
-    })
-    
-    const response = await seckillApi.paySeckillOrder(coupon.orderNumber)
-    if (response.data.code === 1) {
-      ElMessage.success('支付成功')
-    } else {
-      ElMessage.error('支付失败: ' + response.data.msg)
-    }
-    
-    // 刷新列表
-    loadCoupons()
-  } catch (error) {
-    if (error !== 'cancel') {
-      ElMessage.error('支付失败')
-    }
-  }
-}
-
-// 立即使用优惠券（跳转到商品列表）
-const handleUseCoupon = async (coupon) => {
-  try {
-    await ElMessageBox.confirm('该优惠券可前往商品列表使用，是否前往？', '使用优惠券', {
-      confirmButtonText: '前往购物',
-      cancelButtonText: '取消',
-      type: 'success'
-    })
-    router.push('/product/list')
-  } catch (error) {
-  }
-}
-
-// 查看详情
-const handleDetail = (coupon) => {
-  selectedCoupon.value = coupon
-  showDetailDialog.value = true
-}
-
-// 加载优惠券数据（秒杀券订单）
 const loadCoupons = async () => {
-  listLoading.value = true
+  loading.value = true
   try {
-    // 调用后端接口获取秒杀券订单数据
-    const response = await seckillApi.getSeckillOrderList()
-    if (response.data.code === 1) {
-      coupons.value = response.data.data
-      pagination.value.total = coupons.value.length
+    const res = await couponApi.getMyCoupons(filter.value)
+    if (res.data.code === 1) {
+      coupons.value = res.data.data || []
     } else {
-      ElMessage.error('加载优惠券失败: ' + response.data.msg)
+      ElMessage.error(res.data.msg || '加载失败')
       coupons.value = []
-      pagination.value.total = 0
     }
   } catch (error) {
     console.error('加载优惠券失败:', error)
     ElMessage.error('加载优惠券失败')
     coupons.value = []
-    pagination.value.total = 0
   } finally {
-    listLoading.value = false
     loading.value = false
   }
 }
 
-// 初始化加载
-onMounted(() => {
-  loading.value = true
-  loadCoupons()
-})
+onMounted(loadCoupons)
 </script>
 
 <style scoped>
 .my-coupons {
-  max-width: 1200px;
+  max-width: 1000px;
   margin: 0 auto;
-  padding: 20px;
+  padding: 0 var(--space-lg);
+  padding-top: var(--space-2xl);
+  padding-bottom: 120px;
+  min-height: 100vh;
 }
 
-.header {
+.page-header {
   text-align: center;
-  margin-bottom: 30px;
+  margin-bottom: var(--space-xl);
 }
 
-.header h2 {
-  color: #333;
-  margin-bottom: 10px;
+.kicker {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  letter-spacing: 0.3em;
+  color: var(--accent-purple);
+}
+
+.title {
+  font-family: var(--font-heading);
+  font-size: 30px;
+  font-weight: 900;
+  color: var(--text-primary);
+  letter-spacing: 0.06em;
+  margin: 8px 0;
 }
 
 .subtitle {
-  color: #666;
-  font-size: 14px;
+  color: var(--text-muted);
+  font-size: 13px;
+  font-family: var(--font-mono);
 }
 
 .filter-section {
-  margin-bottom: 20px;
-  text-align: center;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 16px;
+  margin-bottom: 28px;
 }
 
-.coupons-grid {
+.filter-section :deep(.el-radio-button__inner) {
+  border-radius: 0;
+  font-family: var(--font-mono);
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+}
+
+.loading-container {
+  background: var(--bg-card);
+  border: 1px solid var(--border-card);
+  padding: 40px;
+}
+
+.empty {
+  padding: 80px 0;
+}
+
+.coupon-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(350px, 1fr));
+  grid-template-columns: repeat(auto-fill, minmax(420px, 1fr));
   gap: 20px;
-  margin-bottom: 30px;
 }
 
 .coupon-card {
-  background: white;
-  border: 2px solid #e4e7ed;
-  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  background: var(--bg-card);
+  border: 1px solid var(--border-card);
   padding: 20px;
-  transition: all 0.3s;
   position: relative;
   overflow: hidden;
+  transition: all 0.25s ease;
+}
+
+.coupon-card::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: 118px;
+  width: 1px;
+  border-left: 1px dashed var(--border-subtle);
+}
+
+.coupon-card.status-0 { border-color: var(--accent-purple-dim); }
+.coupon-card.status-0::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 4px;
+  height: 100%;
+  background: var(--accent-purple);
 }
 
 .coupon-card:hover {
   transform: translateY(-2px);
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+  box-shadow: 0 8px 24px var(--accent-purple-dim);
 }
 
-.coupon-card.status-1 {
-  border-color: #67c23a;
-  background: linear-gradient(135deg, #f0f9ff 0%, #e6f7ff 100%);
-}
-
-.coupon-card.status-2 {
-  border-color: #409eff;
-  background: linear-gradient(135deg, #f0f9ff 0%, #e6f7ff 100%);
-}
-
-.coupon-card.status-3 {
-  border-color: #f56c6c;
-  background: #fef0f0;
-}
-
-.coupon-header {
+.coupon-left {
+  width: 118px;
   display: flex;
-  justify-content: space-between;
+  flex-direction: column;
   align-items: center;
-  margin-bottom: 15px;
+  gap: 4px;
+  flex-shrink: 0;
+}
+
+.coupon-left .value-symbol {
+  font-family: var(--font-display);
+  font-weight: 800;
+  font-size: 16px;
+  color: var(--accent-lime);
+}
+
+.coupon-left .value-num {
+  font-family: var(--font-display);
+  font-weight: 900;
+  font-size: 30px;
+  color: var(--accent-lime);
+  line-height: 1;
+}
+
+.coupon-left .value-unit {
+  font-family: var(--font-heading);
+  font-weight: 800;
+  font-size: 16px;
+  color: var(--accent-lime);
+}
+
+.coupon-left .value-threshold {
+  color: var(--text-muted);
+  font-family: var(--font-mono);
+  font-size: 11px;
+}
+
+.coupon-right {
+  flex: 1;
+  min-width: 0;
+  padding-left: 24px;
+  margin-right: 12px;
 }
 
 .coupon-name {
-  font-size: 18px;
-  font-weight: bold;
-  color: #333;
-}
-
-.coupon-status {
-  padding: 4px 8px;
-  border-radius: 4px;
-  font-size: 12px;
-  font-weight: bold;
-}
-
-.coupon-status.status-1 {
-  background: #67c23a;
-  color: white;
-}
-
-.coupon-status.status-2 {
-  background: #909399;
-  color: white;
-}
-
-.coupon-status.status-3 {
-  background: #f56c6c;
-  color: white;
-}
-
-.price-section {
-  margin-bottom: 15px;
-}
-
-.seckill-price {
-  font-size: 24px;
-  font-weight: bold;
-  color: #f56c6c;
-  margin-right: 10px;
-}
-
-.original-price {
-  color: #999;
-  text-decoration: line-through;
+  font-family: var(--font-heading);
+  font-weight: 800;
   font-size: 14px;
-}
-
-.coupon-info {
-  margin-bottom: 15px;
-}
-
-.info-item {
-  display: flex;
-  align-items: center;
+  color: var(--text-primary);
+  letter-spacing: 0.03em;
   margin-bottom: 8px;
-  color: #666;
-  font-size: 14px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
-.info-item .el-icon {
-  margin-right: 8px;
-  color: #999;
-}
-
-.coupon-footer {
-  border-top: 1px solid #f0f0f0;
-  padding-top: 15px;
-}
-
-.coupon-actions {
+.coupon-tags {
   display: flex;
-  gap: 10px;
-  justify-content: center;
+  gap: 6px;
+  margin-bottom: 10px;
 }
 
-.pagination {
+.coupon-tags :deep(.el-tag) {
+  border-radius: 0;
+  font-family: var(--font-mono);
+  font-size: 10px;
+  font-weight: 700;
+}
+
+.coupon-meta {
   display: flex;
-  justify-content: center;
-  margin-top: 30px;
+  flex-direction: column;
+  gap: 4px;
+  color: var(--text-muted);
+  font-family: var(--font-mono);
+  font-size: 11px;
 }
 
-.empty {
-  padding: 60px 0;
-  text-align: center;
+.coupon-action {
+  flex-shrink: 0;
 }
 
-.coupon-detail {
-  padding: 0 20px;
-}
-
-.detail-item {
-  display: flex;
-  justify-content: space-between;
-  margin-bottom: 15px;
-  padding-bottom: 10px;
-  border-bottom: 1px solid #f0f0f0;
-}
-
-.detail-item label {
-  font-weight: bold;
-  color: #333;
-}
-
-.detail-item span {
-  color: #666;
-}
-
-.loading-container {
-  padding: 40px 0;
+.coupon-action :deep(.el-button) {
+  font-family: var(--font-heading);
+  font-weight: 700;
+  letter-spacing: 0.05em;
 }
 
 @media (max-width: 768px) {
   .my-coupons {
-    padding: 10px;
+    padding: 0 var(--space-md);
+    padding-top: var(--space-lg);
+    padding-bottom: 100px;
   }
-  
-  .coupons-grid {
+  .coupon-grid {
     grid-template-columns: 1fr;
   }
-  
   .coupon-card {
-    padding: 15px;
+    flex-wrap: wrap;
+    gap: 12px;
   }
-  
-  .coupon-header {
-    flex-direction: column;
-    align-items: flex-start;
-    gap: 10px;
+  .coupon-card::after {
+    display: none;
   }
-  
-  .coupon-actions {
-    flex-direction: column;
+  .coupon-action {
+    width: 100%;
   }
 }
 </style>

@@ -58,6 +58,16 @@ const routes = [
     component: () => import('../views/SpecialOffer.vue')
   },
   {
+    path: '/coupon/template',
+    name: 'CouponTemplateList',
+    component: () => import('../views/CouponTemplateList.vue')
+  },
+  {
+    path: '/coupon/user',
+    name: 'CouponUserList',
+    component: () => import('../views/CouponUserList.vue')
+  },
+  {
     path: '/user/list',
     name: 'UserList',
     component: () => import('../views/UserList.vue')

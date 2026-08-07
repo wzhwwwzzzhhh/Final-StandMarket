@@ -158,6 +158,11 @@ public class Orders implements Serializable {
     private BigDecimal originalPrice;
 
     /**
+     * 通用优惠券ID（下单锁定，取消/支付回调按它释放/核销）
+     */
+    private Long userCouponId;
+
+    /**
      * 订单明细
      */
     private List<OrderDetail> items;

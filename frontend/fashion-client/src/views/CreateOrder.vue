@@ -59,7 +59,7 @@
               'selected': selectedActivity === activity.id, 
               'disabled': !isActivityValid(activity) 
             }]"
-            @click="!isActivityValid(activity) || (selectedActivity = activity.id, calculateAmount())"
+            @click="!isActivityValid(activity) || (selectedActivity = activity.id, selectedGeneralCoupon = 0, calculateAmount())"
           >
             <div class="card-content">
               <div class="card-header">
@@ -98,7 +98,7 @@
               v-for="coupon in availableCoupons" 
               :key="coupon.id"
               :class="['coupon-card', { 'selected': selectedCoupon === coupon.couponId }]"
-              @click="selectedCoupon = coupon.couponId; calculateAmount()"
+              @click="selectedCoupon = coupon.couponId; selectedGeneralCoupon = 0; calculateAmount()"
             >
               <div class="card-content">
                 <div class="card-header">
@@ -109,6 +109,46 @@
                   <span class="card-original-price">¥{{ coupon.originalPrice }}</span>
                 </div>
                 <span class="card-time">有效期：{{ formatTime(coupon.startTime) }} - {{ formatTime(coupon.endTime) }}</span>
+              </div>
+            </div>
+          </template>
+        </div>
+      </div>
+
+      <!-- 通用优惠券选择 -->
+      <div class="section">
+        <div class="section-header">
+          <h3>优惠券</h3>
+          <span class="section-tip">选择一张可用优惠券抵扣金额</span>
+        </div>
+        <div class="scroll-box coupon-grid">
+          <div v-if="generalCoupons.length === 0" class="no-coupon">
+            <el-empty description="暂无可用优惠券" :image-size="60" />
+          </div>
+          <template v-else>
+            <div
+              :class="['coupon-card', { 'selected': selectedGeneralCoupon === 0 }]"
+              @click="!isGeneralCouponUsable() || (selectedGeneralCoupon = 0)"
+            >
+              <div class="card-content">
+                <span class="card-name">不使用优惠券</span>
+                <span class="card-desc">无额外优惠</span>
+              </div>
+            </div>
+            <div
+              v-for="coupon in generalCoupons"
+              :key="coupon.id"
+              :class="['coupon-card', { 'selected': selectedGeneralCoupon === coupon.id }]"
+              @click="selectedGeneralCoupon = coupon.id; selectedActivity = 0; selectedCoupon = 0; calculateAmount()"
+            >
+              <div class="card-content">
+                <div class="card-header">
+                  <span class="card-name">{{ coupon.templateName }}</span>
+                  <el-tag v-if="coupon.templateType === 2" size="small">{{ coupon.discount }}折</el-tag>
+                  <el-tag v-else size="small">{{ thresholdText(coupon.threshold) }}</el-tag>
+                </div>
+                <span class="card-discount">-¥{{ getGeneralCouponDiscount(coupon).toFixed(2) }}</span>
+                <span class="card-time">有效期至 {{ formatTime(coupon.expireTime) }}</span>
               </div>
             </div>
           </template>
@@ -191,8 +231,12 @@
             <span class="value discount">-¥{{ activityDiscount.toFixed(2) }}</span>
           </div>
           <div v-if="couponDiscount > 0" class="summary-item">
-            <span class="label">券优惠：</span>
+            <span class="label">秒杀券优惠：</span>
             <span class="value discount">-¥{{ couponDiscount.toFixed(2) }}</span>
+          </div>
+          <div v-if="generalCouponDiscount > 0" class="summary-item">
+            <span class="label">优惠券优惠：</span>
+            <span class="value discount">-¥{{ generalCouponDiscount.toFixed(2) }}</span>
           </div>
           <div class="summary-item total">
             <span class="label">实付金额：</span>
@@ -258,6 +302,7 @@ import { ArrowLeft, Plus } from '@element-plus/icons-vue'
 import { orderApi, addressApi, seckillApi, cartApi } from '../api/product'
 import addressApiFull from '../api/address'
 import regionData from '../utils/regionData'
+import { couponApi, calcCouponDiscount } from '../api/coupon'
 
 const router = useRouter()
 const route = useRoute()
@@ -273,6 +318,10 @@ const selectedActivity = ref(0)
 // 秒杀券相关
 const availableCoupons = ref([])
 const selectedCoupon = ref(0)
+
+// 通用优惠券相关
+const generalCoupons = ref([])
+const selectedGeneralCoupon = ref(0)
 
 // 金额计算结果（从后端获取）
 const calculatedAmount = ref({
@@ -319,7 +368,15 @@ const totalAmount = computed(() => {
 // 使用后端计算的结果
 const activityDiscount = computed(() => calculatedAmount.value.activityDiscount)
 const couponDiscount = computed(() => calculatedAmount.value.couponDiscount)
-const finalAmount = computed(() => calculatedAmount.value.finalAmount || totalAmount.value)
+const generalCoupon = computed(() => generalCoupons.value.find(c => c.id === selectedGeneralCoupon.value) || null)
+const generalCouponDiscount = computed(() => {
+  if (!selectedGeneralCoupon.value || !generalCoupon.value) return 0
+  return calcCouponDiscount(generalCoupon.value, totalAmount.value)
+})
+const finalAmount = computed(() => {
+  const seckillFinal = calculatedAmount.value.finalAmount || totalAmount.value
+  return Math.max(0, Number(seckillFinal) - generalCouponDiscount.value)
+})
 
 const isFormValid = computed(() => {
   return selectedItems.value.length > 0 && selectedAddress.value
@@ -340,6 +397,42 @@ const isActivityValid = (activity) => {
   const startTime = new Date(activity.startTime)
   const endTime = new Date(activity.endTime)
   return now >= startTime && now <= endTime
+}
+
+const thresholdText = (threshold) => {
+  if (!threshold || Number(threshold) === 0) return '无门槛'
+  return `满${threshold}可用`
+}
+
+const getGeneralCouponDiscount = (coupon) => {
+  return calcCouponDiscount(coupon, totalAmount.value)
+}
+
+// 选择了秒杀活动/秒杀券时不可再选通用券（服务端同样拦截）
+const isGeneralCouponUsable = () => {
+  return !selectedActivity.value && !selectedCoupon.value
+}
+
+// 加载结算页可用通用券
+const loadGeneralCoupons = async () => {
+  try {
+    const productIds = selectedItems.value.map(item => item.productId).filter(Boolean)
+    const res = await couponApi.getAvailableCoupons({
+      totalAmount: totalAmount.value,
+      productIds: productIds.join(',')
+    })
+    if (res.data.code === 1) {
+      generalCoupons.value = res.data.data || []
+      if (selectedGeneralCoupon.value) {
+        const stillUsable = generalCoupons.value.some(c => c.id === selectedGeneralCoupon.value)
+        if (!stillUsable) {
+          selectedGeneralCoupon.value = 0
+        }
+      }
+    }
+  } catch (error) {
+    console.error('加载可用优惠券失败:', error)
+  }
 }
 
 // 防抖计时器
@@ -438,6 +531,8 @@ const loadData = async () => {
     
     // 初始计算金额（不等待防抖）
     calculateAmount()
+    // 加载可用通用券
+    loadGeneralCoupons()
 
   } catch (error) {
     console.error('加载数据失败:', error)
@@ -586,6 +681,7 @@ const handleSubmit = async () => {
       payMethod: selectedPaymentMethod.value,
       activityId: selectedActivity.value || null,
       couponId: selectedCoupon.value || null,
+      userCouponId: selectedGeneralCoupon.value || null,
       deliveryStatus: deliveryStatus.value,
       estimatedDeliveryTime: estimatedDeliveryTime.value
     }

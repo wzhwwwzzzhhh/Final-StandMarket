@@ -1,0 +1,116 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.fashion.mapper.UserCouponMapper">
+
+    <sql id="baseColumns">
+        c.id, c.user_id as userId, c.template_id as templateId, c.status,
+        c.obtain_time as obtainTime, c.expire_time as expireTime,
+        c.use_order_id as useOrderId, c.use_time as useTime,
+        t.name as templateName, t.type as templateType, t.threshold, t.discount,
+        t.scope_type as scopeType, t.apply_category_id as applyCategoryId, t.apply_product_ids as applyProductIds
+    </sql>
+
+    <!-- 领取新增 -->
+    <insert id="insert" parameterType="com.fashion.entity.UserCoupon" useGeneratedKeys="true" keyProperty="id">
+        insert into user_coupon (user_id, template_id, status, obtain_time, expire_time, use_order_id, use_time)
+        values (#{userId}, #{templateId}, #{status}, #{obtainTime}, #{expireTime}, #{useOrderId}, #{useTime})
+    </insert>
+
+    <!-- 根据id查询（联模板） -->
+    <select id="selectById" parameterType="java.lang.Long" resultType="com.fashion.entity.UserCoupon">
+        select <include refid="baseColumns"/> from user_coupon c
+        inner join coupon_template t on c.template_id = t.id
+        where c.id = #{id}
+    </select>
+
+    <!-- 用户卡包查询 -->
+    <select id="listByUserId" resultType="com.fashion.entity.UserCoupon">
+        select <include refid="baseColumns"/> from user_coupon c
+        inner join coupon_template t on c.template_id = t.id
+        where c.user_id = #{userId}
+        <if test="status != null">and c.status = #{status}</if>
+        order by c.obtain_time desc
+    </select>
+
+    <!-- 每人限领校验 -->
+    <select id="countByUserAndTemplate" resultType="java.lang.Integer">
+        select count(*) from user_coupon where user_id = #{userId} and template_id = #{templateId}
+    </select>
+
+    <!-- 发行总量校验 -->
+    <select id="countByTemplate" resultType="java.lang.Integer">
+        select count(*) from user_coupon where template_id = #{templateId}
+    </select>
+
+    <!-- 锁定券：仅未使用可锁，校验影响行数=1 防并发重复使用 -->
+    <update id="lockCoupon">
+        update user_coupon set status = 3
+        where id = #{id} and user_id = #{userId} and status = 0
+    </update>
+
+    <!-- 回填锁定券的核销订单id -->
+    <update id="setUseOrderId">
+        update user_coupon set use_order_id = #{orderId}
+        where id = #{id} and status = 3 and use_order_id is null
+    </update>
+
+    <!-- 核销券：仅锁定中可核销（幂等：按订单id条件） -->
+    <update id="useCoupon">
+        update user_coupon set status = 1, use_time = now()
+        where use_order_id = #{orderId} and user_id = #{userId} and status = 3
+    </update>
+
+    <!-- 释放券：仅锁定中可释放（幂等：按订单id条件） -->
+    <update id="releaseCoupon">
+        update user_coupon set status = 0, use_order_id = null
+        where use_order_id = #{orderId} and user_id = #{userId} and status = 3
+    </update>
+
+    <!-- 批量置过期 -->
+    <update id="markExpired">
+        update user_coupon set status = 2 where status = 0 and expire_time &lt; now()
+    </update>
+
+    <!-- 结算页可用券候选：未使用、未过期、模板启用且在有效期内 -->
+    <select id="listUsable" resultType="com.fashion.entity.UserCoupon">
+        select <include refid="baseColumns"/> from user_coupon c
+        inner join coupon_template t on c.template_id = t.id
+        where c.user_id = #{userId}
+          and c.status = 0
+          and c.expire_time &gt; now()
+          and t.status = 1
+          and (t.valid_type = 2 or (t.valid_type = 1 and t.start_time &lt;= now() and t.end_time &gt;= now()))
+        order by c.expire_time asc
+    </select>
+
+    <!-- 管理端分页查询用户持券 -->
+    <select id="adminPage" resultType="com.fashion.entity.UserCoupon">
+        select <include refid="baseColumns"/>,
+               u.name as userName, u.phone as userPhone
+        from user_coupon c
+        inner join coupon_template t on c.template_id = t.id
+        left join user u on c.user_id = u.id
+        <where>
+            <if test="status != null">and c.status = #{status}</if>
+            <if test="keyword != null and keyword != ''">
+                and (u.name like concat('%', #{keyword}, '%') or u.phone like concat('%', #{keyword}, '%'))
+            </if>
+        </where>
+        order by c.obtain_time desc
+        limit #{page}, #{pageSize}
+    </select>
+
+    <!-- 管理端持券总数 -->
+    <select id="adminCount" resultType="java.lang.Integer">
+        select count(*) from user_coupon c
+        left join user u on c.user_id = u.id
+        <where>
+            <if test="status != null">and c.status = #{status}</if>
+            <if test="keyword != null and keyword != ''">
+                and (u.name like concat('%', #{keyword}, '%') or u.phone like concat('%', #{keyword}, '%'))
+            </if>
+        </where>
+    </select>
+</mapper>

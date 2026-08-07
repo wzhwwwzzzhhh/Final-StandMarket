@@ -47,6 +47,11 @@ const routes = [
     component: () => import('../views/MyCoupons.vue')
   },
   {
+    path: '/coupon-center',
+    name: 'CouponCenter',
+    component: () => import('../views/CouponCenter.vue')
+  },
+  {
     path: '/address',
     name: 'Address',
     component: () => import('../views/Address.vue')

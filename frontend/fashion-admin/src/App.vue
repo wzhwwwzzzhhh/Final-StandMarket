@@ -109,6 +109,23 @@
             </el-menu-item>
           </el-sub-menu>
 
+          <el-sub-menu index="8">
+            <template #title>
+              <el-icon><Ticket /></el-icon>
+              <span class="menu-text">优惠券管理</span>
+            </template>
+            <el-menu-item index="8-1">
+              <template #title>
+                <span class="menu-text">券模板</span>
+              </template>
+            </el-menu-item>
+            <el-menu-item index="8-2">
+              <template #title>
+                <span class="menu-text">用户持券</span>
+              </template>
+            </el-menu-item>
+          </el-sub-menu>
+
           <el-menu-item index="6">
             <el-icon><DataBoard /></el-icon>
             <template #title>
@@ -214,7 +231,7 @@
 </template>
 
 <script>
-import { HomeFilled, Goods, ShoppingCart, Timer, User, ArrowDown, Menu, Bell, UserFilled, Setting, SwitchButton, Search, DataBoard, Document } from '@element-plus/icons-vue'
+import { HomeFilled, Goods, ShoppingCart, Timer, User, ArrowDown, Menu, Bell, UserFilled, Setting, SwitchButton, Search, DataBoard, Document, Ticket } from '@element-plus/icons-vue'
 
 export default {
   name: 'App',
@@ -307,6 +324,14 @@ export default {
         case '5-1':
           this.$router.push('/user/list')
           this.pageTitle = '用户列表'
+          break
+        case '8-1':
+          this.$router.push('/coupon/template')
+          this.pageTitle = '券模板'
+          break
+        case '8-2':
+          this.$router.push('/coupon/user')
+          this.pageTitle = '用户持券'
           break
         case '6':
           this.$router.push('/es/sync')

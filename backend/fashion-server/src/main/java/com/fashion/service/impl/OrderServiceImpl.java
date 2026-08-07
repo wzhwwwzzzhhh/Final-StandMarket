@@ -2,6 +2,7 @@ package com.fashion.service.impl;
 
 import com.fashion.entity.*;
 import com.fashion.mapper.*;
+import com.fashion.service.CouponService;
 import com.fashion.service.PaymentService;
 import com.fashion.constant.RedisKey;
 import com.github.pagehelper.PageHelper;
@@ -46,6 +47,8 @@ public class OrderServiceImpl implements OrderService {
     private PaymentService paymentService;
     @Autowired
     private StringRedisTemplate stringRedisTemplate;
+    @Autowired
+    private CouponService couponService;
 
     @Override
     public List<Orders> selectByCondition(Map<String, Object> params) {
@@ -184,6 +187,7 @@ public class OrderServiceImpl implements OrderService {
 
         // 服务端重算订单金额：基于购物车项，忽略前端传值，防止金额被篡改
         List<OrderDetail> orderDetails = new ArrayList<>();
+        List<Long> orderProductIds = new ArrayList<>();
         BigDecimal totalAmount = BigDecimal.ZERO;
         for (Long cartItemId : orderCreateDTO.getProductIds()) {
             ShoppingCart cartItem = shoppingCartMapper.findById(cartItemId);
@@ -213,22 +217,41 @@ public class OrderServiceImpl implements OrderService {
             orderDetail.setAmount(itemAmount);
             orderDetails.add(orderDetail);
             totalAmount = totalAmount.add(itemAmount);
+            orderProductIds.add(cartItem.getProductId());
         }
         if (orderDetails.isEmpty()) {
             throw new RuntimeException("购物车为空");
         }
 
-        // 服务端重算订单金额（商品总价），并应用秒杀活动/秒杀券优惠，忽略前端传值
-        BigDecimal discount = applyDiscount(totalAmount, orderCreateDTO.getActivityId(), orderCreateDTO.getCouponId());
-        orders.setAmount(totalAmount.subtract(discount).max(BigDecimal.ZERO));
-        orders.setOriginalPrice(totalAmount);
-        orders.setSeckillActivityId(orderCreateDTO.getActivityId());
-        orders.setSeckillCouponId(orderCreateDTO.getCouponId());
-        if (orderCreateDTO.getActivityId() != null || orderCreateDTO.getCouponId() != null) {
-            orders.setIsSeckill(1);
+        // 秒杀订单（秒杀活动/秒杀券）不可叠加通用优惠券，避免多重优惠；0 视为未选择
+        Long userCouponId = orderCreateDTO.getUserCouponId();
+        boolean seckillOrder = (orderCreateDTO.getActivityId() != null && orderCreateDTO.getActivityId() > 0)
+                || (orderCreateDTO.getCouponId() != null && orderCreateDTO.getCouponId() > 0);
+        if (userCouponId != null && userCouponId > 0 && seckillOrder) {
+            throw new RuntimeException("秒杀订单不可叠加通用优惠券");
         }
 
+        // 服务端重算订单金额（商品总价），并应用秒杀活动/秒杀券/通用券优惠，忽略前端传值
+        BigDecimal discount = applyDiscount(totalAmount, orderCreateDTO.getActivityId(), orderCreateDTO.getCouponId());
+        // 通用优惠券：锁券（status=3）并按券计算抵扣，与秒杀优惠互斥（已在上方校验）
+        BigDecimal couponDiscount = BigDecimal.ZERO;
+        if (userCouponId != null && userCouponId > 0) {
+            couponDiscount = couponService.lockAndDiscount(userId, userCouponId, totalAmount, orderProductIds);
+            discount = discount.add(couponDiscount);
+        }
+        orders.setAmount(totalAmount.subtract(discount).max(BigDecimal.ZERO));
+        orders.setOriginalPrice(totalAmount);
+        orders.setSeckillActivityId(orderCreateDTO.getActivityId() != null && orderCreateDTO.getActivityId() > 0 ? orderCreateDTO.getActivityId() : null);
+        orders.setSeckillCouponId(orderCreateDTO.getCouponId() != null && orderCreateDTO.getCouponId() > 0 ? orderCreateDTO.getCouponId() : null);
+        orders.setUserCouponId(userCouponId != null && userCouponId > 0 ? userCouponId : null);
+        orders.setIsSeckill(seckillOrder ? 1 : 0);
+
         orderMapper.insert(orders);
+
+        // 通用券绑定订单号（幂等核销/释放按订单 id 定位）
+        if (userCouponId != null && userCouponId > 0) {
+            couponService.bindUseOrder(userId, userCouponId, orders.getId());
+        }
 
         // 回填订单id后批量插入明细
         for (OrderDetail detail : orderDetails) {
@@ -261,6 +284,25 @@ public class OrderServiceImpl implements OrderService {
         order.setStatus(5);
         order.setCancelTime(LocalDateTime.now());
         orderMapper.update(order);
+        // 订单取消 → 释放已锁定的通用优惠券（幂等）
+        couponService.release(order.getUserId(), id);
+    }
+
+    @Override
+    @Transactional
+    public void autoCancelTimeoutCouponOrders() {
+        List<Orders> timeoutOrders = orderMapper.selectTimeoutCouponOrders(30);
+        if (timeoutOrders == null || timeoutOrders.isEmpty()) {
+            return;
+        }
+        for (Orders order : timeoutOrders) {
+            order.setStatus(5);
+            order.setCancelReason("超时未支付，系统自动取消");
+            order.setCancelTime(LocalDateTime.now());
+            orderMapper.update(order);
+            couponService.release(order.getUserId(), order.getId());
+            log.info("超时未支付订单自动取消并释放券 orderId={}, userId={}", order.getId(), order.getUserId());
+        }
     }
 
     @Transactional
@@ -281,6 +323,8 @@ public class OrderServiceImpl implements OrderService {
 
         boolean success = paymentService.processPayment(payment.getPayNo());
         if (!success) {
+            // 支付失败：支付记录随事务回滚，订单保持待支付、券保持锁定（绑定本单），
+            // 用户可重试支付（成功则核销）或取消订单（释放券），避免同一张券出现两次优惠
             throw new RuntimeException("支付失败，请重试");
         }
 
@@ -288,6 +332,8 @@ public class OrderServiceImpl implements OrderService {
         order.setCheckoutTime(LocalDateTime.now());
         order.setStatus(2);
         orderMapper.update(order);
+        // 支付成功 → 核销通用优惠券（幂等）
+        couponService.markUsed(userId, id);
     }
 
     @Transactional
@@ -314,6 +360,7 @@ public class OrderServiceImpl implements OrderService {
         order.setCheckoutTime(LocalDateTime.now());
         order.setStatus(2);
         orderMapper.update(order);
+        couponService.markUsed(order.getUserId(), id);
         log.info("订单支付成功更新 orderId={}, number={}", id, order.getNumber());
     }
 
@@ -347,6 +394,8 @@ public class OrderServiceImpl implements OrderService {
             order.setCheckoutTime(payTime);
             order.setStatus(2);
             orderMapper.update(order);
+            // 支付成功回调 → 核销通用优惠券（幂等）
+            couponService.markUsed(order.getUserId(), orderId);
             log.info("支付宝回调处理完成 orderId={}, tradeNo={}", orderId, tradeNo);
         } else {
             log.warn("支付宝回调订单不存在 orderId={}", orderId);
