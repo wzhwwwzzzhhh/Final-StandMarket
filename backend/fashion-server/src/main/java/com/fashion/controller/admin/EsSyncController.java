@@ -1,5 +1,6 @@
 package com.fashion.controller.admin;
 
+import com.fashion.common.annotation.OperationLog;
 import com.fashion.result.Result;
 import com.fashion.service.ProductIndexService;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -21,6 +22,7 @@ public class EsSyncController {
      * 全量重建索引（删除 + 创建 + 同步所有商品）
      */
     @PostMapping("/sync")
+    @OperationLog(module = "ES同步", operation = "全量重建索引")
     public Result<String> syncAll() {
         try {
             productIndexService.rebuildIndex();

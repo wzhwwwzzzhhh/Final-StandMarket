@@ -1,5 +1,6 @@
 package com.fashion.controller.admin;
 
+import com.fashion.common.annotation.OperationLog;
 import com.fashion.entity.Orders;
 import com.fashion.entity.PageResult;
 import com.fashion.entity.Payment;
@@ -73,6 +74,7 @@ public class OrderController {
      * 修改订单状态
      */
     @PutMapping("/{id}/status")
+    @OperationLog(module = "订单管理", operation = "修改订单状态")
     public Result<String> updateStatus(@PathVariable Long id, @RequestBody Orders orders) {
         if (id == null) {
             return Result.error("id不能为空");
@@ -89,6 +91,7 @@ public class OrderController {
      * 确认支付（管理员手动确认到账）
      */
     @PutMapping("/{id}/confirm-payment")
+    @OperationLog(module = "订单管理", operation = "确认收款")
     public Result<String> confirmPayment(@PathVariable Long id) {
         Orders order = orderService.getById(id);
         if (order == null) {
@@ -108,6 +111,7 @@ public class OrderController {
      * 发货
      */
     @PutMapping("/deliver")
+    @OperationLog(module = "订单管理", operation = "订单发货")
     public Result<String> deliver(@RequestBody Map<String, Object> params) {
         Object idObj = params.get("id");
         if (idObj == null) {

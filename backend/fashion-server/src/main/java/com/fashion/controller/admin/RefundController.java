@@ -1,5 +1,6 @@
 package com.fashion.controller.admin;
 
+import com.fashion.common.annotation.OperationLog;
 import com.fashion.entity.Refund;
 import com.fashion.result.Result;
 import com.fashion.service.RefundService;
@@ -36,6 +37,7 @@ public class RefundController {
      * 同意退款
      */
     @PutMapping("/approve")
+    @OperationLog(module = "退款管理", operation = "同意退款")
     public Result<String> approve(@RequestBody Map<String, Object> params) {
         try {
             Object idObj = params.get("id");
@@ -56,6 +58,7 @@ public class RefundController {
      * 拒绝退款
      */
     @PutMapping("/reject")
+    @OperationLog(module = "退款管理", operation = "拒绝退款")
     public Result<String> reject(@RequestBody Map<String, Object> params) {
         try {
             Object idObj = params.get("id");

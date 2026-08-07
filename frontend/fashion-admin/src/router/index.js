@@ -83,6 +83,11 @@ const routes = [
     component: () => import('../views/EsSyncControl.vue')
   },
   {
+    path: '/operationLog/list',
+    name: 'OperationLogList',
+    component: () => import('../views/OperationLogList.vue')
+  },
+  {
     path: '/:pathMatch(.*)*',
     name: 'NotFound',
     component: () => import('../views/NotFound.vue')

@@ -1,5 +1,6 @@
 package com.fashion.controller.admin;
 
+import com.fashion.common.annotation.OperationLog;
 import com.fashion.entity.SeckillCoupon;
 import com.fashion.entity.PageResult;
 import com.fashion.result.Result;
@@ -23,6 +24,7 @@ public class SeckillCouponController {
      * 新增秒杀券
      */
     @PostMapping
+    @OperationLog(module = "秒杀券", operation = "新增秒杀券")
     public Result<String> save(@RequestBody SeckillCoupon seckillCoupon) {
         seckillCouponService.save(seckillCoupon);
         return Result.success();
@@ -42,6 +44,7 @@ public class SeckillCouponController {
      * 删除秒杀券
      */
     @DeleteMapping
+    @OperationLog(module = "秒杀券", operation = "删除秒杀券")
     public Result<String> delete(@RequestParam Long id) {
         if(id == null){
             return Result.error("id不能为空");
@@ -54,6 +57,7 @@ public class SeckillCouponController {
      * 修改秒杀券
      */
     @PutMapping
+    @OperationLog(module = "秒杀券", operation = "修改秒杀券")
     public Result<String> update(@RequestBody SeckillCoupon seckillCoupon) {
         if(seckillCoupon.getId() == null){
             return Result.error("id不能为空");
@@ -84,6 +88,7 @@ public class SeckillCouponController {
      * 单个数据预热
      */
     @PostMapping("/preheat/{id}")
+    @OperationLog(module = "秒杀券", operation = "预热秒杀券")
     public Result<String> preheat(@PathVariable Long id) {
         if(id == null){
             return Result.error("id不能为空");
@@ -96,6 +101,7 @@ public class SeckillCouponController {
      * 批量数据预热
      */
     @PostMapping("/preheat/batch")
+    @OperationLog(module = "秒杀券", operation = "批量预热秒杀券")
     public Result<String> preheatBatch(@RequestParam List<Long> ids) {
         if(ids == null || ids.size() == 0){
             return Result.error("ids不能为空");

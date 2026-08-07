@@ -1,5 +1,6 @@
 package com.fashion.controller.admin;
 
+import com.fashion.common.annotation.OperationLog;
 import com.fashion.entity.PageResult;
 import com.fashion.entity.SeckillOrder;
 import com.fashion.result.Result;
@@ -73,6 +74,7 @@ public class SeckillOrderController {
      * 确认订单支付
      */
     @PostMapping("/{orderNumber}/confirm-payment")
+    @OperationLog(module = "秒杀订单", operation = "确认秒杀订单支付")
     public Result<?> confirmPayment(@PathVariable String orderNumber) {
         log.info("确认秒杀订单支付，订单号：{}", orderNumber);
         
@@ -93,6 +95,7 @@ public class SeckillOrderController {
      * 取消秒杀订单
      */
     @PostMapping("/{orderNumber}/cancel")
+    @OperationLog(module = "秒杀订单", operation = "取消秒杀订单")
     public Result<?> cancelOrder(@PathVariable String orderNumber) {
         log.info("取消秒杀订单，订单号：{}", orderNumber);
         
@@ -113,6 +116,7 @@ public class SeckillOrderController {
      * 删除秒杀订单
      */
     @DeleteMapping
+    @OperationLog(module = "秒杀订单", operation = "删除秒杀订单")
     public Result<?> deleteOrder(@RequestParam Long id) {
         log.info("删除秒杀订单，订单ID：{}", id);
         

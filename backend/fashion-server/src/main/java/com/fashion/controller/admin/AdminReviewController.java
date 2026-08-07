@@ -1,5 +1,6 @@
 package com.fashion.controller.admin;
 
+import com.fashion.common.annotation.OperationLog;
 import com.fashion.entity.PageResult;
 import com.fashion.entity.Review;
 import com.fashion.result.Result;
@@ -29,6 +30,7 @@ public class AdminReviewController {
     }
 
     @PutMapping("/status")
+    @OperationLog(module = "评价管理", operation = "评价显示/隐藏")
     public Result<String> updateStatus(@RequestBody Map<String, Object> params) {
         Object idObj = params.get("id");
         Object statusObj = params.get("status");
@@ -47,6 +49,7 @@ public class AdminReviewController {
     }
 
     @DeleteMapping("/{id}")
+    @OperationLog(module = "评价管理", operation = "删除评价")
     public Result<String> delete(@PathVariable Long id) {
         try {
             reviewService.deleteReview(id);

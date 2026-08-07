@@ -1,5 +1,6 @@
 package com.fashion.controller.admin;
 
+import com.fashion.common.annotation.OperationLog;
 import com.fashion.dto.AdminLoginDto;
 import com.fashion.entity.Employee;
 import com.fashion.entity.PageResult;
@@ -33,6 +34,7 @@ public class EmployeeController {
      * 新增员工
      */
     @PostMapping
+    @OperationLog(module = "员工管理", operation = "新增员工")
     public Result<String> save(@RequestBody Employee employee) {
         employeeService.save(employee);
         return Result.success();
@@ -52,6 +54,7 @@ public class EmployeeController {
      * 删除员工
      */
     @DeleteMapping
+    @OperationLog(module = "员工管理", operation = "删除员工")
     public Result<String> delete(@RequestParam Long id) {
         employeeService.removeById(id);
         return Result.success();
@@ -61,6 +64,7 @@ public class EmployeeController {
      * 修改员工
      */
     @PutMapping
+    @OperationLog(module = "员工管理", operation = "修改员工")
     public Result<String> update(@RequestBody Employee employee) {
         employeeService.update(employee);
         return Result.success();

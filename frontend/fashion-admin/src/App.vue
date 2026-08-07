@@ -115,6 +115,13 @@
               <span class="menu-text">ES 同步</span>
             </template>
           </el-menu-item>
+
+          <el-menu-item index="7">
+            <el-icon><Document /></el-icon>
+            <template #title>
+              <span class="menu-text">操作日志</span>
+            </template>
+          </el-menu-item>
         </el-menu>
       </el-aside>
       
@@ -207,7 +214,7 @@
 </template>
 
 <script>
-import { HomeFilled, Goods, ShoppingCart, Timer, User, ArrowDown, Menu, Bell, UserFilled, Setting, SwitchButton, Search, DataBoard } from '@element-plus/icons-vue'
+import { HomeFilled, Goods, ShoppingCart, Timer, User, ArrowDown, Menu, Bell, UserFilled, Setting, SwitchButton, Search, DataBoard, Document } from '@element-plus/icons-vue'
 
 export default {
   name: 'App',
@@ -304,6 +311,10 @@ export default {
         case '6':
           this.$router.push('/es/sync')
           this.pageTitle = 'ES 同步'
+          break
+        case '7':
+          this.$router.push('/operationLog/list')
+          this.pageTitle = '操作日志'
           break
       }
     },

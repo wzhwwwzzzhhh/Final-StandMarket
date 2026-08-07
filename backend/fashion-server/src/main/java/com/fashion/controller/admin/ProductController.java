@@ -1,5 +1,6 @@
 package com.fashion.controller.admin;
 
+import com.fashion.common.annotation.OperationLog;
 import com.fashion.entity.Product;
 import com.fashion.entity.PageResult;
 import com.fashion.dto.ProductSaveDTO;
@@ -36,6 +37,7 @@ public class ProductController {
      * 新增商品
      */
     @PostMapping
+    @OperationLog(module = "商品管理", operation = "新增商品")
     public Result<String> save(@RequestBody ProductSaveDTO productSaveDTO) {
         // 转换为Product实体
         Product product = new Product();
@@ -85,6 +87,7 @@ public class ProductController {
      * 删除商品
      */
     @DeleteMapping("/{id}")
+    @OperationLog(module = "商品管理", operation = "删除商品")
     public Result<String> delete(@PathVariable Long id) {
         if(id == null){
             return Result.error("id不能为空");
@@ -103,6 +106,7 @@ public class ProductController {
      * 修改商品
      */
     @PutMapping("/{id}")
+    @OperationLog(module = "商品管理", operation = "修改商品")
     public Result<String> update(@PathVariable Long id, @RequestBody ProductUpdateDTO productUpdateDTO) {
         if(id == null){
             return Result.error("id不能为空");

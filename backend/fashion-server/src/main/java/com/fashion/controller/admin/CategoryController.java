@@ -1,5 +1,6 @@
 package com.fashion.controller.admin;
 
+import com.fashion.common.annotation.OperationLog;
 import com.fashion.entity.Category;
 import com.fashion.entity.PageResult;
 import com.fashion.dto.CategorySaveDTO;
@@ -25,6 +26,7 @@ public class CategoryController {
      * 新增分类
      */
     @PostMapping
+    @OperationLog(module = "分类管理", operation = "新增分类")
     public Result<String> save(@RequestBody CategorySaveDTO categorySaveDTO) {
         // 转换为Category实体
         Category category = new Category();
@@ -66,6 +68,7 @@ public class CategoryController {
      * 删除分类
      */
     @DeleteMapping("/{id}")
+    @OperationLog(module = "分类管理", operation = "删除分类")
     public Result<String> delete(@PathVariable Long id) {
         if (id == null) {
             return Result.error("id不能为空");
@@ -81,6 +84,7 @@ public class CategoryController {
      * 修改分类
      */
     @PutMapping("/{id}")
+    @OperationLog(module = "分类管理", operation = "修改分类")
     public Result<String> update(@PathVariable Long id, @RequestBody CategoryUpdateDTO categoryUpdateDTO) {
         if (id == null) {
             return Result.error("id不能为空");

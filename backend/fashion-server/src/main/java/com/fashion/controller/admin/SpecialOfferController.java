@@ -1,5 +1,6 @@
 package com.fashion.controller.admin;
 
+import com.fashion.common.annotation.OperationLog;
 import com.fashion.entity.SpecialOffer;
 import com.fashion.entity.PageResult;
 import com.fashion.result.Result;
@@ -21,6 +22,7 @@ public class SpecialOfferController {
      * 新增特价商品
      */
     @PostMapping
+    @OperationLog(module = "特价商品", operation = "新增特价商品")
     public Result<String> save(@RequestBody SpecialOffer specialOffer) {
         specialOfferService.save(specialOffer);
         return Result.success();
@@ -40,6 +42,7 @@ public class SpecialOfferController {
      * 删除特价商品
      */
     @DeleteMapping
+    @OperationLog(module = "特价商品", operation = "删除特价商品")
     public Result<String> delete(@RequestParam Long id) {
         if(id == null){
             return Result.error("id不能为空");
@@ -52,6 +55,7 @@ public class SpecialOfferController {
      * 修改特价商品
      */
     @PutMapping
+    @OperationLog(module = "特价商品", operation = "修改特价商品")
     public Result<String> update(@RequestBody SpecialOffer specialOffer) {
         if(specialOffer.getId() == null){
             return Result.error("id不能为空");
