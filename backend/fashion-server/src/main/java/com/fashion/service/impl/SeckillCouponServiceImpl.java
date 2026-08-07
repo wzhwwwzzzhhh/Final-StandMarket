@@ -1,6 +1,8 @@
 package com.fashion.service.impl;
 
 import com.fashion.config.DirectExchangeConfig;
+import com.alibaba.csp.sentinel.annotation.SentinelResource;
+import com.alibaba.csp.sentinel.slots.block.BlockException;
 import com.fashion.context.BaseContext;
 import com.fashion.dto.SeckillSubmitResult;
 import com.fashion.entity.*;
@@ -155,6 +157,7 @@ public class SeckillCouponServiceImpl implements SeckillCouponService {
      * @return
      */
     @Override
+    @SentinelResource(value = "seckill", blockHandler = "seckillBlockHandler", fallback = "seckillFallback")
     public Result<SeckillSubmitResult> seckillCoupon(Long couponId) {
         //先获取分布锁
         Long userId = BaseContext.getUserId();
@@ -220,6 +223,16 @@ public class SeckillCouponServiceImpl implements SeckillCouponService {
             lock.unlock();
         }
         return Result.success(resultDto);
+    }
+
+    public Result<SeckillSubmitResult> seckillBlockHandler(Long couponId, BlockException exception) {
+        log.warn("秒杀接口触发限流，couponId={}", couponId);
+        return Result.error("系统繁忙，请稍后再试");
+    }
+
+    public Result<SeckillSubmitResult> seckillFallback(Long couponId, Throwable exception) {
+        log.error("秒杀接口降级，couponId={}", couponId, exception);
+        return Result.error("系统异常，请稍后重试");
     }
 
     @RabbitListener(queues = DirectExchangeConfig.SeckillQueue)

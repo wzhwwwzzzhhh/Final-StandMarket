@@ -63,6 +63,8 @@ logging:
         controller: debug
 
 fashion:
+  sentinel:
+    seckill-qps: ${FASHION_SENTINEL_SECKILL_QPS:500}
   agent:
     url: ${fashion.agent.url:http://localhost:8000}
   jwt:
