@@ -233,6 +233,7 @@ import { ArrowLeft, Share, Star, StarFilled, Shop, ShoppingCart, Refresh } from 
 import { productApi, cartApi } from '@/api/product'
 import favoriteApi from '@/api/favorite'
 import reviewApi from '@/api/review'
+import browseApi from '@/api/browse'
 import clothesImg1 from '@/assets/images/clothes/新对话 (6).png'
 import clothesImg2 from '@/assets/images/clothes/新对话 (3).png'
 import clothesImg3 from '@/assets/images/clothes/新对话 (5).png'
@@ -342,6 +343,7 @@ export default {
           ]
           this.loadReviews()
           this.loadReviewStats()
+          this.recordBrowse()
         } else {
           this.error = response.data.msg || '获取商品详情失败'
         }
@@ -350,6 +352,13 @@ export default {
         this.error = '网络错误，请稍后重试'
         console.error('获取商品详情失败:', error)
       })
+    },
+    // 记录浏览历史（需登录）
+    recordBrowse() {
+      if (!localStorage.getItem('token')) {
+        return
+      }
+      browseApi.record(this.product.id).catch(() => {})
     },
     // 加入购物车
     addToCart() {

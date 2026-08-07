@@ -87,6 +87,11 @@ const routes = [
     component: () => import('../views/FavoriteList.vue')
   },
   {
+    path: '/browse-history',
+    name: 'BrowseHistory',
+    component: () => import('../views/BrowseHistory.vue')
+  },
+  {
     path: '/add-review/:orderId/:productId',
     name: 'AddReview',
     component: () => import('../views/AddReview.vue')

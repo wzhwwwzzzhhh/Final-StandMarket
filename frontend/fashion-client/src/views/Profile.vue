@@ -282,7 +282,7 @@ export default {
       this.$router.push('/my-coupons')
     },
     goToHistory() {
-      this.$message.info('浏览历史功能开发中')
+      this.$router.push('/browse-history')
     },
     loadFavoriteCount() {
       favoriteApi.count().then(response => {
