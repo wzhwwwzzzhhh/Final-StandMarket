@@ -35,7 +35,9 @@ public class ProductIndexServiceImpl implements ProductIndexService {
         try {
             deleteIndexIfExists();
             createIndex();
-            List<Product> products = productMapper.selectByCondition(new HashMap<>());
+            Map<String, Object> queryParams = new HashMap<>();
+            queryParams.put("params", new HashMap<>());
+            List<Product> products = productMapper.selectByCondition(queryParams);
             bulkIndex(products);
             log.info("ES 全量重建完成，共 {} 条", products.size());
         } catch (Exception e) {

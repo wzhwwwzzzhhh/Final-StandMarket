@@ -11,6 +11,7 @@ import org.springframework.stereotype.Component;
 
 import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 /**
  * ES 商品索引定时同步任务
@@ -34,7 +35,9 @@ public class ProductSyncTask {
     @Scheduled(fixedRate = 300_000)
     public void syncProducts() {
         try {
-            List<Product> products = productMapper.selectByCondition(new HashMap<>());
+            Map<String, Object> queryParams = new HashMap<>();
+            queryParams.put("params", new HashMap<>());
+            List<Product> products = productMapper.selectByCondition(queryParams);
             if (products.isEmpty()) return;
 
             // 逐个同步（简化版：遍历全量写，后续可改为增量对比）

@@ -12,7 +12,7 @@ import java.util.Map;
 /**
  * 用户端退款Controller
  */
-@RestController
+@RestController("userRefundController")
 @RequestMapping("/user/refund")
 public class RefundController {
 
