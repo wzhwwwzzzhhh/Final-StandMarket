@@ -8,12 +8,13 @@ from app.agent.nodes import (
 )
 
 
-def create_initial_state(message: str, user_id: int, session_id: str, history: list = None) -> dict:
+def create_initial_state(message: str, user_id: int, session_id: str, history: list = None, token: str = "") -> dict:
     return {
         "message": message,
         "userId": user_id,
         "sessionId": session_id,
         "history": history or [],
+        "token": token,
         "intent": "",
         "search_results": [],
         "recommendations": [],

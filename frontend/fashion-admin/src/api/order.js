@@ -1,43 +1,34 @@
-import axios from 'axios'
-
-// 创建axios实例
-const api = axios.create({
-  baseURL: '/api', // 后端API基础路径
-  timeout: 10000, // 请求超时时间
-  headers: {
-    'Content-Type': 'application/json'
-  }
-})
+import request from '../utils/request'
 
 // 订单相关API
 export const orderApi = {
   // 获取订单列表
   getOrderList: (params) => {
-    return api.get('/admin/order', { params })
+    return request.get('/admin/order', { params })
   },
 
   // 获取订单详情
   getOrderById: (id) => {
-    return api.get(`/admin/order/${id}`)
+    return request.get(`/admin/order/${id}`)
   },
 
   // 修改订单状态
   updateOrderStatus: (id, data) => {
-    return api.put(`/admin/order/${id}/status`, data)
+    return request.put(`/admin/order/${id}/status`, data)
   },
 
   // 查询支付信息
   getPaymentInfo: (id) => {
-    return api.get(`/admin/order/${id}/payment`)
+    return request.get(`/admin/order/${id}/payment`)
   },
 
   // 确认收款（管理员手动确认）
   confirmPayment: (id) => {
-    return api.put(`/admin/order/${id}/confirm-payment`)
+    return request.put(`/admin/order/${id}/confirm-payment`)
   },
 
   // 发货
   deliver: (data) => {
-    return api.put('/admin/order/deliver', data)
+    return request.put('/admin/order/deliver', data)
   }
 }

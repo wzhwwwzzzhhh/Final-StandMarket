@@ -2,6 +2,12 @@ import { createRouter, createWebHashHistory } from 'vue-router'
 
 const routes = [
   {
+    path: '/login',
+    name: 'Login',
+    component: () => import('../views/Login.vue'),
+    meta: { public: true }
+  },
+  {
     path: '/',
     name: 'Home',
     component: () => import('../views/Home.vue')
@@ -75,6 +81,11 @@ const routes = [
     path: '/es/sync',
     name: 'EsSyncControl',
     component: () => import('../views/EsSyncControl.vue')
+  },
+  {
+    path: '/:pathMatch(.*)*',
+    name: 'NotFound',
+    component: () => import('../views/NotFound.vue')
   }
 ]
 
@@ -84,6 +95,18 @@ const router = createRouter({
   scrollBehavior() {
     // 每次路由跳转时滚动到页面顶部
     return { top: 0 }
+  }
+})
+
+// 路由守卫：未登录跳转登录页
+router.beforeEach((to, from, next) => {
+  const token = localStorage.getItem('admin_token')
+  if (!to.meta.public && !token) {
+    next('/login')
+  } else if (to.path === '/login' && token) {
+    next('/')
+  } else {
+    next()
   }
 })
 

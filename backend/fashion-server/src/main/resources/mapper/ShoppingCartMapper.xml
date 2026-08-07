@@ -13,6 +13,15 @@
         and sku_info = #{skuInfo}
     </select>
     
+    <!-- 根据用户id和商品id查询购物车项（不限定 sku，取最近一条） -->
+    <select id="findByUserIdAndProductId" resultType="com.fashion.entity.ShoppingCart">
+        select * from shopping_cart
+        where user_id = #{userId}
+        and product_id = #{productId}
+        order by create_time desc
+        limit 1
+    </select>
+
     <!-- 更新购物车项数量、金额、名称和图片 -->
     <update id="updateNumberAndAmount">
         update shopping_cart 

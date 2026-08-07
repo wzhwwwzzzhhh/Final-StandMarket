@@ -1,0 +1,123 @@
+-- ============================================================
+-- 阶段A-A2 存量明文密码迁移为 BCrypt 哈希
+-- 说明：部署代码后、改密生效前，对已存在的 user / employee 明文密码批量替换。
+-- 每个账号生成独立的 salt/哈希，避免相同密码共享同一哈希。
+-- 幂等：只更新仍为明文的记录（密码不以 $2 开头）。
+-- 注意：BCrypt 生成的哈希含 $，MySQL 字符串需转义，下面已处理。
+-- ============================================================
+
+-- 员工表迁移（原明文密码全部为 123456）
+UPDATE employee SET password = '$2a$12$x1jFOSMAJ0743X6GCZCI/.FYD8gAhobhTD0k71VbXgb.o7M2u2gU6' WHERE username = 'admin' AND password NOT LIKE '$2%';
+UPDATE employee SET password = '$2a$12$e5v1l6vMSxv5gahnQwD5SuYuoNOFBs7P9iOWvdgX8kE7iKuCoZP66' WHERE username = 'zhangsan' AND password NOT LIKE '$2%';
+UPDATE employee SET password = '$2a$12$LwXCLYx/HOk6MQLdF2R/0uWCEzOXHj6MyybHmR9fJYSZXMD.xFXve' WHERE username = 'lisi' AND password NOT LIKE '$2%';
+UPDATE employee SET password = '$2a$12$i6mKJd9Pgr/pR6CCzA3To.Ad.t12XaAF/JoCQIFOBszchCK5CKtbW' WHERE username = 'wangwu' AND password NOT LIKE '$2%';
+UPDATE employee SET password = '$2a$12$nEMyarTk01xj6LF7HUPXguBp0Js0pNn3SOVcjhF88ofPA.ryimtg.' WHERE username = 'zhaoliu' AND password NOT LIKE '$2%';
+
+-- 用户表迁移
+UPDATE user SET password = '$2a$12$mw21v50yki39e5oKCv/dc.njbms00ttXMYA460LCnykh/jlZ88pUG' WHERE id = 10 AND password NOT LIKE '$2%';
+UPDATE user SET password = '$2a$12$CoGu1K5mwuM6dDzK7PF9auZecaP0EIXrbLo2.8GME9eKX8TGRPC5u' WHERE id = 11 AND password NOT LIKE '$2%';
+UPDATE user SET password = '$2a$12$C.xjXm8OUN3HXlZ0mdVGIOBSZMhBVdp.GQNHR8MnJjYXtjccW7Nmq' WHERE id = 12 AND password NOT LIKE '$2%';
+UPDATE user SET password = '$2a$12$bdmE9rylwOnCBeVNZoICoOTuqu0J6AvVsSjBRUOCK8g.MheuB4xKS' WHERE id = 13 AND password NOT LIKE '$2%';
+UPDATE user SET password = '$2a$12$65oABKnRYygrKSBaeD50YuSjbPgOWTdxbT1Sv6uOzFXvZguduUMHu' WHERE id = 14 AND password NOT LIKE '$2%';
+UPDATE user SET password = '$2a$12$NJzSHrdX2o/FRHCS8SZEnOYLDiSZyChJE7HPgpuJX0LmZ5kwF1FA.' WHERE id = 15 AND password NOT LIKE '$2%';
+UPDATE user SET password = '$2a$12$ADanBe8BIY1q./kkG3Rsv.N8e1L8QNW0YN0jl3S0HIyCjZ.V6o7GG' WHERE id = 20 AND password NOT LIKE '$2%';
+UPDATE user SET password = '$2a$12$SPU7oyK0jjV3WLFScpxVkeeWihmWEmvMG4h22GdaGhtaA3/4QJMW6' WHERE id = 21 AND password NOT LIKE '$2%';
+UPDATE user SET password = '$2a$12$R8BQWHpptw/U9f/gWh48.eaB8bXrHadtO6EA7drGTmqG99qWMld5u' WHERE id = 22 AND password NOT LIKE '$2%';
+UPDATE user SET password = '$2a$12$H.vCYGiWtys4M2/RQ7P/3e50EPjuYpGXykXxR0OTevU5fUCN/v.z2' WHERE id = 23 AND password NOT LIKE '$2%';
+UPDATE user SET password = '$2a$12$FNZrKr6Ys7y8eDV.hgq5d.M5GXqiIP5IEAA7Lp57ZqsI/.FOkhPqK' WHERE id = 24 AND password NOT LIKE '$2%';
+UPDATE user SET password = '$2a$12$FDgvRDVZoNDlPtIyxP1L5uCDD.pTb0Aas.OhVvhKjWFl95hKJ77Ti' WHERE id = 25 AND password NOT LIKE '$2%';
+UPDATE user SET password = '$2a$12$AdxAa2nK8/IgkJGrvthBD.EebF./IK8/jffqz/dNOJ9gltrxijxdy' WHERE id = 26 AND password NOT LIKE '$2%';
+UPDATE user SET password = '$2a$12$UO.r.H.L6pxv9k6jyUuljeutXVsZSPNhtaYFImxDbNVGzw5WAFtVW' WHERE id = 27 AND password NOT LIKE '$2%';
+UPDATE user SET password = '$2a$12$cu.FLkPcz4nXWi52.3Ev2.FCjqwQJJz09sYVwL3v0BNOWk/3BO5RC' WHERE id = 28 AND password NOT LIKE '$2%';
+UPDATE user SET password = '$2a$12$tu1i.cTx7U9.tobd7v2IYuaiwJh2Mn77DOPcMAyGyukTDd1/XLO8C' WHERE id = 29 AND password NOT LIKE '$2%';
+UPDATE user SET password = '$2a$12$pQyiFYEjPnwWvYBIUSoGw.8Jdi1fN9kOQZMiQjiR3ULDJw358OW26' WHERE id = 30 AND password NOT LIKE '$2%';
+UPDATE user SET password = '$2a$12$edEeyFGtJWCf4ZlwXpnfKeGIcqSZFVkAQDCZZuJ.f5S8F16imfhie' WHERE id = 31 AND password NOT LIKE '$2%';
+UPDATE user SET password = '$2a$12$4p6l6hDy.4SaUzjo/GJGbex8jLuPdtJBpN433cyT3Tpx2uPaYOxAa' WHERE id = 32 AND password NOT LIKE '$2%';
+UPDATE user SET password = '$2a$12$ne3VgHPXspP3WOxw3naPje65NpTFyeTBiu2X/yiFCB4nVQwJV0CGO' WHERE id = 33 AND password NOT LIKE '$2%';
+UPDATE user SET password = '$2a$12$v7WXuy22ZZWAGk.fE0vFGupKbxZgV4.Mg.r/Ua7Kf8sW8aC0RLw3.' WHERE id = 34 AND password NOT LIKE '$2%';
+UPDATE user SET password = '$2a$12$3fUoa6Y.OOohnb.0WDMz4uXPw3P7fFkR0TQ53EEe.cMgyps69BRXm' WHERE id = 35 AND password NOT LIKE '$2%';
+UPDATE user SET password = '$2a$12$deOmhXD8RrNBy1/IJkv4Yen0rPi1wFftBYHQ0ublQR/WeZU8vC5vy' WHERE id = 36 AND password NOT LIKE '$2%';
+UPDATE user SET password = '$2a$12$9QRsI4zpR0bNMQQy4gQOku2L14GF8LQIwbX60F20zFgU6OmBbQ1iG' WHERE id = 37 AND password NOT LIKE '$2%';
+UPDATE user SET password = '$2a$12$q6tZX9825hl/IIfa7.n3.el2BxyKxE5FS.xSyzocWcaRvA2otrVta' WHERE id = 38 AND password NOT LIKE '$2%';
+UPDATE user SET password = '$2a$12$Q6NUHI8D1t0CDuMNk0CnPejf5m1NxuzebSTeU.8LiLzKeE4T6KRTe' WHERE id = 39 AND password NOT LIKE '$2%';
+UPDATE user SET password = '$2a$12$/b4EBd0aM5M.cOYHDkgMw.w4czlxFM7CVjTAhesKSTIVxd3lOZTZS' WHERE id = 40 AND password NOT LIKE '$2%';
+UPDATE user SET password = '$2a$12$dvXxhyMVFZzmLWRE5eqTg.KgC4Qq92IYOxHoPH5V544DlNPrJ/rk2' WHERE id = 41 AND password NOT LIKE '$2%';
+UPDATE user SET password = '$2a$12$zaW0GPHwdneAUBmU4i5kzOTwPU3JU13CZe3SHkplstBS4wAoHFRvq' WHERE id = 42 AND password NOT LIKE '$2%';
+UPDATE user SET password = '$2a$12$OYaLfi0Qm/j7QvGVXwGcRuGq4gwIqk6eG8MxXVcnFaA.bbJudTuEO' WHERE id = 43 AND password NOT LIKE '$2%';
+UPDATE user SET password = '$2a$12$KiRozMDRvzFnNF2hJ04USu06QH1TM3S9AIxz5bGLJt.ZkzgEayeB6' WHERE id = 44 AND password NOT LIKE '$2%';
+UPDATE user SET password = '$2a$12$6JN5zoPm4UfAjpuowgUMhuY3DxJ73bqGhtdozie/ESo/Tcx0YkY7q' WHERE id = 45 AND password NOT LIKE '$2%';
+UPDATE user SET password = '$2a$12$4rx8.NgOGZWs5LIprPrjyOyujmTgF1U0U0E.J0t.sut2C4qGoW74q' WHERE id = 46 AND password NOT LIKE '$2%';
+UPDATE user SET password = '$2a$12$ubLQf7Tt4mE0sjSsV3bqHeW5pwqXGV/cy14c4c6OPbV.Bi97L5pw6' WHERE id = 47 AND password NOT LIKE '$2%';
+UPDATE user SET password = '$2a$12$EBtTMAdbKQx52LK1Yi46xOg3.3Brb23Dp9jeKfO5TjhmAV7da3Xcy' WHERE id = 48 AND password NOT LIKE '$2%';
+UPDATE user SET password = '$2a$12$iPayiGuVUgFkXJ58VNDDAuOIUVdCc.mlxAsT7PbPi8ykaSlRcNM3u' WHERE id = 49 AND password NOT LIKE '$2%';
+UPDATE user SET password = '$2a$12$x06pVUPkW.EwEFyGyoG7ceCei9QJ/6Wi/F3pNes7uY7NTakvSE3lG' WHERE id = 50 AND password NOT LIKE '$2%';
+UPDATE user SET password = '$2a$12$omOrjG0YoGh5yFO.BTDFV.Rqp/8TUzlUMXYBfZmFL4UNVTE8mdO46' WHERE id = 51 AND password NOT LIKE '$2%';
+UPDATE user SET password = '$2a$12$UXykNcyuL/c/GTKNibibNe1.FD9Z7pZEKc6oIIfQ9ydwsHXv2Bgye' WHERE id = 52 AND password NOT LIKE '$2%';
+UPDATE user SET password = '$2a$12$8b4Z8sVvJXdxAq/7q61mKeebgGB../auAxpkKdqSsyUqcBYttP.ru' WHERE id = 53 AND password NOT LIKE '$2%';
+UPDATE user SET password = '$2a$12$sCTucgVa41CJUD1CfI7odOucwVRBdNh95eOZZBs30TnSYGwzYLvqq' WHERE id = 54 AND password NOT LIKE '$2%';
+UPDATE user SET password = '$2a$12$e9.p0DLDF268ZhhkP2NTfeIdAEc.zDyo.zizU6bvueCKNwX4DEq0a' WHERE id = 55 AND password NOT LIKE '$2%';
+UPDATE user SET password = '$2a$12$OXfwuvtKf5WjXbU66SaXc.IjgMTNdsqJGemP.3XVLkLPAx47/u8Ou' WHERE id = 56 AND password NOT LIKE '$2%';
+UPDATE user SET password = '$2a$12$OHWSR0UPXnZ./hDFhlLcOuC7R0EVF0JCqt9vxbNKsC4kUwSP9.R8K' WHERE id = 57 AND password NOT LIKE '$2%';
+UPDATE user SET password = '$2a$12$UZQjIlAB9yUk/uB958DAEe7zsD73tQDR4uMIFEPKkpy.5ZltV16C2' WHERE id = 58 AND password NOT LIKE '$2%';
+UPDATE user SET password = '$2a$12$tJnuCJxls966YQENP.jL8unI/6iODynagcx58Yf6yzqDSjmE3046m' WHERE id = 59 AND password NOT LIKE '$2%';
+UPDATE user SET password = '$2a$12$13WXCctyHtIo/q2JAyCOteDes8IxRopzi5eznFPLalFzQ4wtGyq8.' WHERE id = 60 AND password NOT LIKE '$2%';
+UPDATE user SET password = '$2a$12$Q9Q3mVrAYTjNo8NBE5jDgOwrBX85vc2UCESvcrGcl5z4745rb.Xo6' WHERE id = 61 AND password NOT LIKE '$2%';
+UPDATE user SET password = '$2a$12$AqgHOfh0aHKoHUguluEqJu7GOGE2E6a6NPI0/TEnBiuxicAz1m2ve' WHERE id = 62 AND password NOT LIKE '$2%';
+UPDATE user SET password = '$2a$12$z71xv4tvuuTzUAfwnwzlm.SHdsreJkkwQN6zAOOjorQrrgUAaWzBa' WHERE id = 63 AND password NOT LIKE '$2%';
+UPDATE user SET password = '$2a$12$DW3DnOcDpXUPYgeAkkxAPuvD74PpFSTc21uTL4.S0mFMnGC6w2NuK' WHERE id = 64 AND password NOT LIKE '$2%';
+UPDATE user SET password = '$2a$12$2i6tMCuXJ1N6jQvXBBY1gu4xA8KVJ/Rop5qN.iZRuB411dA27kWnu' WHERE id = 65 AND password NOT LIKE '$2%';
+UPDATE user SET password = '$2a$12$DUbYmvmiEDu7n5YXVm7T3uhWSGJDy7QI6CsBzNFVwRMKHNn4s3y1u' WHERE id = 66 AND password NOT LIKE '$2%';
+UPDATE user SET password = '$2a$12$ST21LrLwGReob.oF/h0dqOzPvHxmfCFhZ4jfMkDm8h/ekCY5KsFI.' WHERE id = 67 AND password NOT LIKE '$2%';
+UPDATE user SET password = '$2a$12$fO7pt/JmZN/SI2OVwB6Khufb/x.HCo9bwc89oLqYdWGALDrRlj0R2' WHERE id = 68 AND password NOT LIKE '$2%';
+UPDATE user SET password = '$2a$12$CC9Eivi8eD7l1PKwMq0qa.cwUB84utJMYrJL3CRNFVL/g6B3l.Odq' WHERE id = 69 AND password NOT LIKE '$2%';
+UPDATE user SET password = '$2a$12$dINdzmQpalelYeWqUKHW2.3bPmLMaumsTSbB60d6GtUq/FiyAUkii' WHERE id = 70 AND password NOT LIKE '$2%';
+UPDATE user SET password = '$2a$12$DlF/h1dntS49OCmMLBg5v.zbeO/mbhX8uwdc3BCXj.wr.GhJsMBe6' WHERE id = 71 AND password NOT LIKE '$2%';
+UPDATE user SET password = '$2a$12$2EyJNaNZKq2q50MV.J2DBeqXpMu.IbUruUzYCg.H3eY9p.Q9Ih7Z2' WHERE id = 72 AND password NOT LIKE '$2%';
+UPDATE user SET password = '$2a$12$rIsaZi90aBg2s/ZPLhOd0eYAmbWtBzz21nuE7pWz49lzLfd9XQr8O' WHERE id = 73 AND password NOT LIKE '$2%';
+UPDATE user SET password = '$2a$12$MKNAtdCkn8WTJzHkN3a2VOSPjfMXf21ro2QM73gv62qkgAfkW18GO' WHERE id = 74 AND password NOT LIKE '$2%';
+UPDATE user SET password = '$2a$12$O6AVcboZg2IOuKLq6Eqq.uR2fOpEGin/IqhMJ/CtoywlSgXEMYOra' WHERE id = 75 AND password NOT LIKE '$2%';
+UPDATE user SET password = '$2a$12$wAZi4jcPUpDhQaZ4fNswleQ.PRZn6b9ZON/tmouLM.zw99uLlaApC' WHERE id = 76 AND password NOT LIKE '$2%';
+UPDATE user SET password = '$2a$12$2PdC0GqlrgSlQtHIZExco.Yr.7UWsWGBvun/AxJHVE8mJS9GDG9fu' WHERE id = 77 AND password NOT LIKE '$2%';
+UPDATE user SET password = '$2a$12$btg/1fq/ba2TLKHbIBz57OZQ0I01RHJ.HVYIrGHVHU02ndJH/4Q2y' WHERE id = 78 AND password NOT LIKE '$2%';
+UPDATE user SET password = '$2a$12$y/NpOdxQUr4nB7/R1XBbAuadpjglyZ8ncNbXNH.MIJxb0QzYjBZ/2' WHERE id = 79 AND password NOT LIKE '$2%';
+UPDATE user SET password = '$2a$12$5Q5aV3GqWGAaJ9T2keZGHeRVz3fUojZzWlwbQCjYtC/uJJQ9UOE9.' WHERE id = 80 AND password NOT LIKE '$2%';
+UPDATE user SET password = '$2a$12$e4I3u6XVC4xidGQZUGBO2eMh/r9E1TJjx2.eXpmS1SELQQ5KhzxGm' WHERE id = 81 AND password NOT LIKE '$2%';
+UPDATE user SET password = '$2a$12$/vaplmeKZTqqEdI8idPWDeOlBLb12bUG7NqeG3el5e0cP7yEkv6MS' WHERE id = 82 AND password NOT LIKE '$2%';
+UPDATE user SET password = '$2a$12$ZRSygH15GaDBUiIvtJKuse5T9VTVo678/zke7LLnIgvQLJ6URQXlu' WHERE id = 83 AND password NOT LIKE '$2%';
+UPDATE user SET password = '$2a$12$v.lULzfqBx1qldjPZTf6e.cfbjhNSjFH0elguqzFJfiiy/aDMURSG' WHERE id = 84 AND password NOT LIKE '$2%';
+UPDATE user SET password = '$2a$12$C0/xTJvhGgpMgMwCbgqphe3s/8lVf0N0BWYQurVxrhw9nzX0aoCRi' WHERE id = 85 AND password NOT LIKE '$2%';
+UPDATE user SET password = '$2a$12$LhAKyWmUGF2j9CSrCO07eeiqhKkeKQ0KPVquyHmAZ7MV0et4KRA0e' WHERE id = 86 AND password NOT LIKE '$2%';
+UPDATE user SET password = '$2a$12$WBWduJ0lVcEK7uShd5Q7nuwwtQEbTNe0PsDvdikbTK1vEyd21PxlK' WHERE id = 87 AND password NOT LIKE '$2%';
+UPDATE user SET password = '$2a$12$KLVphIL2fk56hFwzYshnYeQP3o8ebLud9uUyHfHNC6G/uBwO499zS' WHERE id = 88 AND password NOT LIKE '$2%';
+UPDATE user SET password = '$2a$12$vWiIAK/XeYTJ3Nn/eYtry.868HYNQ0Br5GCi4w4Rhc.5cawDjLyva' WHERE id = 89 AND password NOT LIKE '$2%';
+UPDATE user SET password = '$2a$12$X/AYYIoGTR7ji5bj3EpsPuV4yG.6sV7lXj5bjJ28gB5I9fJe2kgSu' WHERE id = 90 AND password NOT LIKE '$2%';
+UPDATE user SET password = '$2a$12$Mu140wkiwIKL6efEOrLcrOxBIy2gAGnApEbo8xRXOEJxjP7Wj2Beq' WHERE id = 91 AND password NOT LIKE '$2%';
+UPDATE user SET password = '$2a$12$Wv3qQjwINyO01NZOlJA9W.FjY7ZOTfQIRSYq.Lams7eO1Fveaj4qq' WHERE id = 92 AND password NOT LIKE '$2%';
+UPDATE user SET password = '$2a$12$Z9xH7sezrvASVQ5xJzDet.3Lo9EicEoI733FPVpnvv4VtCqr.kD12' WHERE id = 93 AND password NOT LIKE '$2%';
+UPDATE user SET password = '$2a$12$tVAV.gXgQuOFqN2CXlZqS.oZJVnJPx0AY/appMXTW.OKjPJA26ZWm' WHERE id = 94 AND password NOT LIKE '$2%';
+UPDATE user SET password = '$2a$12$KEchVRfsSAzci4rXn7hVo.daDj/13zA47mloOzgTFiESVLEu1DhxC' WHERE id = 95 AND password NOT LIKE '$2%';
+UPDATE user SET password = '$2a$12$SpCm6FAC428KLehNcLMBAu0YlB/AgxMr2bT2EaUlfzn1XMhqzy9a2' WHERE id = 96 AND password NOT LIKE '$2%';
+UPDATE user SET password = '$2a$12$hMX/YlGrsElF19pY1j1IPuYBQSschIGyzrA6rzzkC0a6bKBIuTejC' WHERE id = 97 AND password NOT LIKE '$2%';
+UPDATE user SET password = '$2a$12$zyskJAjIHjWHAxpYMoIeA.oV1bjzl3cWaEyUy2rNDIjz3iruB2bwe' WHERE id = 98 AND password NOT LIKE '$2%';
+UPDATE user SET password = '$2a$12$OrKNXyY3jKNChoTRfpFMcubIMkF6GqUI0auZA/ck949nKtAvoXdGG' WHERE id = 99 AND password NOT LIKE '$2%';
+UPDATE user SET password = '$2a$12$kONuinqlvEPSLBko8T/4DOJHeZ4bfDRnkO3JAL.ObUtQbul4wuafC' WHERE id = 100 AND password NOT LIKE '$2%';
+UPDATE user SET password = '$2a$12$SelA4Q68PVPkqUn8Xf7CYOUtlNt9waIC4JFYK/TwTif6tBwVEGacC' WHERE id = 101 AND password NOT LIKE '$2%';
+UPDATE user SET password = '$2a$12$8mfJaJul6x3TH701e1owrO0d0cT8SC1AxyA.79qq3uGEEC.rgc14i' WHERE id = 102 AND password NOT LIKE '$2%';
+UPDATE user SET password = '$2a$12$ydEGQwtiiBRxWz5LSTUW7uoknx3tpWJHDGNtNkeqcox1asLk3DF36' WHERE id = 103 AND password NOT LIKE '$2%';
+UPDATE user SET password = '$2a$12$D5HN5ggsTxl3fzA.fb9hGOFFknVo/lmGnED3ELtgjXsfjWQLlpz1a' WHERE id = 104 AND password NOT LIKE '$2%';
+UPDATE user SET password = '$2a$12$ZVRcZkkOKpIB7UfTcikAG.0WrAGZeYgkyDA5n81IgSNiUWtq7yXaS' WHERE id = 105 AND password NOT LIKE '$2%';
+UPDATE user SET password = '$2a$12$zn8/jPcF6SYuEzSuL0.5ueKI7RrOzpMv24ZWIfEjOMQSZM6yu8Ddq' WHERE id = 106 AND password NOT LIKE '$2%';
+UPDATE user SET password = '$2a$12$O2m8FcmHHs6.98wVNTS2LeV4rJ72SFm7YYp/45U3mI1XAu4aAeLki' WHERE id = 107 AND password NOT LIKE '$2%';
+UPDATE user SET password = '$2a$12$ETvJR.AE2PRltuCSLdn/n.7WAg28YGaiamc6P2Gm3NPXCcpv9eUf.' WHERE id = 108 AND password NOT LIKE '$2%';
+UPDATE user SET password = '$2a$12$kEFCqAJ4oaDPxuZWKCvwJeqegXHF2mTCXw0UMEPvr/58E3i7fXiSm' WHERE id = 109 AND password NOT LIKE '$2%';
+UPDATE user SET password = '$2a$12$4L48/8rn7YaG21I0EWCIfeIEqCngrE/LzGSDtY99XE8SPonHKJfmq' WHERE id = 110 AND password NOT LIKE '$2%';
+UPDATE user SET password = '$2a$12$vCtKwn57CFOhITv3GO4pbOJkzhkF5Mw3OFffoOWNuCKuoeMjaKDLq' WHERE id = 111 AND password NOT LIKE '$2%';
+UPDATE user SET password = '$2a$12$Ptu97//UvLkfMXiuBtBkOuqc5CvpGZvTc0wcdG4mqA5WhuNaxF6xq' WHERE id = 112 AND password NOT LIKE '$2%';
+UPDATE user SET password = '$2a$12$JjgYvu0kZAEP.EJmWMSJneQhw8ZCvoCDZ6eojssluDZ.puN1pbB8a' WHERE id = 113 AND password NOT LIKE '$2%';
+UPDATE user SET password = '$2a$12$/i0jNY.o4Nnt4QmkeZDUxe4gd9mAWj1QbFQl18.4D3Iw64p3s4s/i' WHERE id = 114 AND password NOT LIKE '$2%';
+UPDATE user SET password = '$2a$12$1yBQIcxfHGZ8mE6lU4LJ3uqeMoKm4pj5/SNuEb1Q9rxyaqT0pYnUe' WHERE id = 115 AND password NOT LIKE '$2%';
+UPDATE user SET password = '$2a$12$/Ts9YzF1X4Xwpr6UYC09y.llI/2RR3l0qhqxQU0ap5Bt6Znd3pBT2' WHERE id = 116 AND password NOT LIKE '$2%';
+UPDATE user SET password = '$2a$12$NuYzz4yxwUoV6JQNQX9idO4ZxD5KWXCnNde/lF4SNjqBeVL4aelzS' WHERE id = 117 AND password NOT LIKE '$2%';
+UPDATE user SET password = '$2a$12$ZocbjUd8CL2byXnzu6hGXeckm5b/eK2.denBRvRa2C/iOMs3k3Qzm' WHERE id = 118 AND password NOT LIKE '$2%';
+UPDATE user SET password = '$2a$12$WF4w7jneHEGxgEKbib75wOJZ4rV3VrUTxjE3ZiH2rXX0LXyQe/YXe' WHERE id = 119 AND password NOT LIKE '$2%';
+UPDATE user SET password = '$2a$12$d9Yw93DmpatyM6sSWBWOTe./2QtlWEta4efpc22oiE46yEuFHmuua' WHERE id = 120 AND password NOT LIKE '$2%';

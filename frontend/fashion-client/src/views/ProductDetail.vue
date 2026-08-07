@@ -821,7 +821,6 @@ export default {
 .cart-button:active:not(:disabled) {
   animation: hydraulicPress 0.2s ease;
 }
-}
 
 /* 商品评价 */
 .product-reviews {

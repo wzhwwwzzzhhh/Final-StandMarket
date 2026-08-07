@@ -3,6 +3,7 @@ package com.fashion.service.impl;
 import com.fashion.entity.*;
 import com.fashion.mapper.*;
 import com.fashion.service.PaymentService;
+import com.fashion.constant.RedisKey;
 import com.github.pagehelper.PageHelper;
 import com.github.pagehelper.PageInfo;
 import com.fashion.context.BaseContext;
@@ -10,10 +11,14 @@ import com.fashion.dto.OrderCreateDTO;
 import com.fashion.service.OrderService;
 import org.springframework.beans.factory.annotation.Autowired;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
+import java.time.ZoneId;
+import java.time.ZoneOffset;
+import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
@@ -34,11 +39,72 @@ public class OrderServiceImpl implements OrderService {
     @Autowired
     private ProductMapper productMapper;
     @Autowired
+    private SeckillActivityMapper seckillActivityMapper;
+    @Autowired
+    private SeckillCouponMapper seckillCouponMapper;
+    @Autowired
     private PaymentService paymentService;
+    @Autowired
+    private StringRedisTemplate stringRedisTemplate;
 
     @Override
     public List<Orders> selectByCondition(Map<String, Object> params) {
         return orderMapper.selectByCondition(params);
+    }
+
+    /**
+     * 服务端应用秒杀活动/秒杀券优惠（与结算页计算逻辑一致，且以服务端配置为准）
+     */
+    private BigDecimal applyDiscount(BigDecimal totalAmount, Long activityId, Long couponId) {
+        BigDecimal discount = BigDecimal.ZERO;
+        LocalDateTime now = LocalDateTime.now();
+
+        if (activityId != null && activityId > 0) {
+            SeckillActivity activity = seckillActivityMapper.selectById(activityId);
+            if (activity != null
+                    && (now.isAfter(activity.getStartTime()) && now.isBefore(activity.getEndTime()))) {
+                BigDecimal discountRate = activity.getDiscount();
+                if (discountRate == null || discountRate.compareTo(BigDecimal.ZERO) <= 0
+                        || discountRate.compareTo(new BigDecimal("10")) > 0) {
+                    discountRate = new BigDecimal("10");
+                }
+                BigDecimal activityDiscount = totalAmount.multiply(
+                                BigDecimal.ONE.subtract(discountRate.divide(new BigDecimal("10"), 2, BigDecimal.ROUND_HALF_UP)))
+                        .setScale(2, BigDecimal.ROUND_HALF_UP);
+                discount = discount.add(activityDiscount);
+            }
+        }
+
+        if (couponId != null && couponId > 0) {
+            SeckillCoupon coupon = seckillCouponMapper.selectById(couponId);
+            if (coupon != null && coupon.getStatus() != null && coupon.getStatus() == 1
+                    && (now.isAfter(coupon.getStartTime()) && now.isBefore(coupon.getEndTime()))
+                    && coupon.getOriginalPrice() != null && coupon.getSeckillPrice() != null) {
+                BigDecimal couponDiscount = BigDecimal.valueOf(coupon.getOriginalPrice())
+                        .subtract(BigDecimal.valueOf(coupon.getSeckillPrice()))
+                        .setScale(2, BigDecimal.ROUND_HALF_UP);
+                discount = discount.add(couponDiscount);
+            }
+        }
+        return discount;
+    }
+
+    /**
+     * 生成订单号：ORD + 时间戳秒 + Redis按日自增序列
+     * Redis INCR 原子自增保证同一秒内也不重复，避免原 System.currentTimeMillis 方案的碰撞
+     */
+    private String generateOrderNumber() {
+        String date = LocalDateTime.now(ZoneId.systemDefault())
+                .format(DateTimeFormatter.ofPattern("yyyyMMdd"));
+        Long seq = stringRedisTemplate.opsForValue().increment(RedisKey.ORDER_NUMBER_SEQ_KEY + ":" + date);
+        if (seq == null) {
+            throw new RuntimeException("订单号生成失败");
+        }
+        long timestamp = LocalDateTime.now(ZoneOffset.UTC).toEpochSecond(ZoneOffset.UTC);
+        String ts = String.valueOf(timestamp);
+        // 截断后的 ts 保证拼接结果 ≤ varchar(50)，与现有"ORD1776833285875"格式兼容
+        String suffix = ts.length() > 12 ? ts.substring(ts.length() - 12) : ts;
+        return "ORD" + suffix + seq;
     }
 
     @Override
@@ -86,6 +152,9 @@ public class OrderServiceImpl implements OrderService {
         if (userId == null) {
             throw new RuntimeException("用户未登录");
         }
+        if (orderCreateDTO == null || orderCreateDTO.getProductIds() == null || orderCreateDTO.getProductIds().isEmpty()) {
+            throw new RuntimeException("请选择要结算的商品");
+        }
 
         Orders orders = new Orders();
         orders.setUserId(userId);
@@ -93,7 +162,7 @@ public class OrderServiceImpl implements OrderService {
         orders.setStatus(1);
         orders.setPayStatus(0);
         orders.setPayMethod(orderCreateDTO.getPayMethod() != null ? orderCreateDTO.getPayMethod() : 1);
-        orders.setNumber("ORD" + System.currentTimeMillis());
+        orders.setNumber(generateOrderNumber());
         orders.setDeliveryStatus(orderCreateDTO.getDeliveryStatus() != null ? orderCreateDTO.getDeliveryStatus() : 1);
 
         if (orderCreateDTO.getEstimatedDeliveryTime() != null) {
@@ -113,31 +182,60 @@ public class OrderServiceImpl implements OrderService {
             }
         }
 
-        orders.setAmount(orderCreateDTO.getAmount() != null ? orderCreateDTO.getAmount() : BigDecimal.ZERO);
+        // 服务端重算订单金额：基于购物车项，忽略前端传值，防止金额被篡改
+        List<OrderDetail> orderDetails = new ArrayList<>();
+        BigDecimal totalAmount = BigDecimal.ZERO;
+        for (Long cartItemId : orderCreateDTO.getProductIds()) {
+            ShoppingCart cartItem = shoppingCartMapper.findById(cartItemId);
+            if (cartItem == null) {
+                throw new RuntimeException("购物车商品不存在");
+            }
+            // 校验购物车项归属当前用户
+            if (!cartItem.getUserId().equals(userId)) {
+                throw new RuntimeException("存在无权操作的商品");
+            }
+            Product product = productMapper.getById(cartItem.getProductId());
+            if (product == null) {
+                throw new RuntimeException("商品不存在");
+            }
+            if (product.getStock() < cartItem.getNumber()) {
+                throw new RuntimeException("商品库存不足：" + product.getName());
+            }
+            OrderDetail orderDetail = new OrderDetail();
+            orderDetail.setOrderId(orders.getId());
+            orderDetail.setProductId(cartItem.getProductId());
+            orderDetail.setName(cartItem.getName());
+            orderDetail.setImage(cartItem.getImage());
+            orderDetail.setSkuInfo(cartItem.getSkuInfo());
+            orderDetail.setNumber(cartItem.getNumber());
+            // 金额以服务端商品价格重算，不使用购物车/前端携带的金额
+            BigDecimal itemAmount = product.getPrice().multiply(new BigDecimal(cartItem.getNumber()));
+            orderDetail.setAmount(itemAmount);
+            orderDetails.add(orderDetail);
+            totalAmount = totalAmount.add(itemAmount);
+        }
+        if (orderDetails.isEmpty()) {
+            throw new RuntimeException("购物车为空");
+        }
+
+        // 服务端重算订单金额（商品总价），并应用秒杀活动/秒杀券优惠，忽略前端传值
+        BigDecimal discount = applyDiscount(totalAmount, orderCreateDTO.getActivityId(), orderCreateDTO.getCouponId());
+        orders.setAmount(totalAmount.subtract(discount).max(BigDecimal.ZERO));
+        orders.setOriginalPrice(totalAmount);
+        orders.setSeckillActivityId(orderCreateDTO.getActivityId());
+        orders.setSeckillCouponId(orderCreateDTO.getCouponId());
+        if (orderCreateDTO.getActivityId() != null || orderCreateDTO.getCouponId() != null) {
+            orders.setIsSeckill(1);
+        }
 
         orderMapper.insert(orders);
 
-        List<Long> productIds = orderCreateDTO.getProductIds();
-        if (productIds != null && !productIds.isEmpty()) {
-            List<OrderDetail> orderDetails = new ArrayList<>();
-            for (Long cartItemId : productIds) {
-                ShoppingCart cartItem = shoppingCartMapper.findById(cartItemId);
-                if (cartItem != null) {
-                    OrderDetail orderDetail = new OrderDetail();
-                    orderDetail.setOrderId(orders.getId());
-                    orderDetail.setProductId(cartItem.getProductId());
-                    orderDetail.setName(cartItem.getName());
-                    orderDetail.setImage(cartItem.getImage());
-                    orderDetail.setSkuInfo(cartItem.getSkuInfo());
-                    orderDetail.setNumber(cartItem.getNumber());
-                    orderDetail.setAmount(cartItem.getAmount());
-                    orderDetails.add(orderDetail);
-                }
-            }
-            if (!orderDetails.isEmpty()) {
-                orderDetailMapper.batchInsert(orderDetails);
-            }
+        // 回填订单id后批量插入明细
+        for (OrderDetail detail : orderDetails) {
+            detail.setOrderId(orders.getId());
         }
+        orderDetailMapper.batchInsert(orderDetails);
+
         return orders;
     }
 

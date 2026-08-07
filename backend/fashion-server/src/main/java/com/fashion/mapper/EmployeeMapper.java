@@ -11,6 +11,13 @@ public interface EmployeeMapper {
      * @return 员工列表
      */
     List<Employee> list(String name);
+
+    /**
+     * 根据用户名查询员工
+     * @param username 用户名
+     * @return 员工
+     */
+    Employee getByUsername(String username);
     
     /**
      * 根据ID查询员工

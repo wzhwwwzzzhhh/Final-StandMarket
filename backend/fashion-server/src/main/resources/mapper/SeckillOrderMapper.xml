@@ -77,11 +77,11 @@
         where user_id = #{userId} and coupon_id = #{couponId}
     </select>
     
-    <!-- 更新订单状态 -->
+    <!-- 更新订单状态：仅允许待支付(1)的订单被更新，防止并发下覆盖已支付状态 -->
     <update id="updateStatus">
         update seckill_order
         set status = #{status}
-        where order_number = #{orderNumber}
+        where order_number = #{orderNumber} and status = 1
     </update>
     
     <!-- 更新支付时间 -->

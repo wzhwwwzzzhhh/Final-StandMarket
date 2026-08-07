@@ -38,3 +38,15 @@ application-prod.yml
 application-test.yml
 *.properties
 .env
+# 本地 Codex / AI 工具状态
+.codex/
+
+# 本地 Elasticsearch 插件缓存；Dockerfile 当前从固定插件地址在线安装。
+# 如未来改为离线构建，应在部署阶段固定来源、版本与 SHA-256 校验。
+docker/elasticsearch/plugins/*
+!docker/elasticsearch/plugins/.gitkeep
+
+# 本地工具与临时文件
+*.tmp
+*.bak
+*.swp

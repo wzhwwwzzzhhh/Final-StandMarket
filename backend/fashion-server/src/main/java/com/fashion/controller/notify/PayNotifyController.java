@@ -15,6 +15,7 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
 import javax.servlet.http.HttpServletRequest;
+import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.util.Enumeration;
 import java.util.HashMap;
@@ -75,6 +76,24 @@ public class PayNotifyController {
             Payment payment = paymentService.getPaymentStatus(outTradeNo);
             if (payment == null) {
                 log.warn("支付记录不存在 outTradeNo={}", outTradeNo);
+                return "failure";
+            }
+
+            // 5.1 比对回调金额与支付记录金额，防止金额被篡改
+            String totalAmountStr = params.get("total_amount");
+            if (totalAmountStr == null) {
+                log.error("支付宝回调缺少 total_amount outTradeNo={}", outTradeNo);
+                return "failure";
+            }
+            try {
+                BigDecimal callbackAmount = new BigDecimal(totalAmountStr);
+                if (payment.getAmount() == null || callbackAmount.compareTo(payment.getAmount()) != 0) {
+                    log.error("支付宝回调金额不匹配 outTradeNo={}, 回调金额={}, 应支付金额={}",
+                            outTradeNo, totalAmountStr, payment.getAmount());
+                    return "failure";
+                }
+            } catch (NumberFormatException e) {
+                log.error("支付宝回调金额格式非法 outTradeNo={}, total_amount={}", outTradeNo, totalAmountStr);
                 return "failure";
             }
 

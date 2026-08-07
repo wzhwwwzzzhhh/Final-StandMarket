@@ -5,6 +5,7 @@ public class AgentChatRequest {
     private Integer userId;
     private String sessionId;
     private String message;
+    private String token;
 
     public Integer getUserId() {
         return userId;
@@ -28,5 +29,13 @@ public class AgentChatRequest {
 
     public void setMessage(String message) {
         this.message = message;
+    }
+
+    public String getToken() {
+        return token;
+    }
+
+    public void setToken(String token) {
+        this.token = token;
     }
 }

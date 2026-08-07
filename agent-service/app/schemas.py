@@ -6,6 +6,7 @@ class ChatRequest(BaseModel):
     userId: int
     sessionId: Optional[str] = None
     message: str
+    token: Optional[str] = None
 
 
 class ProductItem(BaseModel):

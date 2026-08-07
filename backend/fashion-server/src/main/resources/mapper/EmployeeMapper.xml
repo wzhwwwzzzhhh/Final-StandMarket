@@ -14,6 +14,11 @@
         order by create_time desc
     </select>
     
+    <!-- 根据用户名查询员工 -->
+    <select id="getByUsername" resultType="com.fashion.entity.Employee">
+        select * from employee where username = #{username}
+    </select>
+
     <!-- 根据ID查询员工 -->
     <select id="getById" resultType="com.fashion.entity.Employee">
         select * from employee where id = #{id}

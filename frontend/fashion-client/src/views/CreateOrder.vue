@@ -529,10 +529,9 @@ const handleSubmit = async () => {
       }
     }
 
-    // 构建订单数据
+    // 构建订单数据（金额由服务端重算，前端不再传递，防止篡改）
     const orderData = {
       productIds: productIds,
-      amount: finalAmount.value, // 传递前端计算好的总金额（包含优惠后的金额）
       addressId: selectedAddress.value,
       payMethod: selectedPaymentMethod.value,
       activityId: selectedActivity.value || null,

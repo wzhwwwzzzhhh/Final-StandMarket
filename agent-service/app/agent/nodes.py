@@ -41,10 +41,11 @@ def recommend_node(state: dict) -> dict:
 
 
 def order_node(state: dict) -> dict:
-    """订单查询节点：调 Java 后端接口查订单"""
+    """订单查询节点：携带用户 token 调 Java 后端带鉴权的订单接口"""
     try:
-        url = f"{settings.backend_base_url}/user/order/list?userId={state['userId']}"
-        resp = httpx.get(url, timeout=5)
+        url = f"{settings.backend_base_url}/user/agent/order/list"
+        headers = {"Authorization": f"Bearer {state.get('token', '')}"}
+        resp = httpx.get(url, headers=headers, timeout=5)
         state["order_info"] = resp.json() if resp.status_code == 200 else {"error": "查询失败"}
     except Exception as e:
         state["order_info"] = {"error": str(e)}

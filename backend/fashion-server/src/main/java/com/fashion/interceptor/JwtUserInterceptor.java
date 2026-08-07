@@ -68,4 +68,12 @@ public class JwtUserInterceptor extends HandlerInterceptorAdapter {
 
         return true;
     }
+
+    /**
+     * 请求结束后清理用户上下文，防止 Tomcat 线程池复用导致用户身份串用
+     */
+    @Override
+    public void afterCompletion(HttpServletRequest request, HttpServletResponse response, Object handler, Exception ex) {
+        BaseContext.removeUserId();
+    }
 }

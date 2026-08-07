@@ -332,8 +332,10 @@ export default {
         cancelButtonText: '取消',
         type: 'warning'
       }).then(() => {
-        // 实现退出登录逻辑
+        localStorage.removeItem('admin_token')
+        localStorage.removeItem('adminInfo')
         this.$message.success('已退出登录')
+        this.$router.push('/login')
       }).catch(() => {
         // 取消退出
       })

@@ -169,3 +169,15 @@ python app/main.py
 - 主分支: `master` / `main`
 - 不要提交 `application-dev.yml`、`application-prod.yml`、`*.properties`、`.env` 等敏感配置
 - `target/`、`dist/`、`node_modules/` 已 gitignore
+
+## 项目级 Skills（`.claude/skills/`）
+
+仅覆盖「开发 → 测试 → 审查 → 提交」四步，不涉及 push/PR/分支管理。轻量、项目内生效，已 gitignore。
+
+- **test-driven-development** — 开发：先写失败测试再写实现，防逻辑 bug
+- **verification-before-completion** — 测试：声称"完成/通过"前必须先跑验证命令（如 `mvn test`、`npm run build`），凭证据不凭断言
+- **conventional-commit** — 提交：按本仓库历史的 `feat: Phase N 描述` 风格写提交信息
+
+**审查环节**不依赖额外 skill：使用官方 `pr-review-toolkit` 插件，以及项目 `.claude/agents/` 下的 `ai-module-security-review`、`ai-guide-test-writer` 等 agent。
+
+> 新增 skill：在 `.claude/skills/` 下建文件夹 + `SKILL.md`（带 frontmatter）即可，项目内生效。

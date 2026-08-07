@@ -29,6 +29,7 @@ async def chat(req: ChatRequest):
         user_id=req.userId,
         session_id=session_id,
         history=history,
+        token=req.token,
     )
     result = await agent_graph.ainvoke(initial_state)
 

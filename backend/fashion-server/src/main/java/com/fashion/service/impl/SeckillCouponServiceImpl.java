@@ -1,4 +1,5 @@
 package com.fashion.service.impl;
+
 import com.fashion.config.DirectExchangeConfig;
 import com.fashion.context.BaseContext;
 import com.fashion.dto.SeckillSubmitResult;
@@ -8,6 +9,7 @@ import com.fashion.mapper.SeckillOrderMapper;
 import com.fashion.result.Result;
 import com.fashion.service.SeckillCouponService;
 import com.fashion.utils.UniqueID;
+import lombok.extern.slf4j.Slf4j;
 import org.redisson.api.RLock;
 import org.redisson.api.RedissonClient;
 import org.springframework.amqp.AmqpException;
@@ -36,6 +38,7 @@ import java.util.stream.Collectors;
 /**
  * 秒杀券服务实现类
  */
+@Slf4j
 @Service
 public class SeckillCouponServiceImpl implements SeckillCouponService {
 
@@ -222,33 +225,32 @@ public class SeckillCouponServiceImpl implements SeckillCouponService {
     @RabbitListener(queues = DirectExchangeConfig.SeckillQueue)
     @Transactional
     public void handleSeckillOrder(SeckillMessage message) {
-        try {
-            //先判断消息是否为空
-            if (message == null) {
-                return;
-            }
+        //先判断消息是否为空
+        if (message == null) {
+            return;
+        }
 
-            //二次检验，避免重复
-            SeckillOrder existOrder = seckillOrderMapper.selectByOrderNumber(message.getOrderNumber());
-            if (existOrder != null) {
-                return ;
-            }
-            //生成秒杀订单（用户与券的关系记录）
-            SeckillOrder seckillOrder = new SeckillOrder();
-            seckillOrder.setUserId(message.getUserId());
-            seckillOrder.setCouponId(message.getCouponId());
-            seckillOrder.setOrderNumber(message.getOrderNumber());
-            seckillOrder.setStatus(1);
-            seckillOrder.setCreateTime(LocalDateTime.now());
-            seckillOrderMapper.insert(seckillOrder);
-            //发送订单消息到延迟队列
-            rabbitTemplate.convertAndSend(DirectExchangeConfig.delayExchange, DirectExchangeConfig.delayRoutingKey, seckillOrder.getId());
+        //二次检验，避免重复
+        SeckillOrder existOrder = seckillOrderMapper.selectByOrderNumber(message.getOrderNumber());
+        if (existOrder != null) {
+            return;
+        }
+        //生成秒杀订单（用户与券的关系记录）
+        SeckillOrder seckillOrder = new SeckillOrder();
+        seckillOrder.setUserId(message.getUserId());
+        seckillOrder.setCouponId(message.getCouponId());
+        seckillOrder.setOrderNumber(message.getOrderNumber());
+        seckillOrder.setStatus(1);
+        seckillOrder.setCreateTime(LocalDateTime.now());
+        seckillOrderMapper.insert(seckillOrder);
+        //发送订单消息到延迟队列
+        rabbitTemplate.convertAndSend(DirectExchangeConfig.delayExchange, DirectExchangeConfig.delayRoutingKey, seckillOrder.getId());
 
-            //秒杀卷库存减1，用数据库锁解决
-            seckillCouponMapper.reduceStock(message.getCouponId());
-
-        } catch (Exception e) {
-            e.printStackTrace();
+        //秒杀卷库存减1，用数据库锁解决；影响行数为0说明库存不足，抛出异常回滚事务并触发消息重试，避免静默丢单
+        int rows = seckillCouponMapper.reduceStock(message.getCouponId());
+        if (rows == 0) {
+            log.error("秒杀券库存扣减失败，库存不足，couponId={}, orderNumber={}", message.getCouponId(), message.getOrderNumber());
+            throw new RuntimeException("秒杀券库存不足，扣减失败，couponId=" + message.getCouponId());
         }
     }
 
@@ -270,8 +272,8 @@ public class SeckillCouponServiceImpl implements SeckillCouponService {
         }
         //还原库存
         seckillCouponMapper.addStock(seckillOrder.getCouponId());
-        //redis更新
-        stringRedisTemplate.opsForValue().decrement("seckill:coupon:stock:" + seckillOrder.getCouponId());
+        //取消订单后应补回Redis库存，而不是扣减
+        stringRedisTemplate.opsForValue().increment("seckill:coupon:stock:" + seckillOrder.getCouponId());
     }
 
     @Override

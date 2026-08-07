@@ -18,6 +18,7 @@ import com.fashion.vo.UserLoginVo;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.redis.core.StringRedisTemplate;
+import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -41,10 +42,17 @@ public class UserServiceImpl implements UserService {
     @Autowired
     private StringRedisTemplate redisTemplate;
 
+    private final BCryptPasswordEncoder passwordEncoder = new BCryptPasswordEncoder();
+
     @Override
     public void save(User user) {
         // 设置创建时间
         user.setCreateTime(LocalDateTime.now());
+        // 密码 BCrypt 哈希存储（防止管理端新增用户明文入库）
+        if (user.getPassword() != null && !user.getPassword().isEmpty()
+                && !user.getPassword().startsWith("$2")) {
+            user.setPassword(passwordEncoder.encode(user.getPassword()));
+        }
         // 保存用户
         userMapper.insert(user);
     }
@@ -113,7 +121,8 @@ public class UserServiceImpl implements UserService {
     @Override
     @Transactional
     public Result<UserLoginVo> login(UserLoginDto userLoginDto, HttpSession session) {
-        log.info("登录请求参数: {}", userLoginDto);
+        // 避免打印 DTO 全量（含明文密码），只记录手机号与登录类型
+        log.info("登录请求 phone={}, type={}", userLoginDto.getPhone(), userLoginDto.getType());
         // 先判断登录类型
         String type = userLoginDto.getType();
         log.info("登录类型: {}", type);
@@ -149,11 +158,9 @@ public class UserServiceImpl implements UserService {
                 log.info("用户不存在，手机号: {}", userLoginDto.getPhone());
                 return Result.error("用户不存在");
             }
-            //校验密码
+            //校验密码（BCrypt 或兼容存量明文）
             String dbPassword = user.getPassword();
-            log.info("数据库中的密码: {}", dbPassword);
-            log.info("输入的密码: {}", userLoginDto.getPassword());
-            if(dbPassword == null || !dbPassword.equals(userLoginDto.getPassword())){
+            if (dbPassword == null || !matchesPassword(userLoginDto.getPassword(), dbPassword)) {
                 log.info("密码错误");
                 return Result.error("密码错误");
             }
@@ -282,15 +289,15 @@ public class UserServiceImpl implements UserService {
                 return Result.error("用户不存在");
             }
             
-            // 验证旧密码
+            // 验证旧密码（BCrypt 或兼容存量明文）
             String dbPassword = user.getPassword();
-            if (dbPassword == null || !dbPassword.equals(oldPassword)) {
+            if (dbPassword == null || !matchesPassword(oldPassword, dbPassword)) {
                 log.info("修改密码 - 旧密码验证失败");
                 return Result.error("旧密码错误");
             }
-            
-            // 更新密码
-            user.setPassword(newPassword);
+
+            // 更新密码（BCrypt 哈希存储）
+            user.setPassword(passwordEncoder.encode(newPassword));
             userMapper.update(user);
             
             log.info("修改密码 - 密码更新成功");
@@ -329,6 +336,16 @@ public class UserServiceImpl implements UserService {
         }
     }
 
+    /**
+     * 密码比对：BCrypt 哈希用 matches；存量明文直接比较（迁移脚本执行前兼容）
+     */
+    private boolean matchesPassword(String rawPassword, String dbPassword) {
+        if (dbPassword.startsWith("$2")) {
+            return passwordEncoder.matches(rawPassword, dbPassword);
+        }
+        return dbPassword.equals(rawPassword);
+    }
+
     @Override
     public Result<String> register(User user) {
         try {
@@ -340,10 +357,15 @@ public class UserServiceImpl implements UserService {
             
             // 设置创建时间
             user.setCreateTime(LocalDateTime.now());
-            
+
+            // 密码 BCrypt 哈希存储
+            if (user.getPassword() != null && !user.getPassword().isEmpty()) {
+                user.setPassword(passwordEncoder.encode(user.getPassword()));
+            }
+
             // 保存用户
             userMapper.insert(user);
-            
+
             return Result.success("注册成功");
         } catch (Exception e) {
             log.error("注册失败", e);

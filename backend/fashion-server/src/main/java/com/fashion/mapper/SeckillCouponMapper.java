@@ -61,11 +61,12 @@ public interface SeckillCouponMapper {
     List<SeckillCoupon> listCoupons();
 
     /**
-     *
-     * @param couponId
+     * 扣减库存（库存不足时不扣减，返回影响行数）
+     * @param couponId 秒杀券id
+     * @return 影响行数，0表示库存不足扣减失败
      */
     @Update("update seckill_coupon set stock = stock - 1 where id = #{couponId} and stock > 0")
-    void reduceStock(Long couponId);
+    int reduceStock(Long couponId);
 
     @Update("update seckill_coupon set stock = stock + 1 where id = #{couponId}")
     void addStock(Long couponId);

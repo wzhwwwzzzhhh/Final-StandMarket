@@ -1,9 +1,11 @@
 package com.fashion.controller.admin;
 
+import com.fashion.dto.AdminLoginDto;
 import com.fashion.entity.Employee;
 import com.fashion.entity.PageResult;
 import com.fashion.result.Result;
 import com.fashion.service.EmployeeService;
+import com.fashion.vo.AdminLoginVo;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.*;
 
@@ -18,6 +20,14 @@ public class EmployeeController {
 
     @Autowired
     private EmployeeService employeeService;
+
+    /**
+     * 登录（放行名单外，需要校验）
+     */
+    @PostMapping("/login")
+    public Result<AdminLoginVo> login(@RequestBody AdminLoginDto adminLoginDto) {
+        return employeeService.login(adminLoginDto);
+    }
 
     /**
      * 新增员工
