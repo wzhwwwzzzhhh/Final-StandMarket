@@ -11,7 +11,9 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.util.StringUtils;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 @RestController
 @RequestMapping("/user/agent")
@@ -54,5 +56,31 @@ public class AgentController {
         }
         List<Orders> orders = orderService.listUserOrders(null);
         return Result.success(orders);
+    }
+
+    /**
+     * agent 专用物流查询：仅允许本人查询，返回物流信息
+     */
+    @GetMapping("/tracking/{orderId}")
+    public Result<Map<String, Object>> agentTracking(@PathVariable Long orderId) {
+        Long userId = BaseContext.getUserId();
+        if (userId == null) {
+            return Result.error("请先登录");
+        }
+        Orders order = orderService.getById(orderId);
+        if (order == null || !order.getUserId().equals(userId)) {
+            return Result.error("订单不存在");
+        }
+        if (order.getTrackingNumber() == null || order.getTrackingNumber().isEmpty()) {
+            return Result.error("暂无物流信息");
+        }
+        Map<String, Object> result = new HashMap<>();
+        result.put("number", order.getNumber());
+        result.put("trackingCompany", order.getTrackingCompany());
+        result.put("trackingNumber", order.getTrackingNumber());
+        result.put("deliveryTime", order.getDeliveryTime());
+        result.put("estimatedDeliveryTime", order.getEstimatedDeliveryTime());
+        result.put("status", order.getStatus());
+        return Result.success(result);
     }
 }

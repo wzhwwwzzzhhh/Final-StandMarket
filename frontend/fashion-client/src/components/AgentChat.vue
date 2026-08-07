@@ -43,6 +43,12 @@
                   class="chip" @click="sendMessage(chip)">{{ chip }}</button>
         </div>
 
+        <!-- 登录引导 -->
+        <div v-if="pendingLogin" class="login-hint">
+          <span>登录后可查询订单、获取精准推荐</span>
+          <button class="login-btn" @click="goLogin">去登录</button>
+        </div>
+
         <!-- 输入区 -->
         <div class="chat-input-area">
           <input v-model="inputText" class="chat-input"
@@ -73,13 +79,14 @@ export default {
       isOpen: false,
       loading: false,
       inputText: '',
+      pendingLogin: false,
       sessionId: localStorage.getItem('agent_session') || '',
       messages: []
     }
   },
   computed: {
     quickChips() {
-      return ['有什么推荐？', '我的订单到哪了？', '帮我搭配一套', '这个尺码怎么选？']
+      return ['有什么推荐？', '我的订单到哪了？', '帮我搭配一套', '身高170体重65选什么尺码？']
     },
     userId() {
       try {
@@ -130,6 +137,14 @@ export default {
             content: data.data.reply || '抱歉，暂时无法回复',
             products: data.data.products || []
           })
+        } else if (data.msg && data.msg.includes('登录')) {
+          // 后端要求登录态，未登录时引导跳转登录页
+          this.messages.push({
+            role: 'assistant',
+            content: '需要先登录才能使用订单查询等服务，去登录一下吧～',
+            products: []
+          })
+          this.pendingLogin = true
         } else {
           this.messages.push({
             role: 'assistant',
@@ -149,6 +164,9 @@ export default {
     },
     goProduct(id) {
       this.$router.push(`/product/detail/${id}`)
+    },
+    goLogin() {
+      this.$router.push('/login')
     },
     scrollBottom() {
       this.$nextTick(() => {
@@ -348,6 +366,31 @@ export default {
   background: rgba(209, 0, 255, 0.15);
   color: #d100ff;
   border-color: rgba(209, 0, 255, 0.4);
+}
+
+/* 登录引导 */
+.login-hint {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 8px 14px;
+  background: rgba(209, 0, 255, 0.08);
+  border-top: 1px solid rgba(209, 0, 255, 0.15);
+  font-size: 12px;
+  color: #aaa;
+}
+.login-btn {
+  background: linear-gradient(135deg, #7c3aed, #d100ff);
+  border: none;
+  border-radius: 12px;
+  padding: 4px 14px;
+  color: #fff;
+  font-size: 12px;
+  cursor: pointer;
+  font-weight: 600;
+}
+.login-btn:hover {
+  opacity: 0.85;
 }
 
 /* 输入区 */

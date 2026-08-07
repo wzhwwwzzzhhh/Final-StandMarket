@@ -4,22 +4,31 @@ from app.agent.nodes import (
     search_product_node,
     recommend_node,
     order_node,
+    size_node,
     generate_reply,
 )
 
 
-def create_initial_state(message: str, user_id: int, session_id: str, history: list = None, token: str = "") -> dict:
+def create_initial_state(message: str, user_id: int, session_id: str, history: list = None,
+                         token: str = "", slots: dict = None) -> dict:
     return {
         "message": message,
         "userId": user_id,
         "sessionId": session_id,
         "history": history or [],
         "token": token,
+        "slots": slots or {},
         "intent": "",
         "search_results": [],
+        "search_total": 0,
         "recommendations": [],
+        "recommend_category": "",
+        "recommend_reason": "",
         "order_info": {},
-        "reply": ""
+        "size_recommend": "",
+        "size_garment": "",
+        "size_waiting": False,
+        "reply": "",
     }
 
 
@@ -29,7 +38,7 @@ def router(state: dict) -> str:
         "search": "search_product",
         "recommend": "recommend",
         "order": "order_query",
-        "size": "chat_reply",
+        "size": "size_recommend",
         "chat": "chat_reply",
     }
     return intent_map.get(state["intent"], "chat_reply")
@@ -42,6 +51,7 @@ def build_graph() -> StateGraph:
     workflow.add_node("search_product", search_product_node)
     workflow.add_node("recommend", recommend_node)
     workflow.add_node("order_query", order_node)
+    workflow.add_node("size_recommend", size_node)
     workflow.add_node("generate_reply", generate_reply)
 
     workflow.set_entry_point("recognize_intent")
@@ -50,12 +60,14 @@ def build_graph() -> StateGraph:
         "search_product": "search_product",
         "recommend": "recommend",
         "order_query": "order_query",
+        "size_recommend": "size_recommend",
         "chat_reply": "generate_reply",
     })
 
     workflow.add_edge("search_product", "generate_reply")
     workflow.add_edge("recommend", "generate_reply")
     workflow.add_edge("order_query", "generate_reply")
+    workflow.add_edge("size_recommend", "generate_reply")
 
     workflow.add_edge("generate_reply", END)
 

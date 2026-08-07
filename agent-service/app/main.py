@@ -6,7 +6,7 @@ from fastapi import FastAPI, HTTPException
 from app.config import settings
 from app.schemas import ChatRequest, ChatResponse, ProductItem
 from app.agent.graph import create_initial_state, agent_graph
-from app.redis_memory import get_history, save_message
+from app.redis_memory import get_history, save_message, get_slots, save_slots
 
 app = FastAPI(title="AI Shopping Agent", version="1.0.0")
 
@@ -23,6 +23,7 @@ async def chat(req: ChatRequest):
 
     session_id = req.sessionId or uuid.uuid4().hex[:16]
     history = await get_history(session_id)
+    slots = await get_slots(session_id)
 
     initial_state = create_initial_state(
         message=req.message,
@@ -30,11 +31,14 @@ async def chat(req: ChatRequest):
         session_id=session_id,
         history=history,
         token=req.token,
+        slots=slots,
     )
     result = await agent_graph.ainvoke(initial_state)
 
     await save_message(session_id, "user", req.message)
     await save_message(session_id, "assistant", result["reply"])
+    if result.get("slots"):
+        await save_slots(session_id, result["slots"])
 
     products = result.get("search_results") or result.get("recommendations") or []
     return ChatResponse(
