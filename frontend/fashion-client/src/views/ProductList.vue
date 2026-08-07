@@ -9,43 +9,70 @@
     </div>
 
     <!-- 筛选条件 -->
-    <div class="filter-section">
+    <section class="filter-section" aria-label="商品检索与筛选">
       <div class="filter-card">
-        <el-input v-model="keyword" placeholder="输入关键词搜索" class="search-input">
+        <div class="filter-intro">
+          <span class="filter-kicker">// DISCOVER</span>
+          <div>
+            <h3>筛选你的下一件装备</h3>
+            <p>关键词检索、品类筛选与排序，一步找到合适单品。</p>
+          </div>
+        </div>
+
+        <el-input
+          v-model="keyword"
+          placeholder="搜索商品名称、风格或关键词"
+          class="search-input"
+          @keyup.enter="searchProducts"
+        >
           <template #prefix>
             <el-icon class="el-input__icon"><Search /></el-icon>
           </template>
           <template #append>
-            <el-button type="primary" class="search-button" @click="searchProducts">搜索</el-button>
+            <el-button type="primary" class="search-button" @click="searchProducts">开始搜索</el-button>
           </template>
         </el-input>
+
         <div class="filter-controls">
-          <el-select v-model="categoryId" placeholder="选择分类" class="filter-select">
-            <el-option label="全部" value="0"></el-option>
-            <el-option v-for="category in categories" :key="category.id" :label="category.name" :value="category.id"></el-option>
-          </el-select>
-          <el-select v-model="tag" placeholder="选择标签" class="filter-select">
-            <el-option label="全部" value=""></el-option>
-            <el-option label="衣服" value="衣服"></el-option>
-            <el-option label="裤子" value="裤子"></el-option>
-            <el-option label="鞋子" value="鞋子"></el-option>
-            <el-option label="配饰" value="配饰"></el-option>
-          </el-select>
-          <el-select v-model="sortBy" placeholder="排序方式" class="filter-select">
-            <el-option label="默认" value="default"></el-option>
-            <el-option label="价格从低到高" value="price_asc"></el-option>
-            <el-option label="价格从高到低" value="price_desc"></el-option>
-            <el-option label="销量优先" value="sales"></el-option>
-          </el-select>
+          <div class="filter-field">
+            <span class="filter-label">商品分类</span>
+            <el-select v-model="categoryId" placeholder="选择分类" class="filter-select" aria-label="商品分类">
+              <el-option label="全部商品" value="0"></el-option>
+              <el-option v-for="category in categories" :key="category.id" :label="category.name" :value="category.id"></el-option>
+            </el-select>
+          </div>
+          <div class="filter-field">
+            <span class="filter-label">风格标签</span>
+            <el-select v-model="tag" placeholder="选择标签" class="filter-select" aria-label="风格标签">
+              <el-option label="全部标签" value=""></el-option>
+              <el-option label="衣服" value="衣服"></el-option>
+              <el-option label="裤子" value="裤子"></el-option>
+              <el-option label="鞋子" value="鞋子"></el-option>
+              <el-option label="配饰" value="配饰"></el-option>
+            </el-select>
+          </div>
+          <div class="filter-field">
+            <span class="filter-label">排序方式</span>
+            <el-select v-model="sortBy" placeholder="排序方式" class="filter-select" aria-label="排序方式">
+              <el-option label="综合排序" value="default"></el-option>
+              <el-option label="价格从低到高" value="price_asc"></el-option>
+              <el-option label="价格从高到低" value="price_desc"></el-option>
+              <el-option label="销量优先" value="sales"></el-option>
+            </el-select>
+          </div>
         </div>
       </div>
-    </div>
+    </section>
 
     <!-- 商品列表 -->
+    <div class="product-toolbar">
+      <span class="product-toolbar-label">// CURRENT COLLECTION</span>
+      <span class="product-toolbar-count">{{ total }} 件在售单品</span>
+    </div>
     <div class="product-grid">
       <el-card v-for="product in products" :key="product.id" shadow="hover" class="product-card">
         <div class="product-image-container">
-          <img :src="product.image" :alt="product.name" class="product-image" @click="goToDetail(product.id)" />
+          <img :src="product.image" :alt="product.name" class="product-image" role="button" tabindex="0" @click="goToDetail(product.id)" @keydown.enter="goToDetail(product.id)" @keydown.space.prevent="goToDetail(product.id)" />
           <div v-if="product.isNew" class="product-badge new-badge">新品</div>
           <div v-if="product.isHot" class="product-badge hot-badge">热销</div>
           <div class="product-overlay">
@@ -59,7 +86,7 @@
           </div>
         </div>
         <div class="product-info">
-          <h4 class="product-name" @click="goToDetail(product.id)">{{ product.name }}</h4>
+          <h4 class="product-name" role="button" tabindex="0" @click="goToDetail(product.id)" @keydown.enter="goToDetail(product.id)" @keydown.space.prevent="goToDetail(product.id)">{{ product.name }}</h4>
           <div class="product-rating">
             <el-rate v-model="product.rating" disabled :max="5" :colors="['#ff4d4f']" size="small" />
             <span class="rating-count">({{ product.ratingCount || 0 }})</span>
@@ -286,7 +313,7 @@ export default {
 
 /* === 页面标题 === */
 .page-header {
-  margin: var(--space-lg) 0 var(--space-xl);
+  margin: 24px 0 28px;
 }
 
 .page-title {
@@ -321,47 +348,201 @@ export default {
 
 /* === 筛选区域 === */
 .filter-section {
-  margin: var(--space-lg) 0;
+  margin: 0 0 var(--space-lg);
 }
 
 .filter-card {
-  background-color: var(--bg-elevated);
-  border: 1px solid var(--border-card);
-  padding: 20px;
+  position: relative;
+  overflow: hidden;
+  padding: 28px;
   display: flex;
   flex-direction: column;
-  gap: 16px;
+  gap: 24px;
+  background:
+    linear-gradient(135deg, rgba(209, 0, 255, 0.12), transparent 34%),
+    var(--bg-elevated);
+  border: 1px solid var(--border-card);
+  box-shadow: 0 20px 50px rgba(0, 0, 0, 0.18);
+}
+
+.filter-card::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 72px;
+  height: 2px;
+  background: var(--accent-purple);
+  box-shadow: 0 0 18px var(--accent-purple);
+}
+
+.filter-intro {
+  display: flex;
+  align-items: flex-start;
+  gap: 18px;
+}
+
+.filter-kicker {
+  flex: 0 0 auto;
+  padding-top: 4px;
+  font-family: var(--font-display);
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  color: var(--accent-lime);
+}
+
+.filter-intro h3 {
+  margin: 0 0 4px;
+  font-family: var(--font-heading);
+  font-size: 18px;
+  line-height: 1.25;
+  letter-spacing: 0.04em;
+  color: var(--text-primary);
+}
+
+.filter-intro p {
+  margin: 0;
+  font-size: 13px;
+  color: var(--text-tertiary);
+}
+
+.search-input {
+  width: 100%;
+}
+
+.search-input :deep(.el-input-group__append) {
+  padding: 0;
+  overflow: hidden;
+  border: 0;
+  background: transparent;
+  box-shadow: none;
+}
+
+.search-input :deep(.el-input__wrapper) {
+  min-height: 54px;
+  padding: 0 18px;
+  background: rgba(255, 255, 255, 0.035);
+  border-color: rgba(255, 255, 255, 0.13);
+}
+
+.search-input :deep(.el-input__wrapper:hover),
+.search-input :deep(.el-input__wrapper.is-focus) {
+  border-color: rgba(209, 0, 255, 0.82);
+}
+
+.search-input :deep(.el-input__inner) {
+  font-size: 15px;
+}
+
+.search-button {
+  min-width: 118px;
+  min-height: 54px;
+  padding: 0 20px;
+  border: 0;
+  background: var(--accent-purple);
+  color: #fff;
+  font-size: 13px;
+  transition: background var(--transition-fast), transform var(--transition-fast);
+}
+
+.search-button:hover {
+  background: #b800e6;
+  transform: translateX(-2px);
 }
 
 .filter-controls {
-  display: flex;
-  gap: 12px;
-  flex-wrap: wrap;
-  align-items: center;
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 14px;
+}
+
+.filter-field {
+  display: grid;
+  gap: 8px;
+  min-width: 0;
+}
+
+.filter-label {
+  font-family: var(--font-heading);
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.1em;
+  color: var(--text-secondary);
 }
 
 .filter-select {
-  min-width: 140px;
+  width: 100%;
+  min-width: 0;
+}
+
+.filter-select :deep(.el-select__wrapper) {
+  min-height: 48px;
+  padding: 0 15px;
+  background: rgba(255, 255, 255, 0.035);
+  border: 1px solid rgba(255, 255, 255, 0.13);
+  border-radius: var(--radius-sharp);
+  box-shadow: none;
+  transition: border-color var(--transition-fast), background var(--transition-fast);
+}
+
+.filter-select :deep(.el-select__wrapper:hover),
+.filter-select :deep(.is-focused .el-select__wrapper) {
+  background: rgba(209, 0, 255, 0.06);
+  border-color: rgba(209, 0, 255, 0.82);
+}
+
+.filter-select :deep(.el-select__selected-item),
+.filter-select :deep(.el-select__placeholder) {
+  font-size: 14px;
+  color: var(--text-primary);
 }
 
 /* === 商品网格 === */
+.product-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  margin: 6px 0 14px;
+  padding-bottom: 12px;
+  border-bottom: 1px solid var(--border-card);
+}
+
+.product-toolbar-label {
+  font-family: var(--font-display);
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  color: var(--text-secondary);
+}
+
+.product-toolbar-count {
+  font-family: var(--font-display);
+  font-size: 12px;
+  color: var(--accent-lime);
+}
+
 .product-grid {
   display: grid;
   grid-template-columns: repeat(4, 1fr);
-  gap: 2px;
-  margin: var(--space-lg) 0;
+  gap: 16px;
+  margin: 0 0 var(--space-lg);
 }
 
 .product-card {
-  background-color: var(--bg-card);
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.025), transparent 32%), var(--bg-card);
   border: 1px solid var(--border-card);
-  transition: var(--transition-base);
+  box-shadow: 0 12px 28px rgba(0, 0, 0, 0.14);
+  transition: transform var(--transition-base), border-color var(--transition-base), box-shadow var(--transition-base);
   overflow: hidden;
   animation: floatIn 0.4s ease backwards;
 }
 
 .product-card:hover {
-  border-color: var(--accent-purple);
+  border-color: rgba(209, 0, 255, 0.76);
+  box-shadow: 0 18px 36px rgba(0, 0, 0, 0.28), 0 0 0 1px rgba(209, 0, 255, 0.12);
+  transform: translateY(-5px);
   z-index: 3;
 }
 
@@ -381,8 +562,8 @@ export default {
 }
 
 .product-card:hover .product-image {
-  transform: scale(1.1);
-  filter: grayscale(100%);
+  transform: scale(1.06);
+  filter: contrast(1.05) saturate(0.9);
 }
 
 .product-badge {
@@ -421,8 +602,15 @@ export default {
   gap: 8px;
 }
 
-.product-card:hover .product-overlay {
+.product-card:hover .product-overlay,
+.product-card:focus-within .product-overlay {
   bottom: 0;
+}
+
+.product-image:focus-visible,
+.product-name:focus-visible {
+  outline: 2px solid var(--accent-lime);
+  outline-offset: 3px;
 }
 
 .product-overlay :deep(.add-cart-btn) {
@@ -615,6 +803,7 @@ export default {
 @media (max-width: 1024px) {
   .product-grid {
     grid-template-columns: repeat(3, 1fr);
+    gap: 12px;
   }
 }
 
@@ -624,17 +813,57 @@ export default {
   }
   .product-grid {
     grid-template-columns: repeat(2, 1fr);
+    gap: 10px;
   }
   .page-title {
     font-size: 22px;
   }
+  .filter-card {
+    padding: 22px;
+    gap: 20px;
+  }
   .filter-controls {
-    flex-direction: column;
-    align-items: stretch;
+    grid-template-columns: 1fr;
+    gap: 12px;
+  }
+}
+
+@media (max-width: 560px) {
+  .filter-intro {
+    display: block;
+  }
+  .filter-kicker {
+    display: inline-block;
+    margin-bottom: 10px;
+  }
+  .filter-intro h3 {
+    font-size: 16px;
+  }
+  .filter-intro p {
+    font-size: 12px;
+  }
+  .search-input :deep(.el-input-group) {
+    flex-wrap: wrap;
+  }
+  .search-input :deep(.el-input__wrapper) {
+    width: 100%;
+  }
+  .search-input :deep(.el-input-group__append) {
+    width: 100%;
+  }
+  .search-button {
+    width: 100%;
+    min-width: 0;
+    padding: 0 14px;
   }
 }
 
 @media (max-width: 480px) {
+  .product-toolbar {
+    align-items: flex-start;
+    flex-direction: column;
+    gap: 4px;
+  }
   .product-grid {
     grid-template-columns: 1fr;
   }
