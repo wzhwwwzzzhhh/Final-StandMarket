@@ -185,7 +185,7 @@ export default {
             this.specialOffers = offerResponse.data.data || []
           }
         } catch (error) {
-          console.log('获取特价商品列表失败（接口可能未实现）:', error)
+          console.warn('获取特价商品列表失败（接口可能未实现）:', error)
           this.specialOffers = []
         }
       } catch (error) {
@@ -314,12 +314,12 @@ export default {
               return
             }
           } else {
-            console.log('订单尚未创建，继续轮询...')
+            // 订单尚未创建，继续轮询
           }
-          
+
           await new Promise(resolve => setTimeout(resolve, interval))
         } catch (error) {
-          console.log('订单查询失败，继续轮询...', error)
+          // 订单查询失败，继续轮询
           await new Promise(resolve => setTimeout(resolve, interval))
         }
       }

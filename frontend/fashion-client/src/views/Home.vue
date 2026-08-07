@@ -201,6 +201,7 @@
 
 <script>
 import { productApi, cartApi } from '@/api/product'
+import { seckillApi } from '@/api/seckill'
 import banner1 from '@/assets/images/promotions/新对话.png'
 import banner2 from '@/assets/images/promotions/新对话 (1).png'
 import banner3 from '@/assets/images/promotions/新对话 (2).png'
@@ -226,11 +227,7 @@ export default {
         { id: 4, name: '配饰', image: category4 }
       ],
       hotProducts: [],
-      seckillCoupons: [
-        { id: 1, name: '夏季T恤秒杀券', originalPrice: 199, seckillPrice: 99, stock: 50, totalStock: 100 },
-        { id: 2, name: '运动鞋秒杀券', originalPrice: 399, seckillPrice: 199, stock: 30, totalStock: 80 },
-        { id: 3, name: '休闲裤秒杀券', originalPrice: 299, seckillPrice: 149, stock: 40, totalStock: 90 }
-      ],
+      seckillCoupons: [],
       cartDialogVisible: false,
       selectedProduct: null,
       selectedSize: 'M',
@@ -240,6 +237,7 @@ export default {
   },
   created() {
     this.getHotProducts()
+    this.getSeckillCoupons()
   },
   methods: {
     getHotProducts() {
@@ -250,6 +248,18 @@ export default {
           }
         })
         .catch(err => console.error('获取热门商品失败:', err))
+    },
+    getSeckillCoupons() {
+      seckillApi.getSeckillCouponList().then(res => {
+        if (res.data.code === 1) {
+          this.seckillCoupons = (res.data.data || []).map(coupon => ({
+            ...coupon,
+            // 接口未返回原价/秒杀价时保留字段，模板按需展示
+            originalPrice: coupon.originalPrice,
+            seckillPrice: coupon.seckillPrice
+          }))
+        }
+      }).catch(err => console.error('获取秒杀券列表失败:', err))
     },
     goToCategory(id) {
       const tagMap = { 1: '衣服', 2: '裤子', 3: '鞋子', 4: '配饰' }
@@ -302,12 +312,60 @@ export default {
         this.$router.push('/login')
         return
       }
-      this.$message.success('抢购成功！')
+      seckillApi.seckillCoupon(id).then(res => {
+        if (res.data.code === 1 && res.data.data) {
+          this.$message.success('抢购请求已提交，正在确认结果...')
+          this.pollSeckillOrder(res.data.data.orderNumber)
+        } else {
+          this.$message.error(res.data.msg || '抢购失败')
+          this.getSeckillCoupons()
+        }
+      }).catch(error => {
+        const msg = error.response && error.response.data && error.response.data.msg
+        this.$message.error(msg || '抢购失败，请重试')
+        this.getSeckillCoupons()
+      })
+    },
+    pollSeckillOrder(orderNumber) {
+      const maxAttempts = 20
+      const interval = 1000
+      const poll = (attempt) => {
+        seckillApi.getSeckillOrderByNumber(orderNumber).then(res => {
+          if (res.data.code === 1 && res.data.data) {
+            const order = res.data.data
+            if (order.status === 1 || order.status === 2) {
+              this.$message.success('抢购成功！')
+              this.getSeckillCoupons()
+              return
+            }
+            if (order.status === 3) {
+              this.$message.error('订单处理失败，请重试')
+              this.getSeckillCoupons()
+              return
+            }
+          }
+          if (attempt < maxAttempts) {
+            setTimeout(() => poll(attempt + 1), interval)
+          } else {
+            this.$message.warning('订单处理超时，请稍后查看订单状态')
+            this.getSeckillCoupons()
+          }
+        }).catch(() => {
+          if (attempt < maxAttempts) {
+            setTimeout(() => poll(attempt + 1), interval)
+          } else {
+            this.$message.warning('订单处理超时，请稍后查看订单状态')
+            this.getSeckillCoupons()
+          }
+        })
+      }
+      poll(0)
     },
     handleCountdownFinish() {},
     viewAboutUs() {},
     progressPct(coupon) {
-      return coupon.totalStock ? 100 - Math.round((coupon.stock / coupon.totalStock) * 100) : 0
+      if (!coupon.totalStock) return 0
+      return 100 - Math.round((coupon.stock / coupon.totalStock) * 100)
     }
   }
 }

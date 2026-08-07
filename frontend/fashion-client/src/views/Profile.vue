@@ -167,6 +167,10 @@
 <script>
 import { Timer, Van, Message, Star, Grid, Position, Ticket, Clock, Headset, Setting, Edit, ArrowRight, SwitchButton, Refresh } from '@element-plus/icons-vue'
 import favoriteApi from '@/api/favorite'
+import { orderApi } from '@/api/product'
+import profileImg1 from '@/assets/images/clothes/新对话 (5).png'
+import profileImg2 from '@/assets/images/shoes/新对话 (10).png'
+import profileImg3 from '@/assets/images/accessories/新对话 (14).png'
 
 export default {
   name: 'Profile',
@@ -191,9 +195,9 @@ export default {
       userInfo: {},
       userInitial: '管',
       orderCounts: {
-        pending: 2,
-        shipping: 1,
-        delivered: 3,
+        pending: 0,
+        shipping: 0,
+        delivered: 0,
         completed: 0,
         refund: 0
       },
@@ -202,19 +206,19 @@ export default {
           id: 1,
           name: '时尚休闲T恤',
           price: 99,
-          image: 'https://trae-api-cn.mchost.guru/api/ide/v1/text_to_image?prompt=fashion%20casual%20t-shirt%20modern%20style&image_size=square'
+          image: profileImg1
         },
         {
           id: 2,
           name: '潮流运动鞋',
           price: 299,
-          image: 'https://trae-api-cn.mchost.guru/api/ide/v1/text_to_image?prompt=trendy%20sports%20shoes%20modern%20design&image_size=square'
+          image: profileImg2
         },
         {
           id: 3,
           name: '休闲牛仔裤',
           price: 199,
-          image: 'https://trae-api-cn.mchost.guru/api/ide/v1/text_to_image?prompt=casual%20jeans%20fashion%20style&image_size=square'
+          image: profileImg3
         }
       ]
     }
@@ -222,8 +226,26 @@ export default {
   mounted() {
     this.loadUserInfo()
     this.loadFavoriteCount()
+    this.loadOrderCounts()
   },
   methods: {
+    // 按状态拉取订单列表统计数量（与 Order 页 tab 状态一致）
+    loadOrderCounts() {
+      const statusMap = {
+        pending: 1,
+        shipping: 2,
+        delivered: 3,
+        completed: 4,
+        refund: 6
+      }
+      Object.keys(statusMap).forEach(key => {
+        orderApi.getOrderList(statusMap[key]).then(response => {
+          if (response.data.code === 1) {
+            this.orderCounts[key] = (response.data.data || []).length
+          }
+        }).catch(() => {})
+      })
+    },
     loadUserInfo() {
       // 从localStorage获取用户信息
       const userInfoStr = localStorage.getItem('userInfo')

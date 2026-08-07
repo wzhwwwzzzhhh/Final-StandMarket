@@ -273,7 +273,7 @@ export default {
 
       cartApi.addToCart(cartData).then(response => {
         if (response.data.code === 1) {
-          this.$message.success(`已添加 ${this.selectedProduct.name} (${this.selectedSize码}) × ${this.quantity}`)
+          this.$message.success(`已添加 ${this.selectedProduct.name} (${this.selectedSize}码) × ${this.quantity}`)
           this.cartDialogVisible = false
         } else {
           this.$message.error(response.data.msg || '添加失败')

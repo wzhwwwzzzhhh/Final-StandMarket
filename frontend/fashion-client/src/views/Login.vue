@@ -182,7 +182,6 @@ export default {
           
           userApi.login(loginData).then(response => {
             this.loading = false
-            console.log('登录响应:', response)
             if (response.data && response.data.code === 1) {
               const { token, userInfo } = response.data.data || {}
               

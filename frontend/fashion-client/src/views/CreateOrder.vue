@@ -119,7 +119,7 @@
       <div class="section">
         <div class="section-header">
           <h3>收货地址</h3>
-          <el-button type="primary" size="small" @click="showAddressDialog = true">
+          <el-button type="primary" size="small" @click="openAddAddressDialog">
             <el-icon><Plus /></el-icon> 添加地址
           </el-button>
         </div>
@@ -226,11 +226,12 @@
             <el-input v-model="addressForm.phone" placeholder="请输入手机号码" />
           </el-form-item>
           <el-form-item label="地区">
-            <el-cascader 
-              v-model="addressForm.area" 
-              :options="areaOptions" 
-              placeholder="请选择省市区" 
+            <el-cascader
+              v-model="areaValue"
+              :options="areaOptions"
+              placeholder="请选择省市区"
               style="width: 100%"
+              @change="handleAreaChange"
             />
           </el-form-item>
           <el-form-item label="详细地址">
@@ -255,6 +256,8 @@ import { useRouter, useRoute } from 'vue-router'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { ArrowLeft, Plus } from '@element-plus/icons-vue'
 import { orderApi, addressApi, seckillApi, cartApi } from '../api/product'
+import addressApiFull from '../api/address'
+import regionData from '../utils/regionData'
 
 const router = useRouter()
 const route = useRoute()
@@ -291,24 +294,22 @@ const deliveryStatus = ref('1') // 1立即送出，0选择具体时间
 const estimatedDeliveryTime = ref(null) // 预计配送时间
 const showAddressDialog = ref(false)
 const addressForm = ref({
+  id: null,
   consignee: '',
   phone: '',
-  area: [],
+  provinceCode: '',
+  provinceName: '',
+  cityCode: '',
+  cityName: '',
+  districtCode: '',
+  districtName: '',
   detail: '',
   isDefault: false
 })
+const areaValue = ref([])
 
-// 地区选项（模拟数据）
-const areaOptions = ref([
-  {
-    value: 'beijing',
-    label: '北京市',
-    children: [
-      { value: 'chaoyang', label: '朝阳区' },
-      { value: 'haidian', label: '海淀区' }
-    ]
-  }
-])
+// 地区选项（真实省市区数据）
+const areaOptions = regionData
 
 // 计算属性
 const totalAmount = computed(() => {
@@ -354,41 +355,28 @@ const calculateAmount = () => {
   // 设置防抖，300ms后执行
   calculateTimer = setTimeout(async () => {
     try {
-      console.log('开始计算金额...', {
-        totalAmount: totalAmount.value,
-        activityId: selectedActivity.value,
-        couponId: selectedCoupon.value
-      })
-      
       if (totalAmount.value <= 0) {
-        console.warn('商品总金额无效:', totalAmount.value)
         return
       }
-      
+
       const calculateData = {
         totalAmount: totalAmount.value,
         activityId: selectedActivity.value && selectedActivity.value > 0 ? selectedActivity.value : null,
         couponId: selectedCoupon.value && selectedCoupon.value > 0 ? selectedCoupon.value : null
       }
-      
-      console.log('发送计算请求:', calculateData)
-      
+
       const response = await seckillApi.calculateOrderAmount(calculateData)
-      
-      console.log('收到响应:', response.data)
-      
+
       if (response.data.code === 1 && response.data.data) {
         calculatedAmount.value = response.data.data
-        console.log('✅ 金额计算成功:', calculatedAmount.value)
         // 不显示提示，避免频繁打扰
       } else {
-        console.warn('计算返回异常:', response.data.msg)
         ElMessage.warning(response.data.msg || '计算失败')
       }
     } catch (error) {
-      console.error('❌ 计算金额失败:', error)
+      console.error('计算金额失败:', error)
       ElMessage.error('计算金额失败，请重试')
-      
+
       // 如果接口失败，使用默认值（无优惠）
       calculatedAmount.value = {
         totalAmount: totalAmount.value,
@@ -414,15 +402,12 @@ const loadData = async () => {
     
     if (orderDataStr) {
       const orderData = JSON.parse(orderDataStr)
-      console.log('sessionStorage订单数据:', orderData)
       // 获取商品信息列表
       if (orderData.selectedItems && orderData.selectedItems.length > 0) {
         selectedItems.value = orderData.selectedItems
         productIds = orderData.selectedItems.map(item => item.id)
-        console.log('商品信息:', selectedItems.value)
       } else if (orderData.cartItemIds && orderData.cartItemIds.length > 0) {
         productIds = orderData.cartItemIds
-        console.log('购物车商品ID:', productIds)
       }
     }
     
@@ -433,24 +418,14 @@ const loadData = async () => {
     }
 
     // 并行调用多个接口查询数据
-    const [addressRes, activityRes, couponRes] = await Promise.all([
-      addressApi.getList(),
+    const [activityRes, couponRes] = await Promise.all([
       seckillApi.getActivityList(),
       seckillApi.getUserCoupons(2) // 获取可用的秒杀券（status=2待使用）
     ])
-    
-    // 处理地址数据
-    if (addressRes.data.code === 1 && addressRes.data.data) {
-      addressList.value = addressRes.data.data
-      // 设置默认地址
-      const defaultAddr = addressList.value.find(addr => addr.isDefault === 1)
-      if (defaultAddr) {
-        selectedAddress.value = defaultAddr.id
-      } else if (addressList.value.length > 0) {
-        selectedAddress.value = addressList.value[0].id
-      }
-    }
-    
+
+    // 加载地址数据
+    await loadAddressList()
+
     // 处理秒杀活动数据
     if (activityRes.data.code === 1 && activityRes.data.data) {
       availableActivities.value = activityRes.data.data
@@ -474,9 +449,66 @@ const loadData = async () => {
 }
 
 // 地址管理
-const editAddress = (address) => {
-  addressForm.value = { ...address }
+const openAddAddressDialog = () => {
+  addressForm.value = {
+    id: null,
+    consignee: '',
+    phone: '',
+    provinceCode: '',
+    provinceName: '',
+    cityCode: '',
+    cityName: '',
+    districtCode: '',
+    districtName: '',
+    detail: '',
+    isDefault: false
+  }
+  areaValue.value = []
   showAddressDialog.value = true
+}
+
+const editAddress = (address) => {
+  addressForm.value = { ...address, isDefault: !!address.isDefault }
+  areaValue.value = [address.provinceCode, address.cityCode, address.districtCode].filter(Boolean)
+  showAddressDialog.value = true
+}
+
+const handleAreaChange = (value) => {
+  if (value && value.length === 3) {
+    const province = regionData.find(item => item.value === value[0])
+    const city = province ? province.children.find(item => item.value === value[1]) : null
+    const district = city ? city.children.find(item => item.value === value[2]) : null
+    addressForm.value.provinceCode = value[0]
+    addressForm.value.provinceName = province ? province.label : ''
+    addressForm.value.cityCode = value[1]
+    addressForm.value.cityName = city ? city.label : ''
+    addressForm.value.districtCode = value[2]
+    addressForm.value.districtName = district ? district.label : ''
+  } else {
+    addressForm.value.provinceCode = ''
+    addressForm.value.provinceName = ''
+    addressForm.value.cityCode = ''
+    addressForm.value.cityName = ''
+    addressForm.value.districtCode = ''
+    addressForm.value.districtName = ''
+  }
+}
+
+const loadAddressList = async () => {
+  try {
+    const res = await addressApi.getList()
+    if (res.data.code === 1 && res.data.data) {
+      addressList.value = res.data.data
+      const defaultAddr = addressList.value.find(addr => addr.isDefault === 1)
+      if (defaultAddr) {
+        selectedAddress.value = defaultAddr.id
+      } else if (addressList.value.length > 0) {
+        selectedAddress.value = addressList.value[0].id
+      }
+    }
+  } catch (e) {
+    console.error('加载地址列表失败:', e)
+  }
 }
 
 const deleteAddress = async (id) => {
@@ -486,10 +518,13 @@ const deleteAddress = async (id) => {
       cancelButtonText: '取消',
       type: 'warning'
     })
-    
-    // 这里调用删除地址接口
-    addressList.value = addressList.value.filter(addr => addr.id !== id)
-    ElMessage.success('删除成功')
+    const res = await addressApiFull.deleteAddress(id)
+    if (res.data.code === 1) {
+      ElMessage.success('删除成功')
+      await loadAddressList()
+    } else {
+      ElMessage.error(res.data.msg || '删除失败')
+    }
   } catch (error) {
     if (error !== 'cancel') {
       ElMessage.error('删除失败')
@@ -498,9 +533,24 @@ const deleteAddress = async (id) => {
 }
 
 const saveAddress = async () => {
-  // 这里调用保存地址接口
-  ElMessage.success('保存成功')
-  showAddressDialog.value = false
+  const payload = {
+    ...addressForm.value,
+    isDefault: addressForm.value.isDefault ? 1 : 0
+  }
+  try {
+    const res = addressForm.value.id
+      ? await addressApiFull.updateAddress(payload)
+      : await addressApiFull.addAddress(payload)
+    if (res.data.code === 1) {
+      ElMessage.success('保存成功')
+      showAddressDialog.value = false
+      await loadAddressList()
+    } else {
+      ElMessage.error(res.data.msg || '保存失败')
+    }
+  } catch (error) {
+    ElMessage.error('保存地址失败')
+  }
 }
 
 // 提交订单
@@ -552,9 +602,7 @@ const handleSubmit = async () => {
       if (orderDataStr) {
         const orderData = JSON.parse(orderDataStr)
         if (orderData.cartItemIds && orderData.cartItemIds.length > 0) {
-          cartApi.batchDeleteCartItems(orderData.cartItemIds).then(() => {
-            console.log('购物车已清空')
-          }).catch(error => {
+          cartApi.batchDeleteCartItems(orderData.cartItemIds).catch(error => {
             console.error('清空购物车失败:', error)
           })
         }

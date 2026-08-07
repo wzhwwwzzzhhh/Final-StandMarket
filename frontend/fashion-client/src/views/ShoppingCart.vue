@@ -123,6 +123,10 @@
 <script>
 import { ArrowLeft, Delete, Close, Present, Top, Star, Plus } from '@element-plus/icons-vue'
 import { cartApi } from '@/api/product'
+import recommendImg1 from '@/assets/images/clothes/新对话 (6).png'
+import recommendImg2 from '@/assets/images/clothes/新对话 (3).png'
+import recommendImg3 from '@/assets/images/shoes/新对话 (11).png'
+import recommendImg4 from '@/assets/images/accessories/新对话 (15).png'
 
 export default {
   name: 'ShoppingCart',
@@ -147,25 +151,25 @@ export default {
           id: 1,
           name: '时尚休闲外套',
           price: 199.99,
-          image: 'https://img.alicdn.com/imgextra/i4/2206686535940/O1CN01J9Q9fR1T9kG7I8J3h_!!2206686535940-0-picasso.jpg'
+          image: recommendImg1
         },
         {
           id: 2,
           name: '潮流牛仔裤',
           price: 129.99,
-          image: 'https://img.alicdn.com/imgextra/i3/2206686535940/O1CN01qX4bX81T9kG5v7KvB_!!2206686535940-0-picasso.jpg'
+          image: recommendImg2
         },
         {
           id: 3,
           name: '舒适运动鞋',
           price: 299.99,
-          image: 'https://img.alicdn.com/imgextra/i2/2206686535940/O1CN01L8X1xI1T9kG7uW7jT_!!2206686535940-0-picasso.jpg'
+          image: recommendImg3
         },
         {
           id: 4,
           name: '时尚背包',
           price: 159.99,
-          image: 'https://img.alicdn.com/imgextra/i1/2206686535940/O1CN01vJ7X7e1T9kG6z5w4Q_!!2206686535940-0-picasso.jpg'
+          image: recommendImg4
         }
       ]
     }

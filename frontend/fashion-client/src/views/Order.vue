@@ -219,7 +219,7 @@
 </template>
 
 <script>
-import { orderApi, cartApi } from '@/api/product'
+import { orderApi } from '@/api/product'
 import { paymentApi } from '@/api/payment'
 import { refundApi } from '@/api/refund'
 
@@ -239,53 +239,35 @@ export default {
     }
   },
   mounted() {
-    // 检查localStorage中是否有订单数据
-    this.checkOrderData()
+    this.applyRouteStatus()
     this.loadOrders()
+  },
+  watch: {
+    // Profile 角标跳转复用组件实例时，路由参数变化需重新过滤
+    '$route.query.status'() {
+      this.applyRouteStatus()
+      this.loadOrders()
+    }
   },
   methods: {
     goToCoupons() {
       this.$router.push('/my-coupons')
     },
-    checkOrderData() {
-      try {
-        const orderData = localStorage.getItem('orderData')
-        if (orderData) {
-          console.log('从localStorage获取订单数据:', orderData)
-          const parsedData = JSON.parse(orderData)
-          this.createOrder(parsedData)
-          // 清除localStorage中的订单数据
-          localStorage.removeItem('orderData')
-        }
-      } catch (error) {
-        console.error('解析订单数据失败:', error)
+    // 将 Profile 传入的语义化状态映射到订单 Tab
+    applyRouteStatus() {
+      const statusMap = {
+        all: 'all',
+        pending: '1',
+        shipping: '2',
+        delivered: '3',
+        completed: '4',
+        refund: '6'
       }
-    },
-    createOrder(orderData) {
-      this.loading = true
-      // 直接传递商品ID列表
-      const productIds = orderData.productIds
-      
-      console.log('创建订单数据:', productIds)
-      
-      orderApi.createOrder(productIds).then(response => {
-        if (response.data.code === 1) {
-          this.$message.success('订单创建成功')
-          // 清空购物车中已结算的商品
-          if (orderData.cartItemIds && orderData.cartItemIds.length > 0) {
-            cartApi.batchDeleteCartItems(orderData.cartItemIds).then(() => {
-              console.log('购物车已清空')
-            })
-          }
-        } else {
-          this.$message.error(response.data.msg || '订单创建失败')
-        }
-      }).catch(error => {
-        console.error('创建订单失败:', error)
-        this.$message.error('创建订单失败')
-      }).finally(() => {
-        this.loading = false
-      })
+      const queryStatus = this.$route.query.status
+      const tab = statusMap[queryStatus]
+      if (tab) {
+        this.activeTab = tab
+      }
     },
     handleTabChange(tabName) {
       this.loadOrders()
@@ -293,14 +275,10 @@ export default {
     loadOrders() {
       this.loading = true
       const status = this.activeTab === 'all' ? null : parseInt(this.activeTab)
-      
-      console.log('加载订单列表，状态:', status)
-      
+
       orderApi.getOrderList(status).then(response => {
-        console.log('获取订单列表响应:', response.data)
         if (response.data.code === 1) {
           this.orders = response.data.data || []
-          console.log('订单列表数据:', this.orders)
         } else {
           this.$message.error(response.data.msg || '获取订单列表失败')
         }

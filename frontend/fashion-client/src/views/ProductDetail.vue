@@ -233,6 +233,10 @@ import { ArrowLeft, Share, Star, StarFilled, Shop, ShoppingCart, Refresh } from 
 import { productApi, cartApi } from '@/api/product'
 import favoriteApi from '@/api/favorite'
 import reviewApi from '@/api/review'
+import clothesImg1 from '@/assets/images/clothes/新对话 (6).png'
+import clothesImg2 from '@/assets/images/clothes/新对话 (3).png'
+import clothesImg3 from '@/assets/images/clothes/新对话 (5).png'
+import shoesImg from '@/assets/images/shoes/新对话 (10).png'
 
 export default {
   name: 'ProductDetail',
@@ -272,25 +276,25 @@ export default {
           id: 1,
           name: '时尚休闲衬衫',
           price: 129,
-          image: 'https://trae-api-cn.mchost.guru/api/ide/v1/text_to_image?prompt=modern%20fashion%20casual%20shirt&image_size=landscape_4_3'
+          image: clothesImg1
         },
         {
           id: 2,
           name: '舒适牛仔裤',
           price: 199,
-          image: 'https://trae-api-cn.mchost.guru/api/ide/v1/text_to_image?prompt=comfortable%20jeans%20fashion&image_size=landscape_4_3'
+          image: clothesImg2
         },
         {
           id: 3,
           name: '潮流运动鞋',
           price: 299,
-          image: 'https://trae-api-cn.mchost.guru/api/ide/v1/text_to_image?prompt=trendy%20sports%20shoes&image_size=landscape_4_3'
+          image: shoesImg
         },
         {
           id: 4,
           name: '时尚休闲外套',
           price: 259,
-          image: 'https://trae-api-cn.mchost.guru/api/ide/v1/text_to_image?prompt=modern%20casual%20jacket&image_size=landscape_4_3'
+          image: clothesImg3
         }
       ],
       loading: true,
@@ -329,12 +333,12 @@ export default {
         this.loading = false
         if (response.data.code === 1) {
           this.product = response.data.data
-          // 生成商品图片数组（模拟多张图片）
+          // 生成商品图片数组：主图为商品图，其余用本地占位图（模拟多图）
           this.productImages = [
             this.product.image,
-            `https://trae-api-cn.mchost.guru/api/ide/v1/text_to_image?prompt=${encodeURIComponent(this.product.name + ' detail view 1')}&image_size=landscape_4_3`,
-            `https://trae-api-cn.mchost.guru/api/ide/v1/text_to_image?prompt=${encodeURIComponent(this.product.name + ' detail view 2')}&image_size=landscape_4_3`,
-            `https://trae-api-cn.mchost.guru/api/ide/v1/text_to_image?prompt=${encodeURIComponent(this.product.name + ' detail view 3')}&image_size=landscape_4_3`
+            clothesImg1,
+            clothesImg2,
+            shoesImg
           ]
           this.loadReviews()
           this.loadReviewStats()
@@ -371,20 +375,32 @@ export default {
         console.error('添加购物车失败:', error)
       })
     },
-    // 立即购买
+    // 立即购买：先加入购物车，再跳转结算页（结算页依赖购物车项，后端按购物车项落单）
     buyNow() {
       if (this.product.stock <= 0) {
         this.$message.warning('库存不足')
         return
       }
-      // 这里可以跳转到订单确认页面
-      this.$router.push({
-        path: '/order/confirm',
-        query: {
-          productId: this.product.id,
-          quantity: this.quantity,
-          spec: this.selectedSpec
+      const cartData = {
+        productId: this.product.id,
+        number: this.quantity,
+        skuInfo: this.selectedSpec
+      }
+      cartApi.addToCart(cartData).then(response => {
+        if (response.data.code !== 1) {
+          this.$message.error(response.data.msg || '添加失败')
+          return
         }
+        this.$router.push({
+          path: '/create-order',
+          query: {
+            productId: this.product.id,
+            quantity: this.quantity,
+            spec: this.selectedSpec
+          }
+        })
+      }).catch(() => {
+        this.$message.error('网络错误，请稍后重试')
       })
     },
     // 检查收藏状态
