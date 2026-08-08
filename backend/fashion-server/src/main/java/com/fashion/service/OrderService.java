@@ -85,10 +85,38 @@ public interface OrderService {
      * @param id 订单ID
      */
     void pay(Long id);
+
+    /**
+     * 定时任务：自动取消超时未支付且绑定了通用优惠券的订单并释放券
+     */
+    void autoCancelTimeoutCouponOrders();
     
     /**
      * 确认收货
      * @param id 订单ID
      */
     void confirm(Long id);
+
+    /**
+     * 支付成功更新订单状态
+     * @param id 订单ID
+     */
+    void updatePaySuccess(Long id);
+
+    /**
+     * 支付宝回调处理（支付记录 + 订单状态在一个事务中）
+     * @param orderId 订单ID
+     * @param paymentId 支付记录ID
+     * @param tradeNo 支付宝交易号
+     * @param payTime 支付时间
+     */
+    void handlePayCallback(Long orderId, Long paymentId, String tradeNo, java.time.LocalDateTime payTime);
+
+    /**
+     * 发货
+     * @param id 订单ID
+     * @param trackingCompany 快递公司
+     * @param trackingNumber 快递单号
+     */
+    void deliver(Long id, String trackingCompany, String trackingNumber);
 }

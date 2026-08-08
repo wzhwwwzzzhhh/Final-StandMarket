@@ -1,5 +1,6 @@
 package com.fashion.controller.admin;
 
+import com.fashion.common.annotation.OperationLog;
 import com.fashion.entity.User;
 import com.fashion.entity.PageResult;
 import com.fashion.result.Result;
@@ -21,6 +22,7 @@ public class UserAdminController {
      * 新增用户
      */
     @PostMapping
+    @OperationLog(module = "用户管理", operation = "新增用户")
     public Result<String> save(@RequestBody User user) {
         userService.save(user);
         return Result.success();
@@ -40,6 +42,7 @@ public class UserAdminController {
      * 删除用户
      */
     @DeleteMapping
+    @OperationLog(module = "用户管理", operation = "删除用户")
     public Result<String> delete(@RequestParam Long id) {
         if(id == null){
             return Result.error("id不能为空");
@@ -52,6 +55,7 @@ public class UserAdminController {
      * 修改用户
      */
     @PutMapping
+    @OperationLog(module = "用户管理", operation = "修改用户")
     public Result<String> update(@RequestBody User user) {
         if(user.getId() == null){
             return Result.error("id不能为空");

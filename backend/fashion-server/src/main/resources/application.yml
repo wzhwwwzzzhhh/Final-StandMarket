@@ -1,5 +1,12 @@
 server:
   port: 8080
+  tomcat:
+    threads:
+      max: 500
+      min-spare: 50
+    max-connections: 10000
+    accept-count: 200
+    connection-timeout: 5000
 
 spring:
   profiles:
@@ -19,6 +26,10 @@ spring:
       url: jdbc:mysql://${fashion.datasource.host}:${fashion.datasource.port}/${fashion.datasource.database}?serverTimezone=Asia/Shanghai&useUnicode=true&characterEncoding=utf-8&zeroDateTimeBehavior=convertToNull&useSSL=false&allowPublicKeyRetrieval=true
       username: ${fashion.datasource.username}
       password: ${fashion.datasource.password}
+      initial-size: 20
+      min-idle: 20
+      max-active: 100
+      max-wait: 5000
   redis:
     host: ${fashion.redis.host}
     port: ${fashion.redis.port}
@@ -32,9 +43,9 @@ spring:
     virtual-host: ${fashion.rabbitmq.virtual-host}
     listener:
       simple:
-        prefetch: 1
-        concurrency: 1
-        max-concurrency: 5
+        prefetch: 10
+        concurrency: 5
+        max-concurrency: 20
 mybatis:
   #mapper配置文件
   mapper-locations: classpath:mapper/*.xml
@@ -52,6 +63,10 @@ logging:
         controller: debug
 
 fashion:
+  sentinel:
+    seckill-qps: ${FASHION_SENTINEL_SECKILL_QPS:500}
+  agent:
+    url: ${fashion.agent.url:http://localhost:8000}
   jwt:
     # 设置jwt签名加密时使用的秘钥
     admin-secret-key: itcast
@@ -76,3 +91,10 @@ fashion:
     api-v3-key: ${fashion.wechat.api-v3-key}
     notify-url: ${fashion.wechat.notify-url}
     refund-notify-url: ${fashion.wechat.refund-notify-url}
+  alipay:
+    app-id: ${fashion.alipay.app-id}
+    app-private-key: ${fashion.alipay.app-private-key}
+    alipay-public-key: ${fashion.alipay.alipay-public-key}
+    gateway-url: ${fashion.alipay.gateway-url}
+    notify-url: ${fashion.alipay.notify-url}
+    return-url: ${fashion.alipay.return-url}

@@ -47,6 +47,11 @@ const routes = [
     component: () => import('../views/MyCoupons.vue')
   },
   {
+    path: '/coupon-center',
+    name: 'CouponCenter',
+    component: () => import('../views/CouponCenter.vue')
+  },
+  {
     path: '/address',
     name: 'Address',
     component: () => import('../views/Address.vue')
@@ -75,6 +80,36 @@ const routes = [
     path: '/upload',
     name: 'UploadTest',
     component: () => import('../views/UploadTest.vue')
+  },
+  {
+    path: '/special-offer',
+    name: 'SpecialOfferList',
+    component: () => import('../views/SpecialOfferList.vue')
+  },
+  {
+    path: '/favorite',
+    name: 'FavoriteList',
+    component: () => import('../views/FavoriteList.vue')
+  },
+  {
+    path: '/browse-history',
+    name: 'BrowseHistory',
+    component: () => import('../views/BrowseHistory.vue')
+  },
+  {
+    path: '/add-review/:orderId/:productId',
+    name: 'AddReview',
+    component: () => import('../views/AddReview.vue')
+  },
+  {
+    path: '/pay/result',
+    name: 'PayResult',
+    component: () => import('../views/PayResult.vue')
+  },
+  {
+    path: '/refund',
+    name: 'RefundList',
+    component: () => import('../views/RefundList.vue')
   }
 ]
 

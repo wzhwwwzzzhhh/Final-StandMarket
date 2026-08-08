@@ -1,5 +1,6 @@
 package com.fashion.controller.user;
 
+import com.fashion.context.BaseContext;
 import com.fashion.dto.OrderCreateDTO;
 import com.fashion.entity.Orders;
 import com.fashion.result.Result;
@@ -7,7 +8,9 @@ import com.fashion.service.OrderService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 /**
  * 用户订单Controller
@@ -47,6 +50,13 @@ public class UserOrderController {
     @GetMapping("/detail/{id}")
     public Result<Orders> detail(@PathVariable Long id) {
         Orders order = orderService.getById(id);
+        if (order == null) {
+            return Result.error("订单不存在");
+        }
+        Long userId = BaseContext.getUserId();
+        if (userId == null || !order.getUserId().equals(userId)) {
+            return Result.error("无权查看该订单");
+        }
         return Result.success(order);
     }
     
@@ -75,5 +85,26 @@ public class UserOrderController {
     public Result<String> confirm(@PathVariable Long id) {
         orderService.confirm(id);
         return Result.success("收货成功");
+    }
+
+    /**
+     * 查询物流信息
+     */
+    @GetMapping("/tracking/{orderId}")
+    public Result<Map<String, Object>> tracking(@PathVariable Long orderId) {
+        Long userId = BaseContext.getUserId();
+        Orders order = orderService.getById(orderId);
+        if (order == null || !order.getUserId().equals(userId)) {
+            return Result.error("订单不存在");
+        }
+        if (order.getTrackingNumber() == null || order.getTrackingNumber().isEmpty()) {
+            return Result.error("暂无物流信息");
+        }
+        Map<String, Object> result = new HashMap<>();
+        result.put("trackingCompany", order.getTrackingCompany());
+        result.put("trackingNumber", order.getTrackingNumber());
+        result.put("deliveryTime", order.getDeliveryTime());
+        result.put("status", order.getStatus());
+        return Result.success(result);
     }
 }

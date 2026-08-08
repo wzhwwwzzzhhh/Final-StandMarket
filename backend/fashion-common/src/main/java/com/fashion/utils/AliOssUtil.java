@@ -8,8 +8,6 @@ import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.boot.autoconfigure.condition.ConditionalOnNotWarDeployment;
-import org.springframework.stereotype.Component;
 
 import java.io.ByteArrayInputStream;
 

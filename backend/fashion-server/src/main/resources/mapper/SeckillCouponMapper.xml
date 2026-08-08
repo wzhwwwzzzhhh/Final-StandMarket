@@ -6,7 +6,7 @@
     <!-- 新增秒杀券 -->
     <insert id="insert" parameterType="com.fashion.entity.SeckillCoupon" >
         insert into seckill_coupon ( name, original_price, seckill_price, stock, limit_per_user, status, create_time, update_time, start_time, end_time)
-        values (#{name}, #{originalPrice}, #{seckillPrice}, #{stock}, #{limitPerUser}, #{status}, #{createTime})
+        values (#{name}, #{originalPrice}, #{seckillPrice}, #{stock}, #{limitPerUser}, #{status}, #{createTime}, #{updateTime}, #{startTime}, #{endTime})
     </insert>
 
     <!-- 根据id删除秒杀券 -->

@@ -16,6 +16,11 @@ public interface ShoppingCartMapper {
      * 根据用户id和商品id查询购物车项
      */
     ShoppingCart findByUserIdAndProductIdAndSkuInfo(ShoppingCart shoppingCart);
+
+    /**
+     * 根据用户id和商品id查询购物车项（不限定 sku，取最近一条）
+     */
+    ShoppingCart findByUserIdAndProductId(@Param("userId") Long userId, @Param("productId") Long productId);
     
     /**
      * 更新购物车项数量和金额

@@ -26,7 +26,6 @@ import FileUpload from '../components/FileUpload.vue'
 const imageUrl = ref('')
 
 const handleUploadSuccess = (url) => {
-  console.log('上传成功，图片URL：', url)
   // 可以在这里处理上传成功后的逻辑，比如保存到数据库等
 }
 

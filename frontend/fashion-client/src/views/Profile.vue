@@ -1,17 +1,24 @@
 <template>
   <div class="profile-container">
     <!-- 顶部背景 -->
-    <div class="profile-header"></div>
+    <div class="profile-header">
+      <div class="profile-header-content">
+        <span class="profile-kicker">// MEMBER PROFILE</span>
+        <p>管理你的订单、权益与个人偏好</p>
+      </div>
+    </div>
     
     <!-- 用户信息卡片 -->
     <div class="user-card">
       <div class="user-avatar">
-        <el-avatar :size="100" class="avatar" :src="userInfo.avatar">{{ userInitial }}</el-avatar>
-        <div class="avatar-badge">
-          <el-icon><Camera /></el-icon>
-        </div>
+        <el-avatar :size="100" class="avatar" :src="userInfo.avatar">
+          <template #error>
+            <span class="avatar-fallback">{{ userInitial }}</span>
+          </template>
+        </el-avatar>
       </div>
       <div class="user-info">
+        <span class="member-label">STAND / MEMBER</span>
         <div class="user-main-info">
           <h2 class="user-name">{{ userInfo.username || userInfo.name || '用户' }}</h2>
           <p class="user-phone">{{ userInfo.phone }}</p>
@@ -49,35 +56,35 @@
         </el-button>
       </div>
       <div class="order-stats">
-        <div class="order-stat-item" @click="goToOrder('pending')">
+        <div class="order-stat-item" role="button" tabindex="0" @click="goToOrder('pending')" @keydown.enter="goToOrder('pending')" @keydown.space.prevent="goToOrder('pending')">
           <div class="order-icon-container">
             <el-icon class="icon"><Timer /></el-icon>
             <span v-if="orderCounts.pending" class="order-badge">{{ orderCounts.pending }}</span>
           </div>
           <span class="order-stat-text">待付款</span>
         </div>
-        <div class="order-stat-item" @click="goToOrder('shipping')">
+        <div class="order-stat-item" role="button" tabindex="0" @click="goToOrder('shipping')" @keydown.enter="goToOrder('shipping')" @keydown.space.prevent="goToOrder('shipping')">
           <div class="order-icon-container">
             <el-icon class="icon"><Van /></el-icon>
             <span v-if="orderCounts.shipping" class="order-badge">{{ orderCounts.shipping }}</span>
           </div>
           <span class="order-stat-text">待发货</span>
         </div>
-        <div class="order-stat-item" @click="goToOrder('delivered')">
+        <div class="order-stat-item" role="button" tabindex="0" @click="goToOrder('delivered')" @keydown.enter="goToOrder('delivered')" @keydown.space.prevent="goToOrder('delivered')">
           <div class="order-icon-container">
             <el-icon class="icon"><Message /></el-icon>
             <span v-if="orderCounts.delivered" class="order-badge">{{ orderCounts.delivered }}</span>
           </div>
           <span class="order-stat-text">待收货</span>
         </div>
-        <div class="order-stat-item" @click="goToOrder('completed')">
+        <div class="order-stat-item" role="button" tabindex="0" @click="goToOrder('completed')" @keydown.enter="goToOrder('completed')" @keydown.space.prevent="goToOrder('completed')">
           <div class="order-icon-container">
             <el-icon class="icon"><Star /></el-icon>
             <span v-if="orderCounts.completed" class="order-badge">{{ orderCounts.completed }}</span>
           </div>
           <span class="order-stat-text">待评价</span>
         </div>
-        <div class="order-stat-item" @click="goToOrder('refund')">
+        <div class="order-stat-item" role="button" tabindex="0" @click="goToOrder('refund')" @keydown.enter="goToOrder('refund')" @keydown.space.prevent="goToOrder('refund')">
           <div class="order-icon-container">
             <el-icon class="icon"><Refresh /></el-icon>
             <span v-if="orderCounts.refund" class="order-badge">{{ orderCounts.refund }}</span>
@@ -91,38 +98,38 @@
     <div class="feature-nav">
       <h3 class="section-title">我的服务</h3>
       <div class="feature-grid">
-        <div class="feature-item" @click="goToAddress">
+        <div class="feature-item" role="button" tabindex="0" @click="goToAddress" @keydown.enter="goToAddress" @keydown.space.prevent="goToAddress">
           <div class="feature-icon-container">
             <el-icon class="feature-icon"><Position /></el-icon>
           </div>
           <span class="feature-text">收货地址</span>
         </div>
-        <div class="feature-item" @click="goToFavorites">
+        <div class="feature-item" role="button" tabindex="0" @click="goToFavorites" @keydown.enter="goToFavorites" @keydown.space.prevent="goToFavorites">
           <div class="feature-icon-container">
             <el-icon class="feature-icon"><Star /></el-icon>
           </div>
           <span class="feature-text">我的收藏</span>
         </div>
-        <div class="feature-item" @click="goToCoupons">
+        <div class="feature-item" role="button" tabindex="0" @click="goToCoupons" @keydown.enter="goToCoupons" @keydown.space.prevent="goToCoupons">
           <div class="feature-icon-container">
             <el-icon class="feature-icon"><Ticket /></el-icon>
             <span v-if="userInfo.couponCount && userInfo.couponCount > 0" class="feature-badge">{{ userInfo.couponCount }}</span>
           </div>
           <span class="feature-text">优惠券</span>
         </div>
-        <div class="feature-item" @click="goToHistory">
+        <div class="feature-item" role="button" tabindex="0" @click="goToHistory" @keydown.enter="goToHistory" @keydown.space.prevent="goToHistory">
           <div class="feature-icon-container">
             <el-icon class="feature-icon"><Clock /></el-icon>
           </div>
           <span class="feature-text">浏览历史</span>
         </div>
-        <div class="feature-item" @click="goToCustomerService">
+        <div class="feature-item" role="button" tabindex="0" @click="goToCustomerService" @keydown.enter="goToCustomerService" @keydown.space.prevent="goToCustomerService">
           <div class="feature-icon-container">
             <el-icon class="feature-icon"><Headset /></el-icon>
           </div>
           <span class="feature-text">客服中心</span>
         </div>
-        <div class="feature-item" @click="goToSettings">
+        <div class="feature-item" role="button" tabindex="0" @click="goToSettings" @keydown.enter="goToSettings" @keydown.space.prevent="goToSettings">
           <div class="feature-icon-container">
             <el-icon class="feature-icon"><Setting /></el-icon>
           </div>
@@ -135,7 +142,7 @@
     <div class="recommended-products" v-if="recommendedProducts.length > 0">
       <h3 class="section-title">为您推荐</h3>
       <div class="recommended-grid">
-        <div class="recommended-item" v-for="product in recommendedProducts" :key="product.id" @click="viewProductDetail(product.id)">
+        <div class="recommended-item" v-for="product in recommendedProducts" :key="product.id" role="button" tabindex="0" @click="viewProductDetail(product.id)" @keydown.enter="viewProductDetail(product.id)" @keydown.space.prevent="viewProductDetail(product.id)">
           <div class="recommended-image">
             <img :src="product.image" :alt="product.name" />
           </div>
@@ -158,7 +165,12 @@
 </template>
 
 <script>
-import { Timer, Van, Message, Star, Grid, Position, Ticket, Clock, Headset, Setting, Camera, Edit, ArrowRight, SwitchButton, Refresh } from '@element-plus/icons-vue'
+import { Timer, Van, Message, Star, Grid, Position, Ticket, Clock, Headset, Setting, Edit, ArrowRight, SwitchButton, Refresh } from '@element-plus/icons-vue'
+import favoriteApi from '@/api/favorite'
+import { orderApi } from '@/api/product'
+import profileImg1 from '@/assets/images/clothes/新对话 (5).png'
+import profileImg2 from '@/assets/images/shoes/新对话 (10).png'
+import profileImg3 from '@/assets/images/accessories/新对话 (14).png'
 
 export default {
   name: 'Profile',
@@ -173,7 +185,6 @@ export default {
     Clock,
     Headset,
     Setting,
-    Camera,
     Edit,
     ArrowRight,
     SwitchButton,
@@ -184,9 +195,9 @@ export default {
       userInfo: {},
       userInitial: '管',
       orderCounts: {
-        pending: 2,
-        shipping: 1,
-        delivered: 3,
+        pending: 0,
+        shipping: 0,
+        delivered: 0,
         completed: 0,
         refund: 0
       },
@@ -195,27 +206,46 @@ export default {
           id: 1,
           name: '时尚休闲T恤',
           price: 99,
-          image: 'https://trae-api-cn.mchost.guru/api/ide/v1/text_to_image?prompt=fashion%20casual%20t-shirt%20modern%20style&image_size=square'
+          image: profileImg1
         },
         {
           id: 2,
           name: '潮流运动鞋',
           price: 299,
-          image: 'https://trae-api-cn.mchost.guru/api/ide/v1/text_to_image?prompt=trendy%20sports%20shoes%20modern%20design&image_size=square'
+          image: profileImg2
         },
         {
           id: 3,
           name: '休闲牛仔裤',
           price: 199,
-          image: 'https://trae-api-cn.mchost.guru/api/ide/v1/text_to_image?prompt=casual%20jeans%20fashion%20style&image_size=square'
+          image: profileImg3
         }
       ]
     }
   },
   mounted() {
     this.loadUserInfo()
+    this.loadFavoriteCount()
+    this.loadOrderCounts()
   },
   methods: {
+    // 按状态拉取订单列表统计数量（与 Order 页 tab 状态一致）
+    loadOrderCounts() {
+      const statusMap = {
+        pending: 1,
+        shipping: 2,
+        delivered: 3,
+        completed: 4,
+        refund: 6
+      }
+      Object.keys(statusMap).forEach(key => {
+        orderApi.getOrderList(statusMap[key]).then(response => {
+          if (response.data.code === 1) {
+            this.orderCounts[key] = (response.data.data || []).length
+          }
+        }).catch(() => {})
+      })
+    },
     loadUserInfo() {
       // 从localStorage获取用户信息
       const userInfoStr = localStorage.getItem('userInfo')
@@ -246,13 +276,20 @@ export default {
       this.$router.push('/address')
     },
     goToFavorites() {
-      this.$message.info('收藏功能开发中')
+      this.$router.push('/favorite')
     },
     goToCoupons() {
       this.$router.push('/my-coupons')
     },
     goToHistory() {
-      this.$message.info('浏览历史功能开发中')
+      this.$router.push('/browse-history')
+    },
+    loadFavoriteCount() {
+      favoriteApi.count().then(response => {
+        if (response.data.code === 1) {
+          this.userInfo.favoriteCount = response.data.data.count
+        }
+      }).catch(() => {})
     },
     goToCustomerService() {
       this.$message.info('客服中心功能开发中')
@@ -368,27 +405,7 @@ export default {
   box-shadow: 0 8px 25px rgba(102, 126, 234, 0.4);
 }
 
-.avatar-badge {
-  position: absolute;
-  bottom: 0;
-  right: 0;
-  width: 36px;
-  height: 36px;
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-  border-radius: 50%;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  color: #fff;
-  box-shadow: 0 4px 12px rgba(102, 126, 234, 0.3);
-  cursor: pointer;
-  transition: all 0.3s ease;
-}
-
-.avatar-badge:hover {
-  transform: scale(1.15);
-  box-shadow: 0 6px 15px rgba(102, 126, 234, 0.4);
-}
+.avatar-fallback { font-family: var(--font-display); font-size: 32px; font-weight: 700; }
 
 .user-info {
   flex: 1;
@@ -864,4 +881,74 @@ export default {
     font-size: 16px;
   }
 }
+
+/* === STAND/MARKET profile visual system === */
+.profile-container {
+  max-width: 1240px;
+  padding: 0 var(--space-lg) 72px;
+  background: transparent;
+  color: var(--text-primary);
+  font-family: var(--font-body);
+}
+.profile-header {
+  min-height: 192px;
+  margin: 24px -8px -62px;
+  padding: 30px 40px;
+  border-radius: var(--radius-none);
+  background: linear-gradient(120deg, rgba(209, 0, 255, .22), transparent 48%), linear-gradient(90deg, rgba(204, 255, 0, .08), transparent 38%), var(--bg-elevated);
+  border: 1px solid var(--border-card);
+  box-shadow: none;
+}
+.profile-header::before { background: none; }
+.profile-header::after { content: ''; position: absolute; right: 36px; bottom: 26px; width: 132px; height: 1px; background: var(--accent-lime); box-shadow: 0 0 16px var(--accent-lime); }
+.profile-header-content { position: relative; z-index: 1; display: grid; gap: 8px; }
+.profile-kicker, .member-label { font-family: var(--font-display); font-size: 11px; font-weight: 700; letter-spacing: .13em; color: var(--accent-lime); }
+.profile-header p { margin: 0; color: var(--text-secondary); font-size: 15px; }
+.user-card, .order-overview, .feature-nav, .recommended-products { border-radius: var(--radius-none); border: 1px solid var(--border-card); background: var(--bg-card); box-shadow: 0 20px 46px rgba(0, 0, 0, .2); }
+.user-card { display: flex; align-items: center; gap: 30px; padding: 32px; position: relative; overflow: hidden; }
+.user-card::before { content: ''; position: absolute; top: 0; left: 0; width: 4px; height: 100%; background: var(--accent-purple); box-shadow: 0 0 18px var(--accent-purple); }
+.user-card:hover { transform: none; box-shadow: 0 20px 46px rgba(0, 0, 0, .2); }
+.user-avatar { margin-right: 0; }
+.avatar { border: 2px solid rgba(204, 255, 0, .75); background: var(--bg-surface); color: var(--accent-lime); box-shadow: 0 0 0 8px rgba(204, 255, 0, .05), 0 12px 28px rgba(0, 0, 0, .3); }
+.user-info { display: grid; flex: 1; grid-template-columns: minmax(180px, 1fr) auto auto; align-items: center; gap: 28px; min-width: 0; }
+.member-label { grid-column: 1 / -1; margin-bottom: -18px; }
+.user-main-info { gap: 6px; }
+.user-name { color: var(--text-primary); font-family: var(--font-heading); font-size: clamp(26px, 3vw, 36px); font-weight: 900; letter-spacing: .04em; }
+.user-phone { color: var(--text-secondary); font-family: var(--font-display); font-size: 13px; }
+.user-stats { gap: 0; padding: 0; border: 1px solid var(--border-card); background: rgba(255,255,255,.025); }
+.stat-item { min-width: 76px; padding: 11px 14px; }
+.stat-value { color: var(--accent-lime); font-family: var(--font-display); font-size: 24px; }
+.stat-label { color: var(--text-tertiary); font-size: 11px; }
+.stat-divider { height: 100%; background: var(--border-card); }
+.edit-btn { align-self: center; height: 42px; padding: 0 18px; border-radius: var(--radius-none); background: var(--accent-purple); border-color: var(--accent-purple); box-shadow: 0 8px 20px rgba(209, 0, 255, .22); }
+.edit-btn:hover { background: #b800e6; transform: translateY(-2px); box-shadow: 0 12px 26px rgba(209, 0, 255, .35); }
+.order-overview, .feature-nav, .recommended-products { padding: 26px 28px 28px; margin-bottom: 20px; }
+.section-header { margin-bottom: 20px; }
+.section-title { padding-left: 14px; color: var(--text-primary); font-family: var(--font-heading); font-weight: 850; letter-spacing: .04em; }
+.section-title::before { content: ''; position: absolute; top: 50%; left: 0; width: 4px; height: 18px; background: var(--accent-purple); box-shadow: 0 0 12px var(--accent-purple); transform: translateY(-50%); }
+.view-all-btn { color: var(--accent-lime); font-family: var(--font-heading); }
+.order-stats { display: grid; grid-template-columns: repeat(5, minmax(0,1fr)); gap: 10px; }
+.order-stat-item, .feature-item { border-radius: var(--radius-none); background: rgba(255,255,255,.025); border: 1px solid var(--border-card); outline: none; }
+.order-stat-item { min-width: 0; min-height: 132px; padding: 18px 10px; }
+.order-stat-item:hover, .order-stat-item:focus-visible, .feature-item:hover, .feature-item:focus-visible { background: rgba(209,0,255,.09); border-color: rgba(209,0,255,.68); transform: translateY(-4px); box-shadow: 0 10px 22px rgba(0,0,0,.2); }
+.icon, .feature-icon { color: var(--text-secondary); }
+.order-stat-item:hover .icon, .order-stat-item:focus-visible .icon, .feature-item:hover .feature-icon, .feature-item:focus-visible .feature-icon { color: var(--accent-lime); }
+.order-stat-text, .feature-text { color: var(--text-secondary); font-size: 13px; font-weight: 600; }
+.order-badge, .feature-badge { background: var(--accent-red); box-shadow: 0 0 14px rgba(255,42,42,.42); }
+.feature-grid { grid-template-columns: repeat(6, minmax(0,1fr)); gap: 10px; }
+.feature-item { min-height: 118px; padding: 16px 8px; }
+.recommended-grid { grid-template-columns: repeat(3, minmax(0,1fr)); gap: 14px; }
+.recommended-item { border-radius: var(--radius-none); background: var(--bg-surface); border: 1px solid var(--border-card); outline: none; }
+.recommended-item:hover, .recommended-item:focus-visible { border-color: rgba(204,255,0,.64); transform: translateY(-4px); box-shadow: 0 12px 26px rgba(0,0,0,.25); }
+.recommended-image { height: auto; aspect-ratio: 4 / 3; background: var(--bg-elevated); }
+.recommended-info { padding: 15px; }
+.recommended-name { color: var(--text-primary); font-size: 14px; }
+.recommended-price { color: var(--accent-lime); font-family: var(--font-display); }
+.logout-section { margin-top: 32px; }
+.logout-btn { border-radius: var(--radius-none); font-family: var(--font-heading); }
+.order-stat-item:focus-visible, .feature-item:focus-visible, .recommended-item:focus-visible { outline: 2px solid var(--accent-lime); outline-offset: 3px; }
+@media (max-width: 1024px) { .user-info { grid-template-columns: 1fr auto; } .user-stats { grid-column: 1 / -1; } .feature-grid { grid-template-columns: repeat(3, minmax(0,1fr)); } }
+@media (max-width: 768px) { .profile-container { padding: 0 var(--space-md) 48px; } .profile-header { margin: 16px 0 -46px; padding: 22px; } .user-card { gap: 20px; padding: 24px; } .order-overview, .feature-nav, .recommended-products { padding: 22px; } .order-stats { grid-template-columns: repeat(3,minmax(0,1fr)); } .recommended-grid { grid-template-columns: repeat(2,minmax(0,1fr)); } }
+@media (max-width: 560px) { .user-card { flex-direction: column; align-items: center; text-align: center; } .user-info { width: 100%; grid-template-columns: 1fr; justify-items: center; gap: 20px; } .member-label { margin-bottom: -10px; } .user-stats { width: 100%; } .edit-btn { width: 100%; } .order-stats, .feature-grid { grid-template-columns: repeat(2,minmax(0,1fr)); } .order-stat-item:last-child { grid-column: 1 / -1; } .section-header { align-items: flex-start; flex-direction: column; gap: 8px; } }
+@media (max-width: 400px) { .profile-container { padding-right: 12px; padding-left: 12px; } .user-card, .order-overview, .feature-nav, .recommended-products { padding: 18px; } .user-stats { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); } .stat-item { min-width: 0; padding: 10px 4px; } .stat-divider { display: none; } .recommended-grid { grid-template-columns: 1fr; } }
 </style>

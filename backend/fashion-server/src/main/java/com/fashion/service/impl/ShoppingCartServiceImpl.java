@@ -19,13 +19,24 @@ import java.math.BigDecimal;
  */
 @Service
 public class ShoppingCartServiceImpl implements ShoppingCartService {
-    
+
     @Autowired
     private ShoppingCartMapper shoppingCartMapper;
-    
+
     @Autowired
     private ProductService productService;
-    
+
+    /**
+     * 获取当前登录用户，未登录直接抛错（购物车接口均在 /user/** 登录态下访问）
+     */
+    private Long currentUserId() {
+        Long userId = BaseContext.getUserId();
+        if (userId == null) {
+            throw new RuntimeException("用户未登录");
+        }
+        return userId;
+    }
+
     /**
      * 添加商品到购物车
      */
@@ -33,7 +44,7 @@ public class ShoppingCartServiceImpl implements ShoppingCartService {
     @Override
     public void add(ShoppingCart shoppingCart) {
         // 获取当前用户id
-        Long userId = BaseContext.getUserId() != null ? BaseContext.getUserId() : 1L;
+        Long userId = currentUserId();
         shoppingCart.setUserId(userId);
         
         // 检查商品库存
@@ -77,7 +88,7 @@ public class ShoppingCartServiceImpl implements ShoppingCartService {
     @Override
     public List<ShoppingCart> list() {
         // 获取当前用户id
-        Long userId = BaseContext.getUserId() != null ? BaseContext.getUserId() : 1L;
+        Long userId = currentUserId();
         List<ShoppingCart> cartList = shoppingCartMapper.findByUserId(userId);
         // 同步价格和库存
         syncCartPrices();
@@ -90,31 +101,41 @@ public class ShoppingCartServiceImpl implements ShoppingCartService {
     @Transactional
     @Override
     public void updateQuantity(ShoppingCart shoppingCart) {
-        // 直接根据id查询购物车项
-        ShoppingCart existingCart = shoppingCartMapper.findById(shoppingCart.getId());
-        if (existingCart != null) {
-            // 检查商品库存
-            Product product = productService.getById(existingCart.getProductId());
-            if (product == null) {
-                throw new RuntimeException("商品不存在");
-            }
-            if (product.getStock() < shoppingCart.getNumber()) {
-                throw new RuntimeException("商品库存不足");
-            }
-            // 计算新的金额
-            BigDecimal newAmount = product.getPrice().multiply(new BigDecimal(shoppingCart.getNumber()));
-            existingCart.setNumber(shoppingCart.getNumber());
-            existingCart.setAmount(newAmount);
-            shoppingCartMapper.updateNumberAndAmount(existingCart);
+        Long userId = currentUserId();
+        // 根据当前用户 + 商品id 查询购物车项，保证只能操作自己的购物车
+        ShoppingCart existingCart = shoppingCartMapper.findByUserIdAndProductId(userId, shoppingCart.getProductId());
+        if (existingCart == null) {
+            throw new RuntimeException("购物车商品不存在");
         }
+        // 检查商品库存
+        Product product = productService.getById(existingCart.getProductId());
+        if (product == null) {
+            throw new RuntimeException("商品不存在");
+        }
+        if (product.getStock() < shoppingCart.getNumber()) {
+            throw new RuntimeException("商品库存不足");
+        }
+        // 计算新的金额
+        BigDecimal newAmount = product.getPrice().multiply(new BigDecimal(shoppingCart.getNumber()));
+        existingCart.setNumber(shoppingCart.getNumber());
+        existingCart.setAmount(newAmount);
+        shoppingCartMapper.updateNumberAndAmount(existingCart);
     }
-    
+
     /**
      * 删除购物车商品
      */
     @Override
     public void delete(Long id) {
-        // 直接删除，后续可根据实际登录状态添加权限验证
+        // 校验归属：只能删除自己的购物车项
+        ShoppingCart cart = shoppingCartMapper.findById(id);
+        if (cart == null) {
+            throw new RuntimeException("购物车商品不存在");
+        }
+        Long userId = currentUserId();
+        if (!cart.getUserId().equals(userId)) {
+            throw new RuntimeException("无权操作该购物车项");
+        }
         shoppingCartMapper.deleteById(id);
     }
     
@@ -124,7 +145,7 @@ public class ShoppingCartServiceImpl implements ShoppingCartService {
     @Override
     public void clear() {
         // 获取当前用户id
-        Long userId = BaseContext.getUserId() != null ? BaseContext.getUserId() : 1L;
+        Long userId = currentUserId();
         shoppingCartMapper.deleteByUserId(userId);
     }
     
@@ -134,7 +155,7 @@ public class ShoppingCartServiceImpl implements ShoppingCartService {
     @Override
     public void syncCartPrices() {
         // 获取当前用户id
-        Long userId = BaseContext.getUserId() != null ? BaseContext.getUserId() : 1L;
+        Long userId = currentUserId();
         List<ShoppingCart> cartList = shoppingCartMapper.findByUserId(userId);
         
         for (ShoppingCart cart : cartList) {
@@ -157,7 +178,7 @@ public class ShoppingCartServiceImpl implements ShoppingCartService {
     @Override
     public List<ShoppingCart> checkStock() {
         // 获取当前用户id
-        Long userId = BaseContext.getUserId() != null ? BaseContext.getUserId() : 1L;
+        Long userId = currentUserId();
         List<ShoppingCart> cartList = shoppingCartMapper.findByUserId(userId);
         List<ShoppingCart> outOfStockList = new java.util.ArrayList<>();
         
@@ -177,6 +198,17 @@ public class ShoppingCartServiceImpl implements ShoppingCartService {
     @Transactional
     @Override
     public void batchDelete(List<Long> ids) {
+        if (ids == null || ids.isEmpty()) {
+            return;
+        }
+        Long userId = currentUserId();
+        // 校验归属：待删除的购物车项必须都属于当前用户
+        for (Long id : ids) {
+            ShoppingCart cart = shoppingCartMapper.findById(id);
+            if (cart == null || !cart.getUserId().equals(userId)) {
+                throw new RuntimeException("存在无权操作的购物车项");
+            }
+        }
         // 调用mapper的批量删除方法
         shoppingCartMapper.batchDelete(ids);
     }
@@ -190,7 +222,7 @@ public class ShoppingCartServiceImpl implements ShoppingCartService {
     @Override
     public com.fashion.vo.CartCheckoutVo checkout(List<Long> ids) {
         // 获取当前用户id
-        Long userId = BaseContext.getUserId() != null ? BaseContext.getUserId() : 1L;
+        Long userId = currentUserId();
         
         // 获取所有购物车商品
         List<ShoppingCart> allCartItems = shoppingCartMapper.findByUserId(userId);

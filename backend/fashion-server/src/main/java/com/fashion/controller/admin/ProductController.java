@@ -1,10 +1,12 @@
 package com.fashion.controller.admin;
 
+import com.fashion.common.annotation.OperationLog;
 import com.fashion.entity.Product;
 import com.fashion.entity.PageResult;
 import com.fashion.dto.ProductSaveDTO;
 import com.fashion.dto.ProductUpdateDTO;
 import com.fashion.result.Result;
+import com.fashion.service.ProductIndexService;
 import com.fashion.service.ProductService;
 import com.fashion.utils.CacheClient;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -28,10 +30,14 @@ public class ProductController {
     @Autowired
     private CacheClient cacheClient;
 
+    @Autowired
+    private ProductIndexService productIndexService;
+
     /**
      * 新增商品
      */
     @PostMapping
+    @OperationLog(module = "商品管理", operation = "新增商品")
     public Result<String> save(@RequestBody ProductSaveDTO productSaveDTO) {
         // 转换为Product实体
         Product product = new Product();
@@ -46,6 +52,8 @@ public class ProductController {
 
         productService.save(product);
         cacheClient.delete("productPage:*");
+        // 同步到 ES
+        productIndexService.syncProduct(product);
         return Result.success();
     }
 
@@ -79,6 +87,7 @@ public class ProductController {
      * 删除商品
      */
     @DeleteMapping("/{id}")
+    @OperationLog(module = "商品管理", operation = "删除商品")
     public Result<String> delete(@PathVariable Long id) {
         if(id == null){
             return Result.error("id不能为空");
@@ -88,6 +97,8 @@ public class ProductController {
             return Result.error("删除失败");
         }
         cacheClient.delete("productPage:*");
+        // 从 ES 删除
+        productIndexService.deleteProduct(id);
         return Result.success();
     }
 
@@ -95,6 +106,7 @@ public class ProductController {
      * 修改商品
      */
     @PutMapping("/{id}")
+    @OperationLog(module = "商品管理", operation = "修改商品")
     public Result<String> update(@PathVariable Long id, @RequestBody ProductUpdateDTO productUpdateDTO) {
         if(id == null){
             return Result.error("id不能为空");
@@ -116,6 +128,8 @@ public class ProductController {
             return Result.error("修改失败");
         }
         cacheClient.delete("productPage:*");
+        // 同步到 ES
+        productIndexService.syncProduct(product);
         return Result.success();
     }
 

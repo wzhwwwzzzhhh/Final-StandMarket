@@ -1,5 +1,8 @@
 package com.fashion.service.impl;
+
 import com.fashion.config.DirectExchangeConfig;
+import com.alibaba.csp.sentinel.annotation.SentinelResource;
+import com.alibaba.csp.sentinel.slots.block.BlockException;
 import com.fashion.context.BaseContext;
 import com.fashion.dto.SeckillSubmitResult;
 import com.fashion.entity.*;
@@ -8,6 +11,7 @@ import com.fashion.mapper.SeckillOrderMapper;
 import com.fashion.result.Result;
 import com.fashion.service.SeckillCouponService;
 import com.fashion.utils.UniqueID;
+import lombok.extern.slf4j.Slf4j;
 import org.redisson.api.RLock;
 import org.redisson.api.RedissonClient;
 import org.springframework.amqp.AmqpException;
@@ -36,6 +40,7 @@ import java.util.stream.Collectors;
 /**
  * 秒杀券服务实现类
  */
+@Slf4j
 @Service
 public class SeckillCouponServiceImpl implements SeckillCouponService {
 
@@ -45,6 +50,7 @@ public class SeckillCouponServiceImpl implements SeckillCouponService {
     private RedissonClient redissonClient;
     @Autowired
     private UniqueID uniqueID;
+
     @Autowired
     private RabbitTemplate rabbitTemplate;
     @Autowired
@@ -151,6 +157,7 @@ public class SeckillCouponServiceImpl implements SeckillCouponService {
      * @return
      */
     @Override
+    @SentinelResource(value = "seckill", blockHandler = "seckillBlockHandler", fallback = "seckillFallback")
     public Result<SeckillSubmitResult> seckillCoupon(Long couponId) {
         //先获取分布锁
         Long userId = BaseContext.getUserId();
@@ -202,7 +209,7 @@ public class SeckillCouponServiceImpl implements SeckillCouponService {
             message.setCouponId(couponId);
             message.setOrderNumber(orderNumber.toString());
 
-            rabbitTemplate.convertAndSend(DirectExchangeConfig.SeckillExchange, DirectExchangeConfig.SeckillQueue,message);
+            rabbitTemplate.convertAndSend(DirectExchangeConfig.SeckillExchange, DirectExchangeConfig.SeckillRoutingKey, message);
 
             // 创建简化响应对象
             resultDto = new SeckillSubmitResult();
@@ -218,36 +225,45 @@ public class SeckillCouponServiceImpl implements SeckillCouponService {
         return Result.success(resultDto);
     }
 
+    public Result<SeckillSubmitResult> seckillBlockHandler(Long couponId, BlockException exception) {
+        log.warn("秒杀接口触发限流，couponId={}", couponId);
+        return Result.error("系统繁忙，请稍后再试");
+    }
+
+    public Result<SeckillSubmitResult> seckillFallback(Long couponId, Throwable exception) {
+        log.error("秒杀接口降级，couponId={}", couponId, exception);
+        return Result.error("系统异常，请稍后重试");
+    }
+
     @RabbitListener(queues = DirectExchangeConfig.SeckillQueue)
     @Transactional
     public void handleSeckillOrder(SeckillMessage message) {
-        try {
-            //先判断消息是否为空
-            if (message == null) {
-                return;
-            }
+        //先判断消息是否为空
+        if (message == null) {
+            return;
+        }
 
-            //二次检验，避免重复
-            SeckillOrder existOrder = seckillOrderMapper.selectByOrderNumber(message.getOrderNumber());
-            if (existOrder != null) {
-                return ;
-            }
-            //生成秒杀订单（用户与券的关系记录）
-            SeckillOrder seckillOrder = new SeckillOrder();
-            seckillOrder.setUserId(message.getUserId());
-            seckillOrder.setCouponId(message.getCouponId());
-            seckillOrder.setOrderNumber(message.getOrderNumber());
-            seckillOrder.setStatus(1);
-            seckillOrder.setCreateTime(LocalDateTime.now());
-            seckillOrderMapper.insert(seckillOrder);
-            //发送订单消息到延迟队列
-            rabbitTemplate.convertAndSend(DirectExchangeConfig.delayExchange, DirectExchangeConfig.delayRoutingKey, seckillOrder.getId());
+        //二次检验，避免重复
+        SeckillOrder existOrder = seckillOrderMapper.selectByOrderNumber(message.getOrderNumber());
+        if (existOrder != null) {
+            return;
+        }
+        //生成秒杀订单（用户与券的关系记录）
+        SeckillOrder seckillOrder = new SeckillOrder();
+        seckillOrder.setUserId(message.getUserId());
+        seckillOrder.setCouponId(message.getCouponId());
+        seckillOrder.setOrderNumber(message.getOrderNumber());
+        seckillOrder.setStatus(1);
+        seckillOrder.setCreateTime(LocalDateTime.now());
+        seckillOrderMapper.insert(seckillOrder);
+        //发送订单消息到延迟队列
+        rabbitTemplate.convertAndSend(DirectExchangeConfig.delayExchange, DirectExchangeConfig.delayRoutingKey, seckillOrder.getId());
 
-            //秒杀卷库存减1，用数据库锁解决
-            seckillCouponMapper.reduceStock(message.getCouponId());
-
-        } catch (Exception e) {
-            e.printStackTrace();
+        //秒杀卷库存减1，用数据库锁解决；影响行数为0说明库存不足，抛出异常回滚事务并触发消息重试，避免静默丢单
+        int rows = seckillCouponMapper.reduceStock(message.getCouponId());
+        if (rows == 0) {
+            log.error("秒杀券库存扣减失败，库存不足，couponId={}, orderNumber={}", message.getCouponId(), message.getOrderNumber());
+            throw new RuntimeException("秒杀券库存不足，扣减失败，couponId=" + message.getCouponId());
         }
     }
 
@@ -269,8 +285,8 @@ public class SeckillCouponServiceImpl implements SeckillCouponService {
         }
         //还原库存
         seckillCouponMapper.addStock(seckillOrder.getCouponId());
-        //redis更新
-        stringRedisTemplate.opsForValue().decrement("seckill:coupon:stock:" + seckillOrder.getCouponId());
+        //取消订单后应补回Redis库存，而不是扣减
+        stringRedisTemplate.opsForValue().increment("seckill:coupon:stock:" + seckillOrder.getCouponId());
     }
 
     @Override
@@ -294,8 +310,14 @@ public class SeckillCouponServiceImpl implements SeckillCouponService {
         String startTimeKey = "seckill:coupon:startTime:" + coupon.getId();
         String endTimeKey = "seckill:coupon:endTime:" + coupon.getId();
         stringRedisTemplate.opsForValue().set(stockKey, coupon.getStock().toString());
-        stringRedisTemplate.opsForValue().set(startTimeKey, coupon.getStartTime().toString());
-        stringRedisTemplate.opsForValue().set(endTimeKey, coupon.getEndTime().toString());
+        if (coupon.getStartTime() != null) {
+            long startTime = coupon.getStartTime().atZone(ZoneId.systemDefault()).toEpochSecond();
+            stringRedisTemplate.opsForValue().set(startTimeKey, String.valueOf(startTime));
+        }
+        if (coupon.getEndTime() != null) {
+            long endTime = coupon.getEndTime().atZone(ZoneId.systemDefault()).toEpochSecond();
+            stringRedisTemplate.opsForValue().set(endTimeKey, String.valueOf(endTime));
+        }
     }
 
     @Override

@@ -4,6 +4,7 @@ import com.fashion.context.BaseContext;
 import com.fashion.dto.OrderAmountCalculateDTO;
 import com.fashion.dto.UserCouponDto;
 import com.fashion.entity.PageResult;
+import com.fashion.entity.Payment;
 import com.fashion.entity.SeckillActivity;
 import com.fashion.entity.SeckillCoupon;
 import com.fashion.entity.SeckillOrder;
@@ -13,11 +14,11 @@ import com.fashion.mapper.SeckillCouponMapper;
 import com.fashion.mapper.SeckillOrderMapper;
 import com.fashion.mapper.UserMapper;
 import com.fashion.result.Result;
+import com.fashion.service.PaymentService;
 import com.fashion.service.SeckillOrderService;
 import com.fashion.vo.OrderAmountVO;
 import com.fashion.vo.SeckillOrderStatisticsVO;
 import com.fashion.vo.SeckillOrderVo;
-import com.fasterxml.jackson.databind.util.BeanUtil;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.BeanUtils;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -43,7 +44,8 @@ public class SeckillOrderServiceImpl implements SeckillOrderService {
     private SeckillCouponMapper seckillCouponMapper;
     @Autowired
     private SeckillActivityMapper seckillActivityMapper;
-
+    @Autowired
+    private PaymentService paymentService;
 
     @Override
     public SeckillOrder getOrderByNumber(String orderNumber) {
@@ -71,31 +73,26 @@ public class SeckillOrderServiceImpl implements SeckillOrderService {
             Map<String, Object> params = new HashMap<>();
             params.put("userId", userId);
             params.put("status", status);
-            
+
             List<UserCouponDto> coupons = seckillOrderMapper.selectUserCoupons(params);
-            
-            // 计算优惠券状态
+
             LocalDateTime now = LocalDateTime.now();
             for (UserCouponDto coupon : coupons) {
                 if (coupon.getStatus() == 2) {
-                    // 已支付
                     coupon.setCouponStatus(2);
                     coupon.setCouponStatusText("已使用");
                 } else if (coupon.getStatus() == 3) {
-                    // 已取消
                     coupon.setCouponStatus(3);
                     coupon.setCouponStatusText("已过期");
                 } else if (now.isAfter(coupon.getEndTime())) {
-                    // 已过期
                     coupon.setCouponStatus(3);
                     coupon.setCouponStatusText("已过期");
                 } else {
-                    // 可用
                     coupon.setCouponStatus(1);
                     coupon.setCouponStatusText("可用");
                 }
             }
-            
+
             return coupons;
         } catch (Exception e) {
             log.error("查询用户{}的优惠券列表失败", userId, e);
@@ -112,11 +109,11 @@ public class SeckillOrderServiceImpl implements SeckillOrderService {
                 log.warn("订单不存在，订单号：{}", orderNumber);
                 return false;
             }
-            
+
             seckillOrderMapper.updateStatus(orderNumber, status);
             log.info("更新订单状态成功，订单号：{}，新状态：{}", orderNumber, status);
             return true;
-            
+
         } catch (Exception e) {
             log.error("更新订单状态失败，订单号：{}", orderNumber, e);
             return false;
@@ -132,11 +129,11 @@ public class SeckillOrderServiceImpl implements SeckillOrderService {
                 log.warn("订单不存在，订单号：{}", orderNumber);
                 return false;
             }
-            
+
             seckillOrderMapper.updatePayTime(orderNumber, payTime);
             log.info("更新支付时间成功，订单号：{}，支付时间：{}", orderNumber, payTime);
             return true;
-            
+
         } catch (Exception e) {
             log.error("更新支付时间失败，订单号：{}", orderNumber, e);
             return false;
@@ -152,17 +149,16 @@ public class SeckillOrderServiceImpl implements SeckillOrderService {
                 log.warn("订单不存在，订单号：{}", orderNumber);
                 return false;
             }
-            
-            // 只能取消待支付的订单
+
             if (order.getStatus() != 1) {
                 log.warn("订单{}状态不是待支付，不能取消", orderNumber);
                 return false;
             }
-            
-            seckillOrderMapper.updateStatus(orderNumber, 3); // 已取消
+
+            seckillOrderMapper.updateStatus(orderNumber, 3);
             log.info("取消订单成功，订单号：{}", orderNumber);
             return true;
-            
+
         } catch (Exception e) {
             log.error("取消订单失败，订单号：{}", orderNumber, e);
             return false;
@@ -178,18 +174,31 @@ public class SeckillOrderServiceImpl implements SeckillOrderService {
                 log.warn("订单不存在，订单号：{}", orderNumber);
                 return false;
             }
-            
-            // 只能支付待支付的订单
+
             if (order.getStatus() != 1) {
                 log.warn("订单{}状态不是待支付，不能完成支付", orderNumber);
                 return false;
             }
-            
+
+            // 1. 创建支付记录
+            BigDecimal amount = order.getSeckillPrice() != null
+                    ? order.getSeckillPrice()
+                    : BigDecimal.ZERO;
+            Payment payment = paymentService.createPayment(order.getId(), 1, amount, 1);
+
+            // 2. 模拟支付处理（1.5~3秒延迟，95%成功率）
+            boolean success = paymentService.processPayment(payment.getPayNo());
+            if (!success) {
+                log.warn("支付失败，订单号：{}", orderNumber);
+                return false;
+            }
+
+            // 3. 更新订单状态
             LocalDateTime payTime = LocalDateTime.now();
             seckillOrderMapper.updatePayTime(orderNumber, payTime);
             log.info("完成订单支付成功，订单号：{}，支付时间：{}", orderNumber, payTime);
             return true;
-            
+
         } catch (Exception e) {
             log.error("完成订单支付失败，订单号：{}", orderNumber, e);
             return false;
@@ -199,10 +208,8 @@ public class SeckillOrderServiceImpl implements SeckillOrderService {
     @Override
     public PageResult getSeckillOrderPage(int page, int pageSize, String search, Integer status, Long activityId, LocalDateTime startTime, LocalDateTime endTime) {
         try {
-            // 计算偏移量
             int offset = (page - 1) * pageSize;
-            
-            // 构建查询参数
+
             Map<String, Object> params = new HashMap<>();
             params.put("offset", offset);
             params.put("pageSize", pageSize);
@@ -211,20 +218,17 @@ public class SeckillOrderServiceImpl implements SeckillOrderService {
             params.put("activityId", activityId);
             params.put("startTime", startTime);
             params.put("endTime", endTime);
-            
-            // 查询数据列表
+
             List<SeckillOrder> orders = seckillOrderMapper.selectSeckillOrderPage(params);
-            
-            // 查询总数
+
             Long total = seckillOrderMapper.countSeckillOrderPage(params);
-            
-            // 构建分页结果
+
             PageResult pageResult = new PageResult();
             pageResult.setTotal(total);
             pageResult.setRecords(orders);
-            
+
             return pageResult;
-            
+
         } catch (Exception e) {
             log.error("分页查询秒杀订单失败", e);
             return new PageResult();
@@ -240,22 +244,18 @@ public class SeckillOrderServiceImpl implements SeckillOrderService {
                 log.warn("订单不存在，订单号：{}", orderNumber);
                 return false;
             }
-            
-            // 只能确认待支付的订单
+
             if (order.getStatus() != 1) {
                 log.warn("订单{}状态不是待支付，不能确认支付", orderNumber);
                 return false;
             }
-            
-            // 更新状态为已支付
+
             seckillOrderMapper.updateStatus(orderNumber, 2);
-            
-            // 更新支付时间为当前时间
             seckillOrderMapper.updatePayTime(orderNumber, LocalDateTime.now());
-            
+
             log.info("确认订单支付成功，订单号：{}", orderNumber);
             return true;
-            
+
         } catch (Exception e) {
             log.error("确认订单支付失败，订单号：{}", orderNumber, e);
             return false;
@@ -271,17 +271,16 @@ public class SeckillOrderServiceImpl implements SeckillOrderService {
                 log.warn("订单不存在，订单ID：{}", id);
                 return false;
             }
-            
-            // 只能删除已取消的订单
+
             if (order.getStatus() != 3) {
                 log.warn("订单{}状态不是已取消，不能删除", id);
                 return false;
             }
-            
+
             seckillOrderMapper.deleteById(id);
             log.info("删除订单成功，订单ID：{}", id);
             return true;
-            
+
         } catch (Exception e) {
             log.error("删除订单失败，订单ID：{}", id, e);
             return false;
@@ -292,37 +291,29 @@ public class SeckillOrderServiceImpl implements SeckillOrderService {
     public SeckillOrderStatisticsVO getSeckillOrderStatistics() {
         try {
             SeckillOrderStatisticsVO statistics = new SeckillOrderStatisticsVO();
-            
-            // 获取总订单数
+
             Long totalOrders = seckillOrderMapper.countAllSeckillOrders();
             statistics.setTotalOrders(totalOrders);
-            
-            // 获取待支付订单数
+
             Long pendingOrders = seckillOrderMapper.countSeckillOrdersByStatus(1);
             statistics.setPendingOrdersCount(pendingOrders);
-            
-            // 获取已支付订单数
+
             Long paidOrders = seckillOrderMapper.countSeckillOrdersByStatus(2);
             statistics.setPaidOrdersCount(paidOrders);
-            
-            // 获取已取消订单数
+
             Long canceledOrders = seckillOrderMapper.countSeckillOrdersByStatus(3);
             statistics.setCanceledOrdersCount(canceledOrders);
-            
-            // 获取总销售额
+
             BigDecimal totalAmount = seckillOrderMapper.getTotalSeckillSalesAmount();
             statistics.setTotalAmount(totalAmount);
-            
-            // 获取今日销售额
+
             BigDecimal todayAmount = seckillOrderMapper.getTodaySeckillSalesAmount();
             statistics.setTodayAmount(todayAmount);
-            
-            // 设置默认值
+
             statistics.setAvgResponseTime(156);
             statistics.setSuccessOrdersCount(paidOrders);
             statistics.setFailedOrdersCount(canceledOrders);
-            
-            // 计算成功率
+
             if (totalOrders > 0) {
                 BigDecimal successRate = BigDecimal.valueOf(paidOrders)
                         .divide(BigDecimal.valueOf(totalOrders), 4, BigDecimal.ROUND_HALF_UP)
@@ -331,17 +322,16 @@ public class SeckillOrderServiceImpl implements SeckillOrderService {
             } else {
                 statistics.setSuccessRate(BigDecimal.ZERO);
             }
-            
-            // 计算平均订单金额
+
             if (paidOrders > 0 && totalAmount != null) {
                 BigDecimal avgOrderAmount = totalAmount.divide(BigDecimal.valueOf(paidOrders), 2, BigDecimal.ROUND_HALF_UP);
                 statistics.setAvgOrderAmount(avgOrderAmount);
             } else {
                 statistics.setAvgOrderAmount(BigDecimal.ZERO);
             }
-            
+
             return statistics;
-            
+
         } catch (Exception e) {
             log.error("获取秒杀订单统计信息失败", e);
             return null;
@@ -414,7 +404,7 @@ public class SeckillOrderServiceImpl implements SeckillOrderService {
             BigDecimal activityDiscount = BigDecimal.ZERO;
             BigDecimal couponDiscount = BigDecimal.ZERO;
 
-            BigDecimal currentAmount = totalAmount; // 当前金额（用于叠加计算）
+            BigDecimal currentAmount = totalAmount;
 
             if (calculateDTO.getActivityId() != null && calculateDTO.getActivityId() > 0) {
                 SeckillActivity activity = seckillActivityMapper.selectById(calculateDTO.getActivityId());
@@ -424,14 +414,14 @@ public class SeckillOrderServiceImpl implements SeckillOrderService {
                         BigDecimal discountRate = activity.getDiscount();
                         if (discountRate == null || discountRate.compareTo(BigDecimal.ZERO) <= 0 ||
                             discountRate.compareTo(new BigDecimal("10")) > 0) {
-                            discountRate = new BigDecimal("10"); // 默认不打折
+                            discountRate = new BigDecimal("10");
                         }
                         activityDiscount = currentAmount.multiply(
                                 BigDecimal.ONE.subtract(discountRate.divide(new BigDecimal("10"), 2, BigDecimal.ROUND_HALF_UP)))
                                 .setScale(2, BigDecimal.ROUND_HALF_UP);
                         amountVO.setActivityName(activity.getName());
                         amountVO.setActivityDiscountText(discountRate + "折优惠");
-                        currentAmount = currentAmount.subtract(activityDiscount); // 更新当前金额
+                        currentAmount = currentAmount.subtract(activityDiscount);
                     }
                 }
             }

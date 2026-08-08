@@ -59,7 +59,7 @@
               'selected': selectedActivity === activity.id, 
               'disabled': !isActivityValid(activity) 
             }]"
-            @click="!isActivityValid(activity) || (selectedActivity = activity.id, calculateAmount())"
+            @click="!isActivityValid(activity) || (selectedActivity = activity.id, selectedGeneralCoupon = 0, calculateAmount())"
           >
             <div class="card-content">
               <div class="card-header">
@@ -98,7 +98,7 @@
               v-for="coupon in availableCoupons" 
               :key="coupon.id"
               :class="['coupon-card', { 'selected': selectedCoupon === coupon.couponId }]"
-              @click="selectedCoupon = coupon.couponId; calculateAmount()"
+              @click="selectedCoupon = coupon.couponId; selectedGeneralCoupon = 0; calculateAmount()"
             >
               <div class="card-content">
                 <div class="card-header">
@@ -115,11 +115,51 @@
         </div>
       </div>
 
+      <!-- 通用优惠券选择 -->
+      <div class="section">
+        <div class="section-header">
+          <h3>优惠券</h3>
+          <span class="section-tip">选择一张可用优惠券抵扣金额</span>
+        </div>
+        <div class="scroll-box coupon-grid">
+          <div v-if="generalCoupons.length === 0" class="no-coupon">
+            <el-empty description="暂无可用优惠券" :image-size="60" />
+          </div>
+          <template v-else>
+            <div
+              :class="['coupon-card', { 'selected': selectedGeneralCoupon === 0 }]"
+              @click="!isGeneralCouponUsable() || (selectedGeneralCoupon = 0)"
+            >
+              <div class="card-content">
+                <span class="card-name">不使用优惠券</span>
+                <span class="card-desc">无额外优惠</span>
+              </div>
+            </div>
+            <div
+              v-for="coupon in generalCoupons"
+              :key="coupon.id"
+              :class="['coupon-card', { 'selected': selectedGeneralCoupon === coupon.id }]"
+              @click="selectedGeneralCoupon = coupon.id; selectedActivity = 0; selectedCoupon = 0; calculateAmount()"
+            >
+              <div class="card-content">
+                <div class="card-header">
+                  <span class="card-name">{{ coupon.templateName }}</span>
+                  <el-tag v-if="coupon.templateType === 2" size="small">{{ coupon.discount }}折</el-tag>
+                  <el-tag v-else size="small">{{ thresholdText(coupon.threshold) }}</el-tag>
+                </div>
+                <span class="card-discount">-¥{{ getGeneralCouponDiscount(coupon).toFixed(2) }}</span>
+                <span class="card-time">有效期至 {{ formatTime(coupon.expireTime) }}</span>
+              </div>
+            </div>
+          </template>
+        </div>
+      </div>
+
       <!-- 收货地址选择 -->
       <div class="section">
         <div class="section-header">
           <h3>收货地址</h3>
-          <el-button type="primary" size="small" @click="showAddressDialog = true">
+          <el-button type="primary" size="small" @click="openAddAddressDialog">
             <el-icon><Plus /></el-icon> 添加地址
           </el-button>
         </div>
@@ -191,8 +231,12 @@
             <span class="value discount">-¥{{ activityDiscount.toFixed(2) }}</span>
           </div>
           <div v-if="couponDiscount > 0" class="summary-item">
-            <span class="label">券优惠：</span>
+            <span class="label">秒杀券优惠：</span>
             <span class="value discount">-¥{{ couponDiscount.toFixed(2) }}</span>
+          </div>
+          <div v-if="generalCouponDiscount > 0" class="summary-item">
+            <span class="label">优惠券优惠：</span>
+            <span class="value discount">-¥{{ generalCouponDiscount.toFixed(2) }}</span>
           </div>
           <div class="summary-item total">
             <span class="label">实付金额：</span>
@@ -226,11 +270,12 @@
             <el-input v-model="addressForm.phone" placeholder="请输入手机号码" />
           </el-form-item>
           <el-form-item label="地区">
-            <el-cascader 
-              v-model="addressForm.area" 
-              :options="areaOptions" 
-              placeholder="请选择省市区" 
+            <el-cascader
+              v-model="areaValue"
+              :options="areaOptions"
+              placeholder="请选择省市区"
               style="width: 100%"
+              @change="handleAreaChange"
             />
           </el-form-item>
           <el-form-item label="详细地址">
@@ -255,6 +300,9 @@ import { useRouter, useRoute } from 'vue-router'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { ArrowLeft, Plus } from '@element-plus/icons-vue'
 import { orderApi, addressApi, seckillApi, cartApi } from '../api/product'
+import addressApiFull from '../api/address'
+import regionData from '../utils/regionData'
+import { couponApi, calcCouponDiscount } from '../api/coupon'
 
 const router = useRouter()
 const route = useRoute()
@@ -270,6 +318,10 @@ const selectedActivity = ref(0)
 // 秒杀券相关
 const availableCoupons = ref([])
 const selectedCoupon = ref(0)
+
+// 通用优惠券相关
+const generalCoupons = ref([])
+const selectedGeneralCoupon = ref(0)
 
 // 金额计算结果（从后端获取）
 const calculatedAmount = ref({
@@ -291,24 +343,22 @@ const deliveryStatus = ref('1') // 1立即送出，0选择具体时间
 const estimatedDeliveryTime = ref(null) // 预计配送时间
 const showAddressDialog = ref(false)
 const addressForm = ref({
+  id: null,
   consignee: '',
   phone: '',
-  area: [],
+  provinceCode: '',
+  provinceName: '',
+  cityCode: '',
+  cityName: '',
+  districtCode: '',
+  districtName: '',
   detail: '',
   isDefault: false
 })
+const areaValue = ref([])
 
-// 地区选项（模拟数据）
-const areaOptions = ref([
-  {
-    value: 'beijing',
-    label: '北京市',
-    children: [
-      { value: 'chaoyang', label: '朝阳区' },
-      { value: 'haidian', label: '海淀区' }
-    ]
-  }
-])
+// 地区选项（真实省市区数据）
+const areaOptions = regionData
 
 // 计算属性
 const totalAmount = computed(() => {
@@ -318,7 +368,15 @@ const totalAmount = computed(() => {
 // 使用后端计算的结果
 const activityDiscount = computed(() => calculatedAmount.value.activityDiscount)
 const couponDiscount = computed(() => calculatedAmount.value.couponDiscount)
-const finalAmount = computed(() => calculatedAmount.value.finalAmount || totalAmount.value)
+const generalCoupon = computed(() => generalCoupons.value.find(c => c.id === selectedGeneralCoupon.value) || null)
+const generalCouponDiscount = computed(() => {
+  if (!selectedGeneralCoupon.value || !generalCoupon.value) return 0
+  return calcCouponDiscount(generalCoupon.value, totalAmount.value)
+})
+const finalAmount = computed(() => {
+  const seckillFinal = calculatedAmount.value.finalAmount || totalAmount.value
+  return Math.max(0, Number(seckillFinal) - generalCouponDiscount.value)
+})
 
 const isFormValid = computed(() => {
   return selectedItems.value.length > 0 && selectedAddress.value
@@ -341,6 +399,42 @@ const isActivityValid = (activity) => {
   return now >= startTime && now <= endTime
 }
 
+const thresholdText = (threshold) => {
+  if (!threshold || Number(threshold) === 0) return '无门槛'
+  return `满${threshold}可用`
+}
+
+const getGeneralCouponDiscount = (coupon) => {
+  return calcCouponDiscount(coupon, totalAmount.value)
+}
+
+// 选择了秒杀活动/秒杀券时不可再选通用券（服务端同样拦截）
+const isGeneralCouponUsable = () => {
+  return !selectedActivity.value && !selectedCoupon.value
+}
+
+// 加载结算页可用通用券
+const loadGeneralCoupons = async () => {
+  try {
+    const productIds = selectedItems.value.map(item => item.productId).filter(Boolean)
+    const res = await couponApi.getAvailableCoupons({
+      totalAmount: totalAmount.value,
+      productIds: productIds.join(',')
+    })
+    if (res.data.code === 1) {
+      generalCoupons.value = res.data.data || []
+      if (selectedGeneralCoupon.value) {
+        const stillUsable = generalCoupons.value.some(c => c.id === selectedGeneralCoupon.value)
+        if (!stillUsable) {
+          selectedGeneralCoupon.value = 0
+        }
+      }
+    }
+  } catch (error) {
+    console.error('加载可用优惠券失败:', error)
+  }
+}
+
 // 防抖计时器
 let calculateTimer = null
 
@@ -354,41 +448,28 @@ const calculateAmount = () => {
   // 设置防抖，300ms后执行
   calculateTimer = setTimeout(async () => {
     try {
-      console.log('开始计算金额...', {
-        totalAmount: totalAmount.value,
-        activityId: selectedActivity.value,
-        couponId: selectedCoupon.value
-      })
-      
       if (totalAmount.value <= 0) {
-        console.warn('商品总金额无效:', totalAmount.value)
         return
       }
-      
+
       const calculateData = {
         totalAmount: totalAmount.value,
         activityId: selectedActivity.value && selectedActivity.value > 0 ? selectedActivity.value : null,
         couponId: selectedCoupon.value && selectedCoupon.value > 0 ? selectedCoupon.value : null
       }
-      
-      console.log('发送计算请求:', calculateData)
-      
+
       const response = await seckillApi.calculateOrderAmount(calculateData)
-      
-      console.log('收到响应:', response.data)
-      
+
       if (response.data.code === 1 && response.data.data) {
         calculatedAmount.value = response.data.data
-        console.log('✅ 金额计算成功:', calculatedAmount.value)
         // 不显示提示，避免频繁打扰
       } else {
-        console.warn('计算返回异常:', response.data.msg)
         ElMessage.warning(response.data.msg || '计算失败')
       }
     } catch (error) {
-      console.error('❌ 计算金额失败:', error)
+      console.error('计算金额失败:', error)
       ElMessage.error('计算金额失败，请重试')
-      
+
       // 如果接口失败，使用默认值（无优惠）
       calculatedAmount.value = {
         totalAmount: totalAmount.value,
@@ -414,15 +495,12 @@ const loadData = async () => {
     
     if (orderDataStr) {
       const orderData = JSON.parse(orderDataStr)
-      console.log('sessionStorage订单数据:', orderData)
       // 获取商品信息列表
       if (orderData.selectedItems && orderData.selectedItems.length > 0) {
         selectedItems.value = orderData.selectedItems
         productIds = orderData.selectedItems.map(item => item.id)
-        console.log('商品信息:', selectedItems.value)
       } else if (orderData.cartItemIds && orderData.cartItemIds.length > 0) {
         productIds = orderData.cartItemIds
-        console.log('购物车商品ID:', productIds)
       }
     }
     
@@ -433,24 +511,14 @@ const loadData = async () => {
     }
 
     // 并行调用多个接口查询数据
-    const [addressRes, activityRes, couponRes] = await Promise.all([
-      addressApi.getList(),
+    const [activityRes, couponRes] = await Promise.all([
       seckillApi.getActivityList(),
       seckillApi.getUserCoupons(2) // 获取可用的秒杀券（status=2待使用）
     ])
-    
-    // 处理地址数据
-    if (addressRes.data.code === 1 && addressRes.data.data) {
-      addressList.value = addressRes.data.data
-      // 设置默认地址
-      const defaultAddr = addressList.value.find(addr => addr.isDefault === 1)
-      if (defaultAddr) {
-        selectedAddress.value = defaultAddr.id
-      } else if (addressList.value.length > 0) {
-        selectedAddress.value = addressList.value[0].id
-      }
-    }
-    
+
+    // 加载地址数据
+    await loadAddressList()
+
     // 处理秒杀活动数据
     if (activityRes.data.code === 1 && activityRes.data.data) {
       availableActivities.value = activityRes.data.data
@@ -463,6 +531,8 @@ const loadData = async () => {
     
     // 初始计算金额（不等待防抖）
     calculateAmount()
+    // 加载可用通用券
+    loadGeneralCoupons()
 
   } catch (error) {
     console.error('加载数据失败:', error)
@@ -474,9 +544,66 @@ const loadData = async () => {
 }
 
 // 地址管理
-const editAddress = (address) => {
-  addressForm.value = { ...address }
+const openAddAddressDialog = () => {
+  addressForm.value = {
+    id: null,
+    consignee: '',
+    phone: '',
+    provinceCode: '',
+    provinceName: '',
+    cityCode: '',
+    cityName: '',
+    districtCode: '',
+    districtName: '',
+    detail: '',
+    isDefault: false
+  }
+  areaValue.value = []
   showAddressDialog.value = true
+}
+
+const editAddress = (address) => {
+  addressForm.value = { ...address, isDefault: !!address.isDefault }
+  areaValue.value = [address.provinceCode, address.cityCode, address.districtCode].filter(Boolean)
+  showAddressDialog.value = true
+}
+
+const handleAreaChange = (value) => {
+  if (value && value.length === 3) {
+    const province = regionData.find(item => item.value === value[0])
+    const city = province ? province.children.find(item => item.value === value[1]) : null
+    const district = city ? city.children.find(item => item.value === value[2]) : null
+    addressForm.value.provinceCode = value[0]
+    addressForm.value.provinceName = province ? province.label : ''
+    addressForm.value.cityCode = value[1]
+    addressForm.value.cityName = city ? city.label : ''
+    addressForm.value.districtCode = value[2]
+    addressForm.value.districtName = district ? district.label : ''
+  } else {
+    addressForm.value.provinceCode = ''
+    addressForm.value.provinceName = ''
+    addressForm.value.cityCode = ''
+    addressForm.value.cityName = ''
+    addressForm.value.districtCode = ''
+    addressForm.value.districtName = ''
+  }
+}
+
+const loadAddressList = async () => {
+  try {
+    const res = await addressApi.getList()
+    if (res.data.code === 1 && res.data.data) {
+      addressList.value = res.data.data
+      const defaultAddr = addressList.value.find(addr => addr.isDefault === 1)
+      if (defaultAddr) {
+        selectedAddress.value = defaultAddr.id
+      } else if (addressList.value.length > 0) {
+        selectedAddress.value = addressList.value[0].id
+      }
+    }
+  } catch (e) {
+    console.error('加载地址列表失败:', e)
+  }
 }
 
 const deleteAddress = async (id) => {
@@ -486,10 +613,13 @@ const deleteAddress = async (id) => {
       cancelButtonText: '取消',
       type: 'warning'
     })
-    
-    // 这里调用删除地址接口
-    addressList.value = addressList.value.filter(addr => addr.id !== id)
-    ElMessage.success('删除成功')
+    const res = await addressApiFull.deleteAddress(id)
+    if (res.data.code === 1) {
+      ElMessage.success('删除成功')
+      await loadAddressList()
+    } else {
+      ElMessage.error(res.data.msg || '删除失败')
+    }
   } catch (error) {
     if (error !== 'cancel') {
       ElMessage.error('删除失败')
@@ -498,9 +628,24 @@ const deleteAddress = async (id) => {
 }
 
 const saveAddress = async () => {
-  // 这里调用保存地址接口
-  ElMessage.success('保存成功')
-  showAddressDialog.value = false
+  const payload = {
+    ...addressForm.value,
+    isDefault: addressForm.value.isDefault ? 1 : 0
+  }
+  try {
+    const res = addressForm.value.id
+      ? await addressApiFull.updateAddress(payload)
+      : await addressApiFull.addAddress(payload)
+    if (res.data.code === 1) {
+      ElMessage.success('保存成功')
+      showAddressDialog.value = false
+      await loadAddressList()
+    } else {
+      ElMessage.error(res.data.msg || '保存失败')
+    }
+  } catch (error) {
+    ElMessage.error('保存地址失败')
+  }
 }
 
 // 提交订单
@@ -529,14 +674,14 @@ const handleSubmit = async () => {
       }
     }
 
-    // 构建订单数据
+    // 构建订单数据（金额由服务端重算，前端不再传递，防止篡改）
     const orderData = {
       productIds: productIds,
-      amount: finalAmount.value, // 传递前端计算好的总金额（包含优惠后的金额）
       addressId: selectedAddress.value,
       payMethod: selectedPaymentMethod.value,
       activityId: selectedActivity.value || null,
       couponId: selectedCoupon.value || null,
+      userCouponId: selectedGeneralCoupon.value || null,
       deliveryStatus: deliveryStatus.value,
       estimatedDeliveryTime: estimatedDeliveryTime.value
     }
@@ -553,9 +698,7 @@ const handleSubmit = async () => {
       if (orderDataStr) {
         const orderData = JSON.parse(orderDataStr)
         if (orderData.cartItemIds && orderData.cartItemIds.length > 0) {
-          cartApi.batchDeleteCartItems(orderData.cartItemIds).then(() => {
-            console.log('购物车已清空')
-          }).catch(error => {
+          cartApi.batchDeleteCartItems(orderData.cartItemIds).catch(error => {
             console.error('清空购物车失败:', error)
           })
         }
@@ -584,95 +727,175 @@ onMounted(() => {
 </script>
 
 <style scoped>
+/* ============================================================
+   CREATE ORDER — 机能风订单创建页
+   ============================================================ */
+
 .create-order {
-  max-width: 800px;
+  max-width: 900px;
   margin: 0 auto;
-  padding: 20px;
-  background: #f5f5f5;
+  padding: 0 var(--space-lg);
+  padding-top: var(--space-2xl);
+  padding-bottom: 120px;
   min-height: 100vh;
+  animation: floatIn 0.5s ease;
 }
 
 .order-content {
-  background: #fff;
-  border-radius: 8px;
-  padding: 20px;
+  background: transparent;
 }
 
+/* ---- 页面标题 ---- */
 .header {
   display: flex;
   align-items: center;
-  margin-bottom: 20px;
-  padding-bottom: 15px;
-  border-bottom: 1px solid #eee;
-  gap: 15px;
+  margin-bottom: var(--space-xl);
+  padding-bottom: var(--space-lg);
+  border-bottom: 2px solid var(--border-subtle);
+  gap: var(--space-md);
+}
+
+.header :deep(.el-button) {
+  background: var(--bg-card);
+  border: 1px solid var(--border-card);
+  color: var(--text-secondary);
+  font-family: var(--font-heading);
+  font-weight: 700;
+  font-size: 12px;
+  letter-spacing: 0.04em;
+  transition: var(--transition-base);
+}
+
+.header :deep(.el-button:hover) {
+  border-color: var(--accent-purple);
+  color: var(--accent-purple);
 }
 
 .page-title {
-  color: #333;
+  font-family: var(--font-heading);
+  font-size: 26px;
+  font-weight: 900;
+  color: var(--text-primary);
+  letter-spacing: 0.06em;
   margin: 0;
 }
 
 .loading-container {
-  background: #fff;
-  padding: 40px;
-  border-radius: 8px;
+  background: var(--bg-card);
+  border: 1px solid var(--border-card);
+  padding: 60px 40px;
 }
 
+/* ---- 区块 ---- */
 .section {
-  background: white;
-  border: 1px solid #e4e7ed;
-  border-radius: 8px;
-  margin-bottom: 20px;
+  background: var(--bg-card);
+  border: 1px solid var(--border-card);
+  margin-bottom: var(--space-lg);
   overflow: hidden;
+}
+
+.section h3 {
+  font-family: var(--font-heading);
+  font-size: 14px;
+  font-weight: 800;
+  color: var(--text-primary);
+  letter-spacing: 0.05em;
+  margin: 0;
+  padding: 16px 20px;
+  border-bottom: 1px solid var(--border-subtle);
+  background: var(--bg-elevated);
 }
 
 .scroll-box {
   max-height: 250px;
   overflow-y: auto;
-  padding: 15px 20px;
+  padding: 16px 20px;
+}
+
+.scroll-box::-webkit-scrollbar {
+  width: 4px;
+}
+
+.scroll-box::-webkit-scrollbar-thumb {
+  background: var(--accent-purple-dim);
+}
+
+.scroll-box::-webkit-scrollbar-track {
+  background: var(--bg-surface);
 }
 
 .section-header {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  padding: 15px 20px;
-  background: #f8f9fa;
-  border-bottom: 1px solid #e4e7ed;
+  padding: 16px 20px;
+  background: var(--bg-elevated);
+  border-bottom: 1px solid var(--border-subtle);
 }
 
 .section-header h3 {
-  margin: 0;
-  color: #333;
+  padding: 0;
+  border-bottom: none;
+  background: none;
+}
+
+.section-header :deep(.el-button) {
+  background: var(--bg-card);
+  border: 1px solid var(--border-card);
+  color: var(--text-secondary);
+  font-family: var(--font-heading);
+  font-weight: 700;
+  font-size: 12px;
+  letter-spacing: 0.04em;
+  transition: var(--transition-base);
+}
+
+.section-header :deep(.el-button:hover) {
+  border-color: var(--accent-purple);
+  color: var(--accent-purple);
 }
 
 .section-tip {
-  color: #909399;
-  font-size: 13px;
+  color: var(--text-muted);
+  font-size: 12px;
+  font-family: var(--font-mono);
+  letter-spacing: 0.02em;
 }
 
+/* ---- 商品列表 ---- */
 .product-list {
-  padding: 15px 20px;
+  padding: 0;
 }
 
 .product-item {
   display: flex;
   align-items: center;
-  padding: 12px 0;
-  border-bottom: 1px solid #f0f0f0;
+  padding: 16px 20px;
+  border-bottom: 1px solid var(--border-subtle);
+  transition: background 0.2s;
 }
 
 .product-item:last-child {
   border-bottom: none;
 }
 
+.product-item:hover {
+  background: rgba(209, 0, 255, 0.03);
+}
+
 .product-image {
   width: 80px;
   height: 80px;
   object-fit: cover;
-  border-radius: 4px;
-  margin-right: 15px;
+  margin-right: 16px;
   flex-shrink: 0;
+  filter: grayscale(30%);
+  transition: all 0.3s ease;
+}
+
+.product-image:hover {
+  filter: grayscale(0%);
+  transform: scale(1.06);
 }
 
 .product-info {
@@ -681,335 +904,121 @@ onMounted(() => {
 }
 
 .product-name {
-  font-weight: 500;
-  color: #303133;
+  font-family: var(--font-heading);
+  font-weight: 700;
+  font-size: 14px;
+  color: var(--text-primary);
   margin-bottom: 4px;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+  letter-spacing: 0.03em;
 }
 
 .product-sku {
-  color: #909399;
-  font-size: 12px;
-  margin-bottom: 4px;
+  color: var(--text-muted);
+  font-size: 11px;
+  font-family: var(--font-mono);
+  margin-bottom: 6px;
 }
 
 .product-price {
   display: flex;
   align-items: center;
-  gap: 10px;
+  gap: 12px;
 }
 
 .unit-price {
-  color: #f56c6c;
-  font-weight: 500;
+  font-family: var(--font-display);
+  font-size: 16px;
+  font-weight: 800;
+  color: var(--accent-lime);
 }
 
 .quantity {
-  color: #909399;
-  font-size: 13px;
+  color: var(--text-muted);
+  font-size: 12px;
+  font-family: var(--font-mono);
 }
 
 .product-subtotal {
-  font-weight: 600;
-  color: #f56c6c;
-  font-size: 16px;
-  margin-left: 20px;
-  flex-shrink: 0;
-}
-
-.activity-list,
-.coupon-list {
-  width: 100%;
-}
-
-.activity-list :deep(.el-radio),
-.coupon-list :deep(.el-radio) {
-  display: flex;
-  align-items: stretch;
-  margin-bottom: 10px;
-}
-
-.activity-list :deep(.el-radio__label),
-.coupon-list :deep(.el-radio__label) {
-  flex: 1;
-}
-
-.activity-option,
-.coupon-option {
-  flex: 1;
-  padding: 15px;
-  border: 1px solid #ebeef5;
-  border-radius: 4px;
-  cursor: pointer;
-  min-height: 60px;
-  display: flex;
-  flex-direction: column;
-  justify-content: center;
-}
-
-.activity-option:hover,
-.coupon-option:hover {
-  border-color: #409eff;
-}
-
-.activity-info,
-.coupon-info {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: 5px;
-}
-
-.activity-name,
-.coupon-name {
-  font-weight: 500;
-  font-size: 14px;
-}
-
-.activity-time,
-.coupon-time {
-  color: #999;
-  font-size: 12px;
-  display: block;
-}
-
-.activity-discount,
-.coupon-price {
-  color: #f56c6c;
-  font-weight: 600;
-}
-
-.original-price {
-  color: #999;
-  text-decoration: line-through;
-  font-size: 12px;
-  margin-left: 5px;
-}
-
-.activity-time,
-.coupon-time {
-  color: #999;
-  font-size: 12px;
-}
-
-.no-coupon,
-.no-address {
-  padding: 30px 0;
-}
-
-.address-list {
-  padding: 15px 20px;
-}
-
-.address-item {
-  display: flex;
-  justify-content: space-between;
-  align-items: flex-start;
-  padding: 12px 0;
-  border-bottom: 1px solid #f0f0f0;
-}
-
-.address-item:last-child {
-  border-bottom: none;
-}
-
-.address-item :deep(.el-radio__label) {
-  flex: 1;
-}
-
-.address-info {
-  margin-left: 8px;
-}
-
-.address-header {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  margin-bottom: 4px;
-}
-
-.consignee {
-  font-weight: 500;
-  color: #303133;
-}
-
-.phone {
-  color: #606266;
-}
-
-.address-detail {
-  color: #606266;
-  font-size: 13px;
-  line-height: 1.5;
-}
-
-.address-actions {
-  display: flex;
-  gap: 8px;
-  flex-shrink: 0;
-}
-
-.payment-methods {
-  padding: 15px 20px;
-  display: flex;
-  gap: 20px;
-}
-
-.payment-methods .el-radio {
-  margin-right: 0;
-}
-
-.order-summary {
-  padding: 15px 20px;
-  background: #f8f9fa;
-}
-
-.summary-item {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  padding: 6px 0;
-  font-size: 14px;
-}
-
-.summary-item .label {
-  color: #606266;
-}
-
-.summary-item .value {
-  color: #303133;
-  font-weight: 500;
-}
-
-.summary-item .discount {
-  color: #f56c6c;
-}
-
-.summary-item.total {
-  padding-top: 12px;
-  margin-top: 8px;
-  border-top: 1px solid #e4e7ed;
-  font-size: 16px;
-  font-weight: 600;
-}
-
-.summary-item.total .value {
-  color: #f56c6c;
-  font-size: 20px;
-}
-
-.summary-item.total {
-  border-top: 1px solid #e4e7ed;
-  margin-top: 10px;
-  padding-top: 15px;
+  font-family: var(--font-display);
+  font-weight: 800;
   font-size: 18px;
-  font-weight: bold;
+  color: var(--accent-lime);
+  margin-left: 24px;
+  flex-shrink: 0;
+  animation: priceFlicker 3s infinite;
 }
 
-.label {
-  color: #666;
-}
-
-.value {
-  color: #f56c6c;
-  font-weight: bold;
-}
-
-.discount {
-  color: #67c23a;
-}
-
-.submit-section {
-  text-align: center;
-  margin-top: 30px;
-}
-
-.submit-button {
-  width: 200px;
-  height: 50px;
-  font-size: 16px;
-}
-
-.no-coupon,
-.no-address {
-  padding: 40px 0;
-  text-align: center;
-}
-
-.address-dialog {
-  padding: 0 20px;
-}
-
-@media (max-width: 768px) {
-  .create-order {
-    padding: 10px;
-  }
-  
-  .product-item {
-    flex-direction: column;
-    align-items: flex-start;
-    gap: 10px;
-  }
-  
-  .address-item {
-    flex-direction: column;
-    align-items: flex-start;
-    gap: 10px;
-  }
-  
-  .address-actions {
-    align-self: flex-end;
-  }
-
-  .activity-grid,
-  .coupon-grid {
-    grid-template-columns: 1fr !important;
-  }
-}
-
-/* 秒杀活动网格布局 */
-.activity-grid {
+/* ---- 卡片通用（活动/秒杀券） ---- */
+.activity-grid,
+.coupon-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
-  gap: 15px;
-  padding: 20px;
+  grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+  gap: 12px;
+  padding: 16px 20px;
 }
 
 .activity-card,
 .coupon-card {
-  border: 2px solid #e4e7ed;
-  border-radius: 8px;
-  padding: 15px;
+  border: 1px solid var(--border-card);
+  padding: 16px;
   cursor: pointer;
-  transition: all 0.3s ease;
-  background: #fff;
+  transition: all 0.25s ease;
+  background: var(--bg-surface);
+  position: relative;
+  overflow: hidden;
+}
+
+.activity-card::before,
+.coupon-card::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 3px;
+  height: 100%;
+  background: transparent;
+  transition: background 0.25s ease;
 }
 
 .activity-card:hover,
 .coupon-card:hover {
-  border-color: #409eff;
-  box-shadow: 0 2px 12px rgba(64, 158, 255, 0.15);
-  transform: translateY(-2px);
+  border-color: var(--accent-purple-dim);
+  background: var(--bg-elevated);
+}
+
+.activity-card:hover::before,
+.coupon-card:hover::before {
+  background: var(--accent-purple);
 }
 
 .activity-card.selected,
 .coupon-card.selected {
-  border-color: #409eff;
-  background: #ecf5ff;
-  box-shadow: 0 2px 12px rgba(64, 158, 255, 0.2);
+  border-color: var(--accent-purple);
+  background: rgba(209, 0, 255, 0.06);
+  box-shadow: 0 0 20px var(--accent-purple-dim);
+}
+
+.activity-card.selected::before,
+.coupon-card.selected::before {
+  background: var(--accent-purple);
 }
 
 .activity-card.disabled {
-  opacity: 0.6;
+  opacity: 0.35;
   cursor: not-allowed;
+  filter: grayscale(60%);
 }
 
 .activity-card.disabled:hover {
-  border-color: #e4e7ed;
-  box-shadow: none;
-  transform: none;
+  border-color: var(--border-card);
+  background: var(--bg-surface);
+}
+
+.activity-card.disabled:hover::before {
+  background: transparent;
 }
 
 .card-content {
@@ -1022,56 +1031,414 @@ onMounted(() => {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  margin-bottom: 5px;
+}
+
+.card-header :deep(.el-tag) {
+  border-radius: 0;
+  font-family: var(--font-mono);
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+}
+
+.card-header :deep(.el-tag--success) {
+  background: transparent;
+  border: 1px solid var(--accent-lime);
+  color: var(--accent-lime);
+}
+
+.card-header :deep(.el-tag--warning) {
+  background: transparent;
+  border: 1px solid var(--accent-orange);
+  color: var(--accent-orange);
 }
 
 .card-name {
-  font-weight: 600;
-  font-size: 15px;
-  color: #303133;
+  font-family: var(--font-heading);
+  font-weight: 700;
+  font-size: 14px;
+  color: var(--text-primary);
+  letter-spacing: 0.03em;
 }
 
 .card-desc {
-  color: #909399;
-  font-size: 13px;
+  color: var(--text-muted);
+  font-size: 12px;
+  font-family: var(--font-mono);
 }
 
 .card-discount {
-  color: #f56c6c;
-  font-weight: 600;
-  font-size: 16px;
+  font-family: var(--font-display);
+  font-weight: 800;
+  font-size: 18px;
+  color: var(--accent-lime);
+  animation: priceFlicker 3s infinite;
 }
 
 .card-time {
-  color: #999;
-  font-size: 12px;
+  color: var(--text-muted);
+  font-size: 11px;
+  font-family: var(--font-mono);
   line-height: 1.4;
-}
-
-/* 秒杀券网格布局 */
-.coupon-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
-  gap: 15px;
-  padding: 20px;
 }
 
 .card-price-info {
   display: flex;
   align-items: baseline;
   gap: 10px;
-  margin: 5px 0;
+  margin: 4px 0;
 }
 
 .card-seckill-price {
-  color: #f56c6c;
-  font-weight: 700;
-  font-size: 20px;
+  font-family: var(--font-display);
+  font-weight: 800;
+  font-size: 22px;
+  color: var(--accent-lime);
+  animation: priceFlicker 3s infinite;
 }
 
 .card-original-price {
-  color: #999;
+  color: var(--text-muted);
   text-decoration: line-through;
+  font-size: 13px;
+  font-family: var(--font-mono);
+}
+
+/* ---- 收货地址 ---- */
+.address-list {
+  padding: 0;
+}
+
+.address-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  padding: 16px 20px;
+  border-bottom: 1px solid var(--border-subtle);
+  transition: background 0.2s;
+}
+
+.address-item:last-child {
+  border-bottom: none;
+}
+
+.address-item:hover {
+  background: rgba(209, 0, 255, 0.03);
+}
+
+.address-radio-group {
+  flex: 1;
+}
+
+.address-item :deep(.el-radio) {
+  display: flex;
+  align-items: flex-start;
+  color: var(--text-primary);
+}
+
+.address-item :deep(.el-radio__inner) {
+  border-color: var(--border-card);
+  background: var(--bg-surface);
+}
+
+.address-item :deep(.el-radio__input.is-checked .el-radio__inner) {
+  background: var(--accent-purple);
+  border-color: var(--accent-purple);
+}
+
+.address-info {
+  margin-left: 8px;
+}
+
+.address-header {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 6px;
+}
+
+.consignee {
+  font-family: var(--font-heading);
+  font-weight: 700;
   font-size: 14px;
+  color: var(--text-primary);
+  letter-spacing: 0.03em;
+}
+
+.phone {
+  color: var(--text-secondary);
+  font-family: var(--font-mono);
+  font-size: 13px;
+}
+
+.address-header :deep(.el-tag) {
+  border-radius: 0;
+  font-family: var(--font-mono);
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  background: transparent;
+  border: 1px solid var(--accent-lime);
+  color: var(--accent-lime);
+}
+
+.address-detail {
+  color: var(--text-muted);
+  font-size: 12px;
+  line-height: 1.5;
+}
+
+.address-actions {
+  display: flex;
+  gap: 8px;
+  flex-shrink: 0;
+  padding-top: 4px;
+}
+
+.address-actions :deep(.el-button) {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  letter-spacing: 0.04em;
+  color: var(--text-muted);
+  transition: color 0.2s;
+}
+
+.address-actions :deep(.el-button:hover) {
+  color: var(--accent-purple);
+}
+
+.address-actions :deep(.el-button--danger:hover) {
+  color: var(--accent-red);
+}
+
+/* ---- 配送状态 / 支付方式 ---- */
+.delivery-options,
+.payment-methods {
+  display: flex;
+  gap: 24px;
+  padding: 16px 20px;
+}
+
+.delivery-options :deep(.el-radio),
+.payment-methods :deep(.el-radio) {
+  color: var(--text-secondary);
+  font-family: var(--font-heading);
+  font-size: 13px;
+  font-weight: 700;
+  letter-spacing: 0.03em;
+}
+
+.delivery-options :deep(.el-radio__inner),
+.payment-methods :deep(.el-radio__inner) {
+  border-color: var(--border-card);
+  background: var(--bg-surface);
+}
+
+.delivery-options :deep(.el-radio__input.is-checked .el-radio__inner),
+.payment-methods :deep(.el-radio__input.is-checked .el-radio__inner) {
+  background: var(--accent-purple);
+  border-color: var(--accent-purple);
+}
+
+.delivery-time {
+  padding: 0 20px 16px;
+}
+
+.delivery-time :deep(.el-form-item__label) {
+  color: var(--text-secondary);
+  font-family: var(--font-heading);
+  font-weight: 700;
+  font-size: 12px;
+}
+
+.delivery-time :deep(.el-date-editor) {
+  --el-input-bg-color: var(--bg-surface);
+  --el-input-border-color: var(--border-card);
+  --el-input-text-color: var(--text-primary);
+}
+
+/* ---- 订单金额汇总 ---- */
+.order-summary {
+  padding: 20px;
+  background: var(--bg-surface);
+  border-top: 1px solid var(--border-subtle);
+}
+
+.summary-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 8px 0;
+  font-size: 13px;
+}
+
+.summary-item .label {
+  color: var(--text-secondary);
+  font-family: var(--font-mono);
+  letter-spacing: 0.02em;
+}
+
+.summary-item .value {
+  font-family: var(--font-display);
+  font-weight: 700;
+  color: var(--text-primary);
+}
+
+.summary-item .discount {
+  color: var(--accent-lime);
+  font-family: var(--font-display);
+  font-weight: 800;
+}
+
+.summary-item.total {
+  padding-top: 16px;
+  margin-top: 12px;
+  border-top: 2px solid var(--border-subtle);
+  font-size: 16px;
+}
+
+.summary-item.total .label {
+  font-family: var(--font-heading);
+  font-weight: 800;
+  font-size: 15px;
+  color: var(--text-primary);
+  letter-spacing: 0.04em;
+}
+
+.summary-item.total .value {
+  color: var(--accent-lime);
+  font-size: 26px;
+  font-weight: 900;
+  letter-spacing: 0.02em;
+  animation: priceFlicker 3s infinite;
+}
+
+/* ---- 提交按钮 ---- */
+.submit-section {
+  text-align: center;
+  margin-top: var(--space-xl);
+}
+
+.submit-button {
+  width: 260px;
+  height: 52px;
+  background: var(--accent-purple) !important;
+  border: none !important;
+  color: #fff !important;
+  font-family: var(--font-heading) !important;
+  font-weight: 900 !important;
+  font-size: 16px !important;
+  letter-spacing: 0.08em !important;
+  position: relative;
+  overflow: hidden;
+  transition: all 0.25s ease;
+}
+
+.submit-button::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(90deg, transparent, rgba(255,255,255,0.2), transparent);
+  transform: translateX(-100%);
+  transition: transform 0.5s;
+}
+
+.submit-button:not(:disabled):hover {
+  transform: translateY(-2px);
+  box-shadow: 0 0 24px var(--accent-purple-dim);
+}
+
+.submit-button:not(:disabled):hover::after {
+  transform: translateX(100%);
+}
+
+.submit-button:not(:disabled):active {
+  transform: translateY(0);
+}
+
+.submit-button:disabled {
+  opacity: 0.3;
+  cursor: not-allowed;
+  filter: grayscale(50%);
+}
+
+/* ---- 空状态 ---- */
+.no-coupon,
+.no-address {
+  padding: 40px 0;
+  text-align: center;
+}
+
+.no-coupon :deep(.el-empty__description),
+.no-address :deep(.el-empty__description) {
+  color: var(--text-muted);
+  font-family: var(--font-mono);
+  font-size: 12px;
+}
+
+/* ---- 对话框 ---- */
+.address-dialog {
+  padding: 0;
+}
+
+.address-dialog :deep(.el-form-item__label) {
+  color: var(--text-secondary);
+  font-family: var(--font-heading);
+  font-weight: 700;
+  font-size: 12px;
+  letter-spacing: 0.03em;
+}
+
+/* ---- 响应式 ---- */
+@media (max-width: 768px) {
+  .create-order {
+    padding: 0 var(--space-md);
+    padding-top: var(--space-lg);
+    padding-bottom: 100px;
+  }
+
+  .page-title {
+    font-size: 20px;
+  }
+
+  .product-item {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 12px;
+    padding: 16px;
+  }
+
+  .product-subtotal {
+    margin-left: 0;
+    align-self: flex-end;
+  }
+
+  .address-item {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 12px;
+    padding: 16px;
+  }
+
+  .address-actions {
+    align-self: flex-end;
+    width: 100%;
+    justify-content: flex-end;
+  }
+
+  .activity-grid,
+  .coupon-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .submit-button {
+    width: 100%;
+  }
+
+  .delivery-options,
+  .payment-methods {
+    flex-direction: column;
+    gap: 12px;
+  }
 }
 </style>

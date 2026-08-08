@@ -1,7 +1,10 @@
 package com.fashion.service;
 
+import com.fashion.dto.AdminLoginDto;
 import com.fashion.entity.Employee;
 import com.fashion.entity.PageResult;
+import com.fashion.result.Result;
+import com.fashion.vo.AdminLoginVo;
 import java.util.List;
 
 public interface EmployeeService {
@@ -48,4 +51,11 @@ public interface EmployeeService {
      * @return 是否成功
      */
     boolean removeById(Long id);
+
+    /**
+     * 管理端登录
+     * @param adminLoginDto 登录参数
+     * @return 登录结果（token）
+     */
+    Result<AdminLoginVo> login(AdminLoginDto adminLoginDto);
 }

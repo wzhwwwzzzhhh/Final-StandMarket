@@ -83,22 +83,42 @@
             <span class="order-time">{{ scope.row.orderTime }}</span>
           </template>
         </el-table-column>
-        <el-table-column label="操作" width="200" align="center">
+        <el-table-column label="操作" width="280" align="center">
           <template #default="scope">
             <div class="action-buttons">
               <el-button type="primary" size="small" class="view-button" @click="handleView(scope.row)">
                 <el-icon><View /></el-icon>
                 查看
               </el-button>
-              <el-button 
-                :type="getProcessButtonType(scope.row.status)" 
-                size="small" 
-                class="process-button" 
-                @click="handleProcess(scope.row)"
-                :disabled="scope.row.status >= 4"
+              <el-button
+                v-if="scope.row.status === 1"
+                type="success"
+                size="small"
+                class="payment-button"
+                @click="handleConfirmPayment(scope.row)"
               >
                 <el-icon><Check /></el-icon>
-                {{ getProcessButtonText(scope.row.status) }}
+                确认收款
+              </el-button>
+              <el-button
+                v-if="scope.row.status === 2"
+                type="warning"
+                size="small"
+                class="process-button"
+                @click="handleDeliver(scope.row)"
+              >
+                <el-icon><Van /></el-icon>
+                发货
+              </el-button>
+              <el-button
+                v-if="scope.row.status === 3"
+                type="primary"
+                size="small"
+                class="process-button"
+                @click="handleProcess(scope.row)"
+              >
+                <el-icon><Check /></el-icon>
+                完成
               </el-button>
             </div>
           </template>
@@ -142,6 +162,50 @@
             <span class="detail-value">{{ currentOrder.orderTime }}</span>
           </div>
         </div>
+        <!-- 支付信息 -->
+        <div class="order-detail-payment" v-if="paymentInfo">
+          <h4 class="detail-title">支付信息</h4>
+          <div class="payment-grid">
+            <div class="payment-item">
+              <span class="payment-label">支付流水号</span>
+              <span class="payment-value">{{ paymentInfo.payNo }}</span>
+            </div>
+            <div class="payment-item">
+              <span class="payment-label">支付金额</span>
+              <span class="payment-value">¥{{ paymentInfo.amount }}</span>
+            </div>
+            <div class="payment-item">
+              <span class="payment-label">支付方式</span>
+              <span class="payment-value">{{ paymentInfo.payMethod === 1 ? '微信支付' : '支付宝' }}</span>
+            </div>
+            <div class="payment-item">
+              <span class="payment-label">支付状态</span>
+              <el-tag :type="getPayStatusType(paymentInfo.status)">{{ getPayStatusText(paymentInfo.status) }}</el-tag>
+            </div>
+            <div class="payment-item" v-if="paymentInfo.payTime">
+              <span class="payment-label">支付时间</span>
+              <span class="payment-value">{{ paymentInfo.payTime }}</span>
+            </div>
+          </div>
+        </div>
+        <!-- 物流信息 -->
+        <div class="order-detail-section" v-if="currentOrder.status >= 3 && currentOrder.trackingNumber">
+          <h4 class="detail-title">物流信息</h4>
+          <div class="tracking-grid">
+            <div class="tracking-item">
+              <span class="tracking-label">快递公司</span>
+              <span class="tracking-value">{{ currentOrder.trackingCompany }}</span>
+            </div>
+            <div class="tracking-item">
+              <span class="tracking-label">快递单号</span>
+              <span class="tracking-value">{{ currentOrder.trackingNumber }}</span>
+            </div>
+            <div class="tracking-item" v-if="currentOrder.deliveryTime">
+              <span class="tracking-label">发货时间</span>
+              <span class="tracking-value">{{ currentOrder.deliveryTime }}</span>
+            </div>
+          </div>
+        </div>
         <div class="order-detail-body">
           <h4 class="detail-title">商品信息</h4>
           <div class="product-list">
@@ -168,12 +232,43 @@
         </span>
       </template>
     </el-dialog>
+
+    <!-- 发货对话框 -->
+    <el-dialog
+      v-model="deliverDialogVisible"
+      title="发货"
+      width="500px"
+      class="order-dialog"
+    >
+      <el-form
+        ref="deliverFormRef"
+        :model="deliverForm"
+        :rules="deliverRules"
+        label-width="100px"
+        class="deliver-form"
+      >
+        <el-form-item label="快递公司" prop="trackingCompany">
+          <el-select v-model="deliverForm.trackingCompany" placeholder="请选择快递公司" style="width: 100%">
+            <el-option v-for="company in deliveryCompanies" :key="company" :label="company" :value="company" />
+          </el-select>
+        </el-form-item>
+        <el-form-item label="快递单号" prop="trackingNumber">
+          <el-input v-model="deliverForm.trackingNumber" placeholder="请输入快递单号" />
+        </el-form-item>
+      </el-form>
+      <template #footer>
+        <span class="dialog-footer">
+          <el-button @click="deliverDialogVisible = false">取消</el-button>
+          <el-button type="primary" @click="submitDeliver" :loading="deliverLoading">确认发货</el-button>
+        </span>
+      </template>
+    </el-dialog>
   </div>
 </template>
 
 <script>
 import { orderApi } from '../api/order'
-import { Search, Download, View, Check } from '@element-plus/icons-vue'
+import { Search, Download, View, Check, Van } from '@element-plus/icons-vue'
 
 export default {
   name: 'OrderList',
@@ -181,7 +276,8 @@ export default {
     Search,
     Download,
     View,
-    Check
+    Check,
+    Van
   },
   data() {
     return {
@@ -192,11 +288,27 @@ export default {
       total: 0,
       orders: [],
       dialogVisible: false,
-      currentOrder: null
+      currentOrder: null,
+      paymentInfo: null,
+      // 发货表单
+      deliverDialogVisible: false,
+      deliverLoading: false,
+      currentDeliverOrder: null,
+      deliverForm: {
+        trackingCompany: '',
+        trackingNumber: ''
+      },
+      deliverRules: {
+        trackingCompany: [{ required: true, message: '请选择快递公司', trigger: 'change' }],
+        trackingNumber: [
+          { required: true, message: '请输入快递单号', trigger: 'blur' },
+          { min: 6, max: 30, message: '快递单号长度在 6 到 30 个字符', trigger: 'blur' }
+        ]
+      },
+      deliveryCompanies: ['顺丰速运', '中通快递', '圆通速递', '韵达快递', '京东物流', 'EMS', '极兔速递', '申通快递', '德邦快递']
     }
   },
   created() {
-    // 初始化数据
     this.getOrderList()
   },
   computed: {
@@ -244,6 +356,12 @@ export default {
       orderApi.getOrderById(row.id).then(response => {
         this.currentOrder = response.data.data
         this.dialogVisible = true
+        // 加载支付信息
+        orderApi.getPaymentInfo(row.id).then(res => {
+          this.paymentInfo = res.data.data
+        }).catch(() => {
+          this.paymentInfo = null
+        })
       }).catch(error => {
         console.error('获取订单详情失败:', error)
         this.$message.error('获取订单详情失败')
@@ -317,34 +435,82 @@ export default {
       }
     },
     
-    // 获取处理按钮类型
-    getProcessButtonType(status) {
+    // 打开发货对话框
+    handleDeliver(row) {
+      this.currentDeliverOrder = row
+      this.deliverForm.trackingCompany = ''
+      this.deliverForm.trackingNumber = ''
+      this.deliverDialogVisible = true
+      this.$nextTick(() => {
+        this.$refs.deliverFormRef?.clearValidate()
+      })
+    },
+
+    // 提交发货
+    submitDeliver() {
+      this.$refs.deliverFormRef.validate(valid => {
+        if (!valid) return
+        this.deliverLoading = true
+        orderApi.deliver({
+          id: this.currentDeliverOrder.id,
+          trackingCompany: this.deliverForm.trackingCompany,
+          trackingNumber: this.deliverForm.trackingNumber
+        }).then(response => {
+          if (response.data.code === 1) {
+            this.$message.success('发货成功')
+            this.deliverDialogVisible = false
+            this.getOrderList()
+          } else {
+            this.$message.error(response.data.msg || '发货失败')
+          }
+        }).catch(error => {
+          console.error('发货失败:', error)
+          this.$message.error('发货失败')
+        }).finally(() => {
+          this.deliverLoading = false
+        })
+      })
+    },
+
+    // 获取支付状态类型
+    getPayStatusType(status) {
       switch (status) {
-        case 1:
-          return 'warning'
-        case 2:
-          return 'primary'
-        case 3:
-          return 'success'
-        default:
-          return 'default'
+        case 0: return 'info'
+        case 1: return 'warning'
+        case 2: return 'success'
+        case 3: return 'danger'
+        default: return 'info'
       }
     },
-    
-    // 获取处理按钮文本
-    getProcessButtonText(status) {
+
+    // 获取支付状态文本
+    getPayStatusText(status) {
       switch (status) {
-        case 1:
-          return '发货'
-        case 2:
-          return '完成'
-        case 3:
-          return '完成'
-        default:
-          return '处理'
+        case 0: return '待支付'
+        case 1: return '支付中'
+        case 2: return '已支付'
+        case 3: return '支付失败'
+        default: return '未知'
       }
     },
-    
+
+    // 确认收款
+    handleConfirmPayment(row) {
+      this.$confirm(`确定确认订单 ${row.number} 的收款吗？`, '提示', {
+        confirmButtonText: '确定',
+        cancelButtonText: '取消',
+        type: 'warning'
+      }).then(() => {
+        orderApi.confirmPayment(row.id).then(response => {
+          this.$message.success('确认收款成功')
+          this.getOrderList()
+        }).catch(error => {
+          console.error('确认收款失败:', error)
+          this.$message.error('确认收款失败')
+        })
+      }).catch(() => {})
+    },
+
     // 页面大小变化
     handleSizeChange(val) {
       this.pageSize = val
@@ -843,6 +1009,93 @@ export default {
   display: flex;
   justify-content: flex-end;
   gap: 12px;
+}
+
+/* 支付信息 */
+.order-detail-payment,
+.order-detail-section {
+  margin-bottom: 20px;
+  padding-bottom: 20px;
+  border-bottom: 1px solid #f0f0f0;
+}
+
+/* 物流信息 */
+.tracking-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+  gap: 12px;
+}
+
+.tracking-item {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 12px 16px;
+  background: #f8f9fa;
+  border-radius: 8px;
+}
+
+.tracking-label {
+  font-size: 12px;
+  color: #999;
+  font-weight: 500;
+}
+
+.tracking-value {
+  font-size: 14px;
+  color: #333;
+  font-weight: 600;
+}
+
+/* 发货表单 */
+.deliver-form {
+  padding: 20px 10px;
+}
+
+.payment-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+  gap: 12px;
+}
+
+.payment-item {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 12px 16px;
+  background: #f8f9fa;
+  border-radius: 8px;
+}
+
+.payment-label {
+  font-size: 12px;
+  color: #999;
+  font-weight: 500;
+}
+
+.payment-value {
+  font-size: 14px;
+  color: #333;
+  font-weight: 600;
+}
+
+.payment-button {
+  border-radius: 8px;
+  padding: 6px 12px;
+  font-size: 12px;
+  font-weight: 600;
+  transition: all 0.3s ease;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  border: none;
+  color: #fff;
+}
+
+.payment-button:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
 }
 
 /* 响应式设计 */

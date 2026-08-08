@@ -9,43 +9,70 @@
     </div>
 
     <!-- 筛选条件 -->
-    <div class="filter-section">
+    <section class="filter-section" aria-label="商品检索与筛选">
       <div class="filter-card">
-        <el-input v-model="keyword" placeholder="输入关键词搜索" class="search-input">
+        <div class="filter-intro">
+          <span class="filter-kicker">// DISCOVER</span>
+          <div>
+            <h3>筛选你的下一件装备</h3>
+            <p>关键词检索、品类筛选与排序，一步找到合适单品。</p>
+          </div>
+        </div>
+
+        <el-input
+          v-model="keyword"
+          placeholder="搜索商品名称、风格或关键词"
+          class="search-input"
+          @keyup.enter="searchProducts"
+        >
           <template #prefix>
             <el-icon class="el-input__icon"><Search /></el-icon>
           </template>
           <template #append>
-            <el-button type="primary" class="search-button" @click="searchProducts">搜索</el-button>
+            <el-button type="primary" class="search-button" @click="searchProducts">开始搜索</el-button>
           </template>
         </el-input>
+
         <div class="filter-controls">
-          <el-select v-model="categoryId" placeholder="选择分类" class="filter-select">
-            <el-option label="全部" value="0"></el-option>
-            <el-option v-for="category in categories" :key="category.id" :label="category.name" :value="category.id"></el-option>
-          </el-select>
-          <el-select v-model="tag" placeholder="选择标签" class="filter-select">
-            <el-option label="全部" value=""></el-option>
-            <el-option label="衣服" value="衣服"></el-option>
-            <el-option label="裤子" value="裤子"></el-option>
-            <el-option label="鞋子" value="鞋子"></el-option>
-            <el-option label="配饰" value="配饰"></el-option>
-          </el-select>
-          <el-select v-model="sortBy" placeholder="排序方式" class="filter-select">
-            <el-option label="默认" value="default"></el-option>
-            <el-option label="价格从低到高" value="price_asc"></el-option>
-            <el-option label="价格从高到低" value="price_desc"></el-option>
-            <el-option label="销量优先" value="sales"></el-option>
-          </el-select>
+          <div class="filter-field">
+            <span class="filter-label">商品分类</span>
+            <el-select v-model="categoryId" placeholder="选择分类" class="filter-select" aria-label="商品分类">
+              <el-option label="全部商品" value="0"></el-option>
+              <el-option v-for="category in categories" :key="category.id" :label="category.name" :value="category.id"></el-option>
+            </el-select>
+          </div>
+          <div class="filter-field">
+            <span class="filter-label">风格标签</span>
+            <el-select v-model="tag" placeholder="选择标签" class="filter-select" aria-label="风格标签">
+              <el-option label="全部标签" value=""></el-option>
+              <el-option label="衣服" value="衣服"></el-option>
+              <el-option label="裤子" value="裤子"></el-option>
+              <el-option label="鞋子" value="鞋子"></el-option>
+              <el-option label="配饰" value="配饰"></el-option>
+            </el-select>
+          </div>
+          <div class="filter-field">
+            <span class="filter-label">排序方式</span>
+            <el-select v-model="sortBy" placeholder="排序方式" class="filter-select" aria-label="排序方式">
+              <el-option label="综合排序" value="default"></el-option>
+              <el-option label="价格从低到高" value="price_asc"></el-option>
+              <el-option label="价格从高到低" value="price_desc"></el-option>
+              <el-option label="销量优先" value="sales"></el-option>
+            </el-select>
+          </div>
         </div>
       </div>
-    </div>
+    </section>
 
     <!-- 商品列表 -->
+    <div class="product-toolbar">
+      <span class="product-toolbar-label">// CURRENT COLLECTION</span>
+      <span class="product-toolbar-count">{{ total }} 件在售单品</span>
+    </div>
     <div class="product-grid">
       <el-card v-for="product in products" :key="product.id" shadow="hover" class="product-card">
         <div class="product-image-container">
-          <img :src="product.image" :alt="product.name" class="product-image" @click="goToDetail(product.id)" />
+          <img :src="product.image" :alt="product.name" class="product-image" role="button" tabindex="0" @click="goToDetail(product.id)" @keydown.enter="goToDetail(product.id)" @keydown.space.prevent="goToDetail(product.id)" />
           <div v-if="product.isNew" class="product-badge new-badge">新品</div>
           <div v-if="product.isHot" class="product-badge hot-badge">热销</div>
           <div class="product-overlay">
@@ -59,7 +86,7 @@
           </div>
         </div>
         <div class="product-info">
-          <h4 class="product-name" @click="goToDetail(product.id)">{{ product.name }}</h4>
+          <h4 class="product-name" role="button" tabindex="0" @click="goToDetail(product.id)" @keydown.enter="goToDetail(product.id)" @keydown.space.prevent="goToDetail(product.id)">{{ product.name }}</h4>
           <div class="product-rating">
             <el-rate v-model="product.rating" disabled :max="5" :colors="['#ff4d4f']" size="small" />
             <span class="rating-count">({{ product.ratingCount || 0 }})</span>
@@ -246,7 +273,7 @@ export default {
 
       cartApi.addToCart(cartData).then(response => {
         if (response.data.code === 1) {
-          this.$message.success(`已添加 ${this.selectedProduct.name} (${this.selectedSize码}) × ${this.quantity}`)
+          this.$message.success(`已添加 ${this.selectedProduct.name} (${this.selectedSize}码) × ${this.quantity}`)
           this.cartDialogVisible = false
         } else {
           this.$message.error(response.data.msg || '添加失败')
@@ -276,300 +303,372 @@ export default {
 </script>
 
 <style scoped>
-/* 全局动画 */
-@keyframes fadeIn {
-  from {
-    opacity: 0;
-    transform: translateY(20px);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
-}
-
-@keyframes pulse {
-  0% {
-    transform: scale(1);
-  }
-  50% {
-    transform: scale(1.05);
-  }
-  100% {
-    transform: scale(1);
-  }
-}
-
 .product-list {
-  max-width: 1200px;
+  max-width: 1400px;
   margin: 0 auto;
-  padding: 20px;
-  background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
+  padding: 0 var(--space-lg);
   min-height: 100vh;
-  animation: fadeIn 0.8s ease-out;
-  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+  animation: floatIn 0.5s ease;
 }
 
-/* 页面标题 */
+/* === 页面标题 === */
 .page-header {
-  margin: 80px 0 40px;
+  margin: 24px 0 28px;
 }
 
 .page-title {
   display: flex;
   align-items: center;
+  gap: 16px;
+  font-family: var(--font-heading);
+  font-weight: 900;
   font-size: 28px;
-  font-weight: bold;
-  color: #333;
-  position: relative;
-  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+  color: var(--text-primary);
+  letter-spacing: 0.08em;
 }
 
 .page-title span {
-  flex: 0 0 auto;
-  margin-right: 25px;
   position: relative;
 }
 
 .page-title span::after {
   content: '';
   position: absolute;
-  bottom: -10px;
+  bottom: -8px;
   left: 0;
-  width: 70px;
-  height: 4px;
-  background: linear-gradient(90deg, #ff4d4f 0%, #ff7a7a 100%);
-  border-radius: 2px;
+  width: 60px;
+  height: 2px;
+  background-color: var(--accent-purple);
 }
 
 .page-title .el-divider {
   flex: 1;
-  border-top: 1px solid #e0e0e0;
+  border-top: 1px solid var(--border-subtle);
 }
 
-/* 筛选条件 */
+/* === 筛选区域 === */
 .filter-section {
-  margin: 40px 0;
+  margin: 0 0 var(--space-lg);
 }
 
 .filter-card {
-  background: #fff;
-  padding: 24px;
-  border-radius: 20px;
-  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
-  transition: all 0.3s ease;
+  position: relative;
+  overflow: hidden;
+  padding: 28px;
   display: flex;
   flex-direction: column;
-  gap: 20px;
+  gap: 24px;
+  background:
+    linear-gradient(135deg, rgba(209, 0, 255, 0.12), transparent 34%),
+    var(--bg-elevated);
+  border: 1px solid var(--border-card);
+  box-shadow: 0 20px 50px rgba(0, 0, 0, 0.18);
 }
 
-.filter-card:hover {
-  box-shadow: 0 15px 40px rgba(0, 0, 0, 0.15);
+.filter-card::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 72px;
+  height: 2px;
+  background: var(--accent-purple);
+  box-shadow: 0 0 18px var(--accent-purple);
+}
+
+.filter-intro {
+  display: flex;
+  align-items: flex-start;
+  gap: 18px;
+}
+
+.filter-kicker {
+  flex: 0 0 auto;
+  padding-top: 4px;
+  font-family: var(--font-display);
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  color: var(--accent-lime);
+}
+
+.filter-intro h3 {
+  margin: 0 0 4px;
+  font-family: var(--font-heading);
+  font-size: 18px;
+  line-height: 1.25;
+  letter-spacing: 0.04em;
+  color: var(--text-primary);
+}
+
+.filter-intro p {
+  margin: 0;
+  font-size: 13px;
+  color: var(--text-tertiary);
 }
 
 .search-input {
-  flex: 1;
-  min-width: 300px;
-  border-radius: 12px;
-  border: 2px solid #f0f0f0;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
-  transition: all 0.3s ease;
+  width: 100%;
 }
 
-.search-input:hover {
-  border-color: #e0e0e0;
-  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.08);
+.search-input :deep(.el-input-group__append) {
+  padding: 0;
+  overflow: hidden;
+  border: 0;
+  background: transparent;
+  box-shadow: none;
 }
 
-.search-input:focus {
-  border-color: #ff4d4f;
-  box-shadow: 0 0 0 3px rgba(255, 77, 79, 0.1);
+.search-input :deep(.el-input__wrapper) {
+  min-height: 54px;
+  padding: 0 18px;
+  background: rgba(255, 255, 255, 0.035);
+  border-color: rgba(255, 255, 255, 0.13);
+}
+
+.search-input :deep(.el-input__wrapper:hover),
+.search-input :deep(.el-input__wrapper.is-focus) {
+  border-color: rgba(209, 0, 255, 0.82);
+}
+
+.search-input :deep(.el-input__inner) {
+  font-size: 15px;
 }
 
 .search-button {
-  border-radius: 12px;
-  padding: 10px 24px;
-  font-size: 14px;
-  font-weight: 600;
-  transition: all 0.3s ease;
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  box-shadow: 0 4px 12px rgba(255, 77, 79, 0.3);
-  background: linear-gradient(135deg, #ff4d4f 0%, #ff7a7a 100%);
-  border: none;
+  min-width: 118px;
+  min-height: 54px;
+  padding: 0 20px;
+  border: 0;
+  background: var(--accent-purple);
+  color: #fff;
+  font-size: 13px;
+  transition: background var(--transition-fast), transform var(--transition-fast);
 }
 
 .search-button:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 6px 20px rgba(255, 77, 79, 0.4);
-  background: linear-gradient(135deg, #ff7a7a 0%, #ff4d4f 100%);
+  background: #b800e6;
+  transform: translateX(-2px);
 }
 
 .filter-controls {
-  display: flex;
-  gap: 20px;
-  flex-wrap: wrap;
-  align-items: center;
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 14px;
+}
+
+.filter-field {
+  display: grid;
+  gap: 8px;
+  min-width: 0;
+}
+
+.filter-label {
+  font-family: var(--font-heading);
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.1em;
+  color: var(--text-secondary);
 }
 
 .filter-select {
-  min-width: 150px;
-  border-radius: 12px;
-  border: 2px solid #f0f0f0;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
-  transition: all 0.3s ease;
+  width: 100%;
+  min-width: 0;
 }
 
-.filter-select:hover {
-  border-color: #e0e0e0;
-  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.08);
+.filter-select :deep(.el-select__wrapper) {
+  min-height: 48px;
+  padding: 0 15px;
+  background: rgba(255, 255, 255, 0.035);
+  border: 1px solid rgba(255, 255, 255, 0.13);
+  border-radius: var(--radius-sharp);
+  box-shadow: none;
+  transition: border-color var(--transition-fast), background var(--transition-fast);
 }
 
-/* 商品列表 */
+.filter-select :deep(.el-select__wrapper:hover),
+.filter-select :deep(.is-focused .el-select__wrapper) {
+  background: rgba(209, 0, 255, 0.06);
+  border-color: rgba(209, 0, 255, 0.82);
+}
+
+.filter-select :deep(.el-select__selected-item),
+.filter-select :deep(.el-select__placeholder) {
+  font-size: 14px;
+  color: var(--text-primary);
+}
+
+/* === 商品网格 === */
+.product-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  margin: 6px 0 14px;
+  padding-bottom: 12px;
+  border-bottom: 1px solid var(--border-card);
+}
+
+.product-toolbar-label {
+  font-family: var(--font-display);
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  color: var(--text-secondary);
+}
+
+.product-toolbar-count {
+  font-family: var(--font-display);
+  font-size: 12px;
+  color: var(--accent-lime);
+}
+
 .product-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
-  gap: 35px;
-  margin: 50px 0;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 16px;
+  margin: 0 0 var(--space-lg);
 }
 
 .product-card {
-  transition: all 0.4s ease;
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.025), transparent 32%), var(--bg-card);
+  border: 1px solid var(--border-card);
+  box-shadow: 0 12px 28px rgba(0, 0, 0, 0.14);
+  transition: transform var(--transition-base), border-color var(--transition-base), box-shadow var(--transition-base);
   overflow: hidden;
-  border-radius: 15px;
-  position: relative;
-  background: #fff;
-  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+  animation: floatIn 0.4s ease backwards;
 }
 
 .product-card:hover {
-  transform: translateY(-20px);
-  box-shadow: 0 15px 35px rgba(0, 0, 0, 0.15);
+  border-color: rgba(209, 0, 255, 0.76);
+  box-shadow: 0 18px 36px rgba(0, 0, 0, 0.28), 0 0 0 1px rgba(209, 0, 255, 0.12);
+  transform: translateY(-5px);
+  z-index: 3;
 }
 
 .product-image-container {
   position: relative;
+  aspect-ratio: 3 / 4;
   overflow: hidden;
-  height: 300px;
-  border-radius: 15px 15px 0 0;
+  cursor: pointer;
+  background-color: var(--bg-surface);
 }
 
 .product-image {
   width: 100%;
   height: 100%;
   object-fit: cover;
-  transition: transform 0.6s ease;
-  cursor: pointer;
+  transition: var(--transition-slow);
 }
 
 .product-card:hover .product-image {
-  transform: scale(1.15);
+  transform: scale(1.06);
+  filter: contrast(1.05) saturate(0.9);
 }
 
 .product-badge {
   position: absolute;
-  top: 20px;
-  padding: 8px 16px;
-  border-radius: 25px;
-  font-size: 14px;
-  font-weight: bold;
+  top: 12px;
+  padding: 4px 12px;
+  font-family: var(--font-display);
+  font-size: 11px;
+  font-weight: 700;
   color: #fff;
-  box-shadow: 0 3px 10px rgba(0, 0, 0, 0.2);
+  letter-spacing: 0.08em;
+  border-radius: var(--radius-none);
 }
 
 .new-badge {
-  left: 20px;
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  left: 12px;
+  background-color: var(--accent-purple);
 }
 
 .hot-badge {
-  right: 20px;
-  background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+  right: 12px;
+  background-color: var(--accent-red);
 }
 
 .product-overlay {
   position: absolute;
-  bottom: -120px;
+  bottom: -100%;
   left: 0;
   right: 0;
-  background: rgba(0, 0, 0, 0.85);
-  padding: 25px;
-  transition: bottom 0.4s ease;
+  background-color: rgba(10, 10, 10, 0.9);
+  padding: 16px;
+  transition: bottom var(--transition-base);
   display: flex;
   justify-content: space-between;
   align-items: center;
+  gap: 8px;
 }
 
-.product-card:hover .product-overlay {
+.product-card:hover .product-overlay,
+.product-card:focus-within .product-overlay {
   bottom: 0;
 }
 
-.add-cart-btn {
-  border-radius: 25px;
-  padding: 8px 25px;
-  font-weight: 500;
-  background: #ff4d4f;
+.product-image:focus-visible,
+.product-name:focus-visible {
+  outline: 2px solid var(--accent-lime);
+  outline-offset: 3px;
+}
+
+.product-overlay :deep(.add-cart-btn) {
+  font-family: var(--font-heading);
+  font-weight: 700;
+  font-size: 12px;
+  letter-spacing: 0.06em;
+  background: var(--accent-purple);
   border: none;
-  transition: all 0.3s ease;
-  display: flex;
-  align-items: center;
-  gap: 5px;
+  border-radius: var(--radius-none);
 }
 
-.add-cart-btn:hover {
-  background: #ff7a7a;
-  transform: translateY(-2px);
+.product-overlay :deep(.view-detail-btn) {
+  color: var(--text-primary);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-none);
+  font-family: var(--font-heading);
+  font-size: 12px;
+  font-weight: 600;
 }
 
-.view-detail-btn {
-  color: #fff;
-  border: 1px solid #fff;
-  border-radius: 25px;
-  padding: 8px 25px;
-  transition: all 0.3s ease;
-  font-weight: 500;
-}
-
-.view-detail-btn:hover {
-  background: #fff;
-  color: #333;
-  transform: translateY(-2px);
+.product-overlay :deep(.view-detail-btn:hover) {
+  background-color: rgba(255, 255, 255, 0.1);
 }
 
 .product-info {
-  padding: 25px;
+  padding: 16px;
 }
 
 .product-name {
-  font-size: 20px;
-  font-weight: bold;
-  margin-bottom: 15px;
+  font-family: var(--font-heading);
+  font-weight: 700;
+  font-size: 15px;
+  color: var(--text-primary);
   cursor: pointer;
-  height: 56px;
-  overflow: hidden;
-  text-overflow: ellipsis;
+  margin-bottom: 10px;
+  line-height: 1.3;
   display: -webkit-box;
   -webkit-line-clamp: 2;
   -webkit-box-orient: vertical;
-  transition: color 0.3s ease;
-  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+  overflow: hidden;
 }
 
 .product-name:hover {
-  color: #ff4d4f;
+  color: var(--accent-purple);
 }
 
 .product-rating {
   display: flex;
   align-items: center;
-  margin-bottom: 15px;
+  margin-bottom: 10px;
 }
 
 .rating-count {
-  font-size: 14px;
-  color: #999;
-  margin-left: 10px;
+  font-family: var(--font-display);
+  font-size: 11px;
+  color: var(--text-tertiary);
+  margin-left: 8px;
 }
 
 .price-section {
@@ -579,218 +678,194 @@ export default {
 }
 
 .price {
-  font-size: 28px;
-  font-weight: bold;
-  color: #ff4d4f;
-  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+  font-family: var(--font-display);
+  font-size: 22px;
+  font-weight: 800;
+  color: var(--accent-lime);
+  animation: priceFlicker 3s infinite;
 }
 
 .sales {
-  font-size: 16px;
-  color: #999;
-  background-color: #f8f9fa;
-  padding: 6px 12px;
-  border-radius: 20px;
-  transition: all 0.3s ease;
+  font-family: var(--font-display);
+  font-size: 11px;
+  color: var(--text-tertiary);
+  background-color: var(--bg-surface);
+  padding: 4px 10px;
 }
 
-.product-card:hover .sales {
-  background-color: #e9ecef;
-  color: #333;
-}
-
-/* 分页 */
+/* === 分页 === */
 .pagination {
-  margin-top: 60px;
+  margin: var(--space-xl) 0;
   display: flex;
   justify-content: center;
-  margin-bottom: 100px;
 }
 
 .pagination-component {
-  background: #fff;
-  padding: 16px 24px;
-  border-radius: 16px;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
-  transition: all 0.3s ease;
+  padding: var(--space-md) 0;
 }
 
-.pagination-component:hover {
-  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.15);
-}
-
-/* 响应式设计 */
-@media (max-width: 768px) {
-  .product-list {
-    padding: 20px;
-  }
-  
-  .page-title {
-    font-size: 24px;
-  }
-  
-  .filter-card {
-    padding: 20px;
-  }
-  
-  .filter-controls {
-    flex-direction: column;
-    align-items: stretch;
-  }
-  
-  .filter-select {
-    min-width: auto;
-  }
-  
-  .product-grid {
-    grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
-    gap: 25px;
-  }
-  
-  .product-image-container {
-    height: 250px;
-  }
-  
-  .product-name {
-    font-size: 18px;
-  }
-  
-  .price {
-    font-size: 24px;
-  }
-}
-
-@media (max-width: 480px) {
-  .product-list {
-    padding: 10px;
-  }
-  
-  .page-title {
-    font-size: 20px;
-  }
-  
-  .filter-card {
-    padding: 16px;
-  }
-  
-  .search-input {
-    min-width: auto;
-  }
-  
-  .product-grid {
-    grid-template-columns: 1fr;
-  }
-  
-  .product-image-container {
-    height: 220px;
-  }
-  
-  .product-name {
-    font-size: 16px;
-  }
-  
-  .price {
-    font-size: 20px;
-  }
-  
-  .pagination-component {
-    padding: 12px 16px;
-  }
-}
-
-/* 尺码选择弹窗样式 */
+/* === 尺码选择弹窗 === */
 .dialog-content {
-  padding: 10px 0;
+  padding: 8px 0;
 }
 
 .product-preview {
   display: flex;
-  gap: 20px;
-  padding: 15px;
-  background: #f8f9fa;
-  border-radius: 10px;
-  margin-bottom: 25px;
+  gap: 16px;
+  padding: 16px;
+  background-color: var(--bg-card);
+  border: 1px solid var(--border-card);
+  margin-bottom: 20px;
 }
 
 .preview-image {
-  width: 100px;
-  height: 100px;
+  width: 90px;
+  height: 90px;
   object-fit: cover;
-  border-radius: 8px;
   flex-shrink: 0;
+  border: 1px solid var(--border-card);
 }
 
 .preview-info {
   display: flex;
   flex-direction: column;
   justify-content: center;
-  gap: 8px;
+  gap: 6px;
 }
 
 .preview-name {
-  font-size: 16px;
-  font-weight: bold;
-  color: #333;
+  font-family: var(--font-heading);
+  font-weight: 700;
+  font-size: 15px;
+  color: var(--text-primary);
   margin: 0;
-  line-height: 1.4;
 }
 
 .preview-price {
-  font-size: 22px;
-  font-weight: bold;
-  color: #ff4d4f;
+  font-family: var(--font-display);
+  font-size: 20px;
+  font-weight: 800;
+  color: var(--accent-lime);
 }
 
 .size-section,
 .quantity-section {
-  margin-bottom: 20px;
+  margin-bottom: 18px;
 }
 
 .section-label {
-  font-size: 14px;
-  font-weight: 600;
-  color: #333;
-  margin: 0 0 12px 0;
+  font-family: var(--font-heading);
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--text-secondary);
+  margin: 0 0 10px 0;
 }
 
 .size-options {
   display: flex;
-  gap: 12px;
+  gap: 8px;
   flex-wrap: wrap;
 }
 
 .size-option {
-  min-width: 60px;
-  height: 40px;
+  min-width: 56px;
+  height: 38px;
   display: flex;
   align-items: center;
   justify-content: center;
-  padding: 0 20px;
-  border: 2px solid #e0e0e0;
-  border-radius: 8px;
+  padding: 0 16px;
+  border: 1px solid var(--border-subtle);
   cursor: pointer;
-  font-size: 15px;
-  font-weight: 500;
-  color: #666;
-  transition: all 0.3s ease;
-  background: #fff;
+  font-family: var(--font-display);
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--text-secondary);
+  transition: var(--transition-fast);
+  background-color: var(--bg-card);
 }
 
 .size-option:hover {
-  border-color: #667eea;
-  color: #667eea;
-  transform: translateY(-2px);
-  box-shadow: 0 4px 12px rgba(102, 126, 234, 0.2);
+  border-color: var(--accent-purple);
+  color: var(--accent-purple);
 }
 
 .size-option.active {
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  background-color: var(--accent-purple);
   color: #fff;
-  border-color: transparent;
-  box-shadow: 0 4px 15px rgba(102, 126, 234, 0.4);
+  border-color: var(--accent-purple);
 }
 
 .quantity-section :deep(.el-input-number) {
-  width: 150px;
+  width: 140px;
+}
+
+/* === 响应式 === */
+@media (max-width: 1024px) {
+  .product-grid {
+    grid-template-columns: repeat(3, 1fr);
+    gap: 12px;
+  }
+}
+
+@media (max-width: 768px) {
+  .product-list {
+    padding: 0 var(--space-md);
+  }
+  .product-grid {
+    grid-template-columns: repeat(2, 1fr);
+    gap: 10px;
+  }
+  .page-title {
+    font-size: 22px;
+  }
+  .filter-card {
+    padding: 22px;
+    gap: 20px;
+  }
+  .filter-controls {
+    grid-template-columns: 1fr;
+    gap: 12px;
+  }
+}
+
+@media (max-width: 560px) {
+  .filter-intro {
+    display: block;
+  }
+  .filter-kicker {
+    display: inline-block;
+    margin-bottom: 10px;
+  }
+  .filter-intro h3 {
+    font-size: 16px;
+  }
+  .filter-intro p {
+    font-size: 12px;
+  }
+  .search-input :deep(.el-input-group) {
+    flex-wrap: wrap;
+  }
+  .search-input :deep(.el-input__wrapper) {
+    width: 100%;
+  }
+  .search-input :deep(.el-input-group__append) {
+    width: 100%;
+  }
+  .search-button {
+    width: 100%;
+    min-width: 0;
+    padding: 0 14px;
+  }
+}
+
+@media (max-width: 480px) {
+  .product-toolbar {
+    align-items: flex-start;
+    flex-direction: column;
+    gap: 4px;
+  }
+  .product-grid {
+    grid-template-columns: 1fr;
+  }
 }
 </style>

@@ -314,14 +314,9 @@ export default {
       this.$refs.passwordForm.validate(async (valid) => {
         if (valid) {
           try {
-            console.log('密码表单数据:', this.passwordForm)
-            console.log('是否已有密码:', this.hasPassword)
-            
             if (this.hasPassword) {
               // 修改密码
-              console.log('调用修改密码接口')
               const response = await userApi.changePassword(this.passwordForm.oldPassword, this.passwordForm.newPassword)
-              console.log('修改密码接口响应:', response)
               if (response.data.code === 1) {
                 this.$message.success('密码修改成功')
                 this.changePasswordDialogVisible = false
@@ -330,11 +325,9 @@ export default {
               }
             } else {
               // 设置密码
-              console.log('调用设置密码接口')
               const response = await userApi.updateUserInfo({
                 password: this.passwordForm.newPassword
               })
-              console.log('设置密码接口响应:', response)
               if (response.data.code === 1) {
                 this.$message.success('密码设置成功')
                 this.hasPassword = true

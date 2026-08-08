@@ -17,6 +17,7 @@ public class OrderCreateDTO {
     private Integer payMethod;
     private Long activityId;
     private Long couponId;
+    private Long userCouponId;
     private Integer deliveryStatus;
     private LocalDateTime estimatedDeliveryTime;
     private BigDecimal amount;

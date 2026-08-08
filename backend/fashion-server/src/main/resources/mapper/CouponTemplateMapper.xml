@@ -1,0 +1,89 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.fashion.mapper.CouponTemplateMapper">
+
+    <sql id="baseColumns">
+        t.id, t.name, t.type, t.threshold, t.discount, t.total_count as totalCount,
+        t.per_user_limit as perUserLimit, t.valid_type as validType, t.valid_days as validDays,
+        t.start_time as startTime, t.end_time as endTime, t.scope_type as scopeType,
+        t.apply_category_id as applyCategoryId, t.apply_product_ids as applyProductIds,
+        t.status, t.create_time as createTime, t.update_time as updateTime
+    </sql>
+
+    <!-- 新增模板 -->
+    <insert id="insert" parameterType="com.fashion.entity.CouponTemplate" useGeneratedKeys="true" keyProperty="id">
+        insert into coupon_template (
+            name, type, threshold, discount, total_count, per_user_limit, valid_type,
+            valid_days, start_time, end_time, scope_type, apply_category_id,
+            apply_product_ids, status, create_time, update_time
+        ) values (
+            #{name}, #{type}, #{threshold}, #{discount}, #{totalCount}, #{perUserLimit}, #{validType},
+            #{validDays}, #{startTime}, #{endTime}, #{scopeType}, #{applyCategoryId},
+            #{applyProductIds}, #{status}, #{createTime}, #{updateTime}
+        )
+    </insert>
+
+    <!-- 更新模板 -->
+    <update id="update" parameterType="com.fashion.entity.CouponTemplate">
+        update coupon_template
+        <set>
+            <if test="name != null">name = #{name},</if>
+            <if test="type != null">type = #{type},</if>
+            <if test="threshold != null">threshold = #{threshold},</if>
+            <if test="discount != null">discount = #{discount},</if>
+            <if test="totalCount != null">total_count = #{totalCount},</if>
+            <if test="perUserLimit != null">per_user_limit = #{perUserLimit},</if>
+            <if test="validType != null">valid_type = #{validType},</if>
+            <if test="validDays != null">valid_days = #{validDays},</if>
+            <if test="startTime != null">start_time = #{startTime},</if>
+            <if test="endTime != null">end_time = #{endTime},</if>
+            <if test="scopeType != null">scope_type = #{scopeType},</if>
+            <if test="applyCategoryId != null">apply_category_id = #{applyCategoryId},</if>
+            <if test="applyProductIds != null">apply_product_ids = #{applyProductIds},</if>
+            <if test="status != null">status = #{status},</if>
+            <if test="updateTime != null">update_time = #{updateTime}</if>
+        </set>
+        where id = #{id}
+    </update>
+
+    <!-- 删除模板（软删） -->
+    <delete id="deleteById" parameterType="java.lang.Long">
+        update coupon_template set status = 0, update_time = now() where id = #{id}
+    </delete>
+
+    <!-- 根据id查询模板 -->
+    <select id="selectById" parameterType="java.lang.Long" resultType="com.fashion.entity.CouponTemplate">
+        select <include refid="baseColumns"/> from coupon_template t where t.id = #{id}
+    </select>
+
+    <!-- 分页查询模板 -->
+    <select id="list" resultType="com.fashion.entity.CouponTemplate">
+        select <include refid="baseColumns"/> from coupon_template t
+        <where>
+            <if test="name != null and name != ''">and t.name like concat('%', #{name}, '%')</if>
+            <if test="status != null">and t.status = #{status}</if>
+        </where>
+        order by t.id desc
+        limit #{page}, #{pageSize}
+    </select>
+
+    <!-- 查询模板总数 -->
+    <select id="count" resultType="java.lang.Integer">
+        select count(*) from coupon_template t
+        <where>
+            <if test="name != null and name != ''">and t.name like concat('%', #{name}, '%')</if>
+            <if test="status != null">and t.status = #{status}</if>
+        </where>
+    </select>
+
+    <!-- 查询可领取模板列表（启用；固定时间类型需在有效期内） -->
+    <select id="listClaimable" resultType="com.fashion.entity.CouponTemplate">
+        select <include refid="baseColumns"/> from coupon_template t
+        where t.status = 1
+          and (t.valid_type = 2
+               or (t.valid_type = 1 and t.start_time &lt;= now() and t.end_time &gt;= now()))
+        order by t.id desc
+    </select>
+</mapper>

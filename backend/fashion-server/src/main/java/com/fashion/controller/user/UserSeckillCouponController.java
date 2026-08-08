@@ -5,7 +5,6 @@ import com.fashion.entity.SeckillCoupon;
 import com.fashion.entity.SeckillOrder;
 import com.fashion.result.Result;
 import com.fashion.service.SeckillCouponService;
-import com.fashion.service.SeckillService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.*;
 

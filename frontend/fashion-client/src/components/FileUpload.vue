@@ -98,28 +98,20 @@ const beforeUpload = (file) => {
 // 上传成功处理
 const handleUploadSuccess = (response) => {
   uploading.value = false
-  
-  console.log('上传响应:', response)
-  
+
   // 检查响应结构
   if (!response) {
     ElMessage.error('上传失败：响应为空')
     emit('upload-error', response)
     return
   }
-  
+
   // 尝试不同的响应结构
   let res = response
   if (response.data) {
     res = response.data
-    console.log('使用response.data作为响应:', res)
   }
-  
-  console.log('处理后的响应:', res)
-  console.log('res.code:', res.code)
-  console.log('res.data:', res.data)
-  console.log('res.msg:', res.msg)
-  
+
   // 检查响应状态
   if (res.code === 1) {
     if (res.data) {

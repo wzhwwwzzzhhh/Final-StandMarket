@@ -3,12 +3,12 @@
     <div class="dashboard-header">
       <h2 class="dashboard-title">服装店铺管理系统</h2>
       <div class="dashboard-actions">
-        <el-button type="primary" @click="refreshData">
+        <el-button type="primary" @click="refreshData" :loading="loading">
           <el-icon><Refresh /></el-icon> 刷新数据
         </el-button>
       </div>
     </div>
-    
+
     <div class="dashboard">
       <el-row :gutter="20">
         <el-col :span="6">
@@ -21,11 +21,6 @@
             </template>
             <div class="card-content">
               <el-statistic :value="productCount" title="商品数量" :precision="0" />
-              <div class="stats-trend positive">
-                <el-icon><ArrowUp /></el-icon>
-                <span>12.5%</span>
-                <span class="trend-desc">较上月</span>
-              </div>
             </div>
           </el-card>
         </el-col>
@@ -39,11 +34,6 @@
             </template>
             <div class="card-content">
               <el-statistic :value="orderCount" title="订单数量" :precision="0" />
-              <div class="stats-trend positive">
-                <el-icon><ArrowUp /></el-icon>
-                <span>8.3%</span>
-                <span class="trend-desc">较上月</span>
-              </div>
             </div>
           </el-card>
         </el-col>
@@ -57,11 +47,6 @@
             </template>
             <div class="card-content">
               <el-statistic :value="userCount" title="用户数量" :precision="0" />
-              <div class="stats-trend positive">
-                <el-icon><ArrowUp /></el-icon>
-                <span>15.2%</span>
-                <span class="trend-desc">较上月</span>
-              </div>
             </div>
           </el-card>
         </el-col>
@@ -69,17 +54,12 @@
           <el-card shadow="hover" class="stats-card">
             <template #header>
               <div class="card-header">
-                <span class="card-title">今日销售额</span>
+                <span class="card-title">总销售额</span>
                 <el-icon class="card-icon"><Money /></el-icon>
               </div>
             </template>
             <div class="card-content">
-              <el-statistic :value="todaySales" title="销售额" prefix="¥" :precision="2" />
-              <div class="stats-trend negative">
-                <el-icon><ArrowDown /></el-icon>
-                <span>3.1%</span>
-                <span class="trend-desc">较昨日</span>
-              </div>
+              <el-statistic :value="totalSales" title="销售额" prefix="¥" :precision="2" />
             </div>
           </el-card>
         </el-col>
@@ -93,7 +73,7 @@
             <template #header>
               <div class="card-header">
                 <span class="card-title">销售趋势</span>
-                <el-select v-model="timeRange" size="small" class="time-select">
+                <el-select v-model="timeRange" size="small" class="time-select" @change="loadTrend">
                   <el-option label="近7天" value="7" />
                   <el-option label="近30天" value="30" />
                   <el-option label="近90天" value="90" />
@@ -110,9 +90,6 @@
             <template #header>
               <div class="card-header">
                 <span class="card-title">商品分类占比</span>
-                <el-button type="text" size="small" @click="exportChart">
-                  <el-icon><Download /></el-icon> 导出
-                </el-button>
               </div>
             </template>
             <div class="chart-container">
@@ -134,23 +111,23 @@
           </div>
         </template>
         <div class="orders-table">
-          <el-table :data="recentOrders" stripe style="width: 100%">
-            <el-table-column prop="orderId" label="订单号" width="180" />
-            <el-table-column prop="customer" label="客户" />
+          <el-table :data="recentOrders" stripe style="width: 100%" v-loading="loading">
+            <el-table-column prop="number" label="订单号" width="200" />
+            <el-table-column prop="userName" label="客户" />
             <el-table-column prop="amount" label="金额" width="100">
               <template #default="scope">
-                ¥{{ scope.row.amount.toFixed(2) }}
+                ¥{{ scope.row.amount ? scope.row.amount.toFixed(2) : '0.00' }}
               </template>
             </el-table-column>
             <el-table-column prop="status" label="状态" width="120">
               <template #default="scope">
-                <el-tag :type="getStatusType(scope.row.status)">{{ scope.row.status }}</el-tag>
+                <el-tag :type="getStatusType(scope.row.status)">{{ getStatusText(scope.row.status) }}</el-tag>
               </template>
             </el-table-column>
-            <el-table-column prop="time" label="下单时间" width="180" />
+            <el-table-column prop="orderTime" label="下单时间" width="180" />
             <el-table-column label="操作" width="120">
               <template #default="scope">
-                <el-button type="primary" size="small" @click="viewOrderDetail(scope.row.orderId)">查看</el-button>
+                <el-button type="primary" size="small" @click="viewOrderDetail(scope.row.id)">查看</el-button>
               </template>
             </el-table-column>
           </el-table>
@@ -161,8 +138,9 @@
 </template>
 
 <script>
-import { Refresh, Goods, ShoppingCart, User, Money, ArrowUp, ArrowDown, Download } from '@element-plus/icons-vue'
+import { Refresh, Goods, ShoppingCart, User, Money } from '@element-plus/icons-vue'
 import * as echarts from 'echarts'
+import { dashboardApi } from '../api/dashboard'
 
 export default {
   name: 'Home',
@@ -171,31 +149,23 @@ export default {
     Goods,
     ShoppingCart,
     User,
-    Money,
-    ArrowUp,
-    ArrowDown,
-    Download
+    Money
   },
   data() {
     return {
-      productCount: 120,
-      orderCount: 345,
-      userCount: 567,
-      todaySales: 12345,
+      productCount: 0,
+      orderCount: 0,
+      userCount: 0,
+      totalSales: 0,
       timeRange: '7',
+      loading: false,
       salesChart: null,
       categoryChart: null,
-      recentOrders: [
-        { orderId: 'ORD20260413001', customer: '张三', amount: 299.00, status: '已完成', time: '2026-04-13 14:30' },
-        { orderId: 'ORD20260413002', customer: '李四', amount: 599.00, status: '处理中', time: '2026-04-13 13:15' },
-        { orderId: 'ORD20260413003', customer: '王五', amount: 199.00, status: '已完成', time: '2026-04-13 11:45' },
-        { orderId: 'ORD20260413004', customer: '赵六', amount: 899.00, status: '待支付', time: '2026-04-13 10:30' },
-        { orderId: 'ORD20260413005', customer: '孙七', amount: 399.00, status: '已完成', time: '2026-04-13 09:15' }
-      ]
+      recentOrders: []
     }
   },
   mounted() {
-    this.initCharts()
+    this.loadData()
   },
   beforeUnmount() {
     if (this.salesChart) {
@@ -206,170 +176,147 @@ export default {
     }
   },
   methods: {
-    initCharts() {
-      this.initSalesChart()
-      this.initCategoryChart()
+    loadData() {
+      this.loading = true
+      Promise.all([
+        dashboardApi.getSales(),
+        dashboardApi.getRecentOrders({ limit: 5 }),
+        dashboardApi.getCategory()
+      ]).then(([salesRes, ordersRes, categoryRes]) => {
+        const sales = salesRes.data.data
+        this.productCount = sales.totalProducts || 0
+        this.orderCount = sales.totalOrders || 0
+        this.userCount = sales.totalUsers || 0
+        this.totalSales = sales.totalSales || 0
+
+        this.recentOrders = ordersRes.data.data || []
+
+        this.loadTrend()
+
+        this.$nextTick(() => {
+          this.initSalesChart([])
+          this.initCategoryChart(categoryRes.data.data || [])
+        })
+      }).catch(err => {
+        console.error('加载数据失败:', err)
+        this.$message.error('加载数据失败')
+      }).finally(() => {
+        this.loading = false
+      })
     },
-    initSalesChart() {
-      this.salesChart = echarts.init(this.$refs.salesChart)
+
+    loadTrend() {
+      dashboardApi.getTrend(this.timeRange).then(res => {
+        const data = res.data.data || []
+        this.initSalesChart(data)
+      }).catch(err => {
+        console.error('加载趋势数据失败:', err)
+      })
+    },
+
+    initSalesChart(trendData) {
+      if (!this.$refs.salesChart) return
+      if (!this.salesChart) {
+        this.salesChart = echarts.init(this.$refs.salesChart)
+        window.addEventListener('resize', () => {
+          this.salesChart && this.salesChart.resize()
+        })
+      }
+
+      const dates = trendData.map(d => d.date)
+      const amounts = trendData.map(d => d.amount)
+      const counts = trendData.map(d => d.count)
+
       const option = {
-        tooltip: {
-          trigger: 'axis',
-          axisPointer: {
-            type: 'cross',
-            label: {
-              backgroundColor: '#6a7985'
-            }
-          }
-        },
-        legend: {
-          data: ['销售额', '订单数'],
-          top: 0
-        },
-        grid: {
-          left: '3%',
-          right: '4%',
-          bottom: '3%',
-          containLabel: true
-        },
-        xAxis: [
-          {
-            type: 'category',
-            boundaryGap: false,
-            data: ['4-7', '4-8', '4-9', '4-10', '4-11', '4-12', '4-13']
-          }
-        ],
+        tooltip: { trigger: 'axis' },
+        legend: { data: ['销售额', '订单数'], top: 0 },
+        grid: { left: '3%', right: '4%', bottom: '3%', containLabel: true },
+        xAxis: [{ type: 'category', boundaryGap: false, data: dates.length ? dates : ['-'] }],
         yAxis: [
-          {
-            type: 'value',
-            name: '销售额',
-            position: 'left',
-            axisLabel: {
-              formatter: '¥{value}'
-            }
-          },
-          {
-            type: 'value',
-            name: '订单数',
-            position: 'right',
-            axisLabel: {
-              formatter: '{value}单'
-            }
-          }
+          { type: 'value', name: '销售额', position: 'left', axisLabel: { formatter: '¥{value}' } },
+          { type: 'value', name: '订单数', position: 'right', axisLabel: { formatter: '{value}单' } }
         ],
         series: [
           {
-            name: '销售额',
-            type: 'line',
-            stack: 'Total',
+            name: '销售额', type: 'line', smooth: true,
             areaStyle: {
               color: new echarts.graphic.LinearGradient(0, 0, 0, 1, [
-                {
-                  offset: 0,
-                  color: 'rgba(52, 152, 219, 0.5)'
-                },
-                {
-                  offset: 1,
-                  color: 'rgba(52, 152, 219, 0.1)'
-                }
+                { offset: 0, color: 'rgba(52, 152, 219, 0.5)' },
+                { offset: 1, color: 'rgba(52, 152, 219, 0.1)' }
               ])
             },
-            emphasis: {
-              focus: 'series'
-            },
-            data: [12000, 19000, 15000, 18000, 16000, 22000, 12345]
+            data: amounts.length ? amounts : [0]
           },
           {
-            name: '订单数',
-            type: 'line',
-            yAxisIndex: 1,
-            emphasis: {
-              focus: 'series'
-            },
-            data: [45, 62, 53, 59, 51, 72, 38]
+            name: '订单数', type: 'line', smooth: true, yAxisIndex: 1,
+            data: counts.length ? counts : [0]
           }
         ]
       }
-      this.salesChart.setOption(option)
-      
-      window.addEventListener('resize', () => {
-        this.salesChart.resize()
-      })
+      this.salesChart.setOption(option, true)
     },
-    initCategoryChart() {
-      this.categoryChart = echarts.init(this.$refs.categoryChart)
+
+    initCategoryChart(categoryData) {
+      if (!this.$refs.categoryChart) return
+      if (!this.categoryChart) {
+        this.categoryChart = echarts.init(this.$refs.categoryChart)
+        window.addEventListener('resize', () => {
+          this.categoryChart && this.categoryChart.resize()
+        })
+      }
+
+      const chartData = categoryData.length ? categoryData.map(d => ({
+        value: d.total_sales || d.productCount || 0,
+        name: d.name || '未分类'
+      })) : [{ value: 1, name: '暂无数据' }]
+
       const option = {
-        tooltip: {
-          trigger: 'item'
-        },
-        legend: {
-          orient: 'vertical',
-          left: 'left',
-          top: 'center'
-        },
-        series: [
-          {
-            name: '商品分类',
-            type: 'pie',
-            radius: '60%',
-            center: ['60%', '50%'],
-            data: [
-              { value: 45, name: '男装' },
-              { value: 30, name: '女装' },
-              { value: 15, name: '鞋子' },
-              { value: 10, name: '配饰' }
-            ],
-            emphasis: {
-              itemStyle: {
-                shadowBlur: 10,
-                shadowOffsetX: 0,
-                shadowColor: 'rgba(0, 0, 0, 0.5)'
-              }
-            },
-            itemStyle: {
-              borderRadius: 10,
-              borderColor: '#fff',
-              borderWidth: 2
-            }
-          }
-        ]
+        tooltip: { trigger: 'item' },
+        legend: { orient: 'vertical', left: 'left', top: 'center' },
+        series: [{
+          name: '商品分类', type: 'pie', radius: '60%', center: ['60%', '50%'],
+          data: chartData,
+          emphasis: {
+            itemStyle: { shadowBlur: 10, shadowOffsetX: 0, shadowColor: 'rgba(0, 0, 0, 0.5)' }
+          },
+          itemStyle: { borderRadius: 10, borderColor: '#fff', borderWidth: 2 }
+        }]
       }
-      this.categoryChart.setOption(option)
-      
-      window.addEventListener('resize', () => {
-        this.categoryChart.resize()
-      })
+      this.categoryChart.setOption(option, true)
     },
+
     refreshData() {
+      this.loadData()
       this.$message.success('数据已刷新')
-      // 模拟数据刷新
-      this.productCount = Math.floor(Math.random() * 50) + 100
-      this.orderCount = Math.floor(Math.random() * 100) + 300
-      this.userCount = Math.floor(Math.random() * 100) + 500
-      this.todaySales = Math.floor(Math.random() * 5000) + 10000
-      
-      // 重新初始化图表
-      this.initCharts()
     },
-    exportChart() {
-      this.$message.success('图表已导出')
-    },
+
     viewAllOrders() {
       this.$router.push('/order/list')
     },
+
     viewOrderDetail(orderId) {
-      console.log('查看订单详情:', orderId)
+      this.$router.push(`/order/list`)
     },
+
     getStatusType(status) {
-      switch(status) {
-        case '已完成':
-          return 'success'
-        case '处理中':
-          return 'warning'
-        case '待支付':
-          return 'info'
-        default:
-          return 'default'
+      switch (status) {
+        case 1: return 'info'
+        case 2: return 'warning'
+        case 3: return 'primary'
+        case 4: return 'success'
+        case 5: return 'danger'
+        default: return 'default'
+      }
+    },
+
+    getStatusText(status) {
+      switch (status) {
+        case 1: return '待付款'
+        case 2: return '待发货'
+        case 3: return '已发货'
+        case 4: return '已完成'
+        case 5: return '已取消'
+        default: return '未知'
       }
     }
   }
@@ -392,158 +339,24 @@ export default {
   font-size: 24px;
   font-weight: bold;
   color: #333;
-  margin: 0;
 }
 
-.dashboard-actions {
-  display: flex;
-  gap: 10px;
-}
+.stats-card { border-radius: 12px; margin-bottom: 20px; }
+.stats-card .card-header { display: flex; justify-content: space-between; align-items: center; }
+.stats-card .card-title { font-size: 16px; font-weight: bold; color: #333; }
+.stats-card .card-icon { font-size: 24px; color: #409eff; }
+.card-content { text-align: center; padding: 10px 0; }
 
-.dashboard {
-  margin-bottom: 30px;
-}
+.charts-section { margin-bottom: 30px; }
+.chart-card { border-radius: 12px; }
+.chart-card .card-header { display: flex; justify-content: space-between; align-items: center; }
+.chart-card .card-title { font-size: 16px; font-weight: bold; color: #333; }
+.chart-container { padding: 10px; }
+.chart { width: 100%; height: 350px; }
 
-.stats-card {
-  transition: all 0.3s ease;
-  border-radius: 10px;
-  overflow: hidden;
-}
+.orders-card { border-radius: 12px; }
+.orders-card .card-header { display: flex; justify-content: space-between; align-items: center; }
+.orders-card .card-title { font-size: 16px; font-weight: bold; color: #333; }
 
-.stats-card:hover {
-  transform: translateY(-5px);
-  box-shadow: 0 10px 20px rgba(0, 0, 0, 0.1);
-}
-
-.card-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  padding: 15px 20px;
-  background-color: #f8f9fa;
-  border-bottom: 1px solid #e9ecef;
-}
-
-.card-title {
-  font-size: 14px;
-  font-weight: 500;
-  color: #666;
-}
-
-.card-icon {
-  font-size: 18px;
-  color: #3498db;
-}
-
-.card-content {
-  padding: 20px;
-  position: relative;
-}
-
-.stats-trend {
-  position: absolute;
-  bottom: 20px;
-  right: 20px;
-  display: flex;
-  align-items: center;
-  gap: 5px;
-  font-size: 12px;
-}
-
-.stats-trend.positive {
-  color: #67c23a;
-}
-
-.stats-trend.negative {
-  color: #f56c6c;
-}
-
-.trend-desc {
-  color: #999;
-}
-
-.charts-section {
-  margin-bottom: 30px;
-}
-
-.chart-card {
-  transition: all 0.3s ease;
-  border-radius: 10px;
-  overflow: hidden;
-}
-
-.chart-card:hover {
-  box-shadow: 0 10px 20px rgba(0, 0, 0, 0.1);
-}
-
-.time-select {
-  width: 120px;
-}
-
-.chart-container {
-  padding: 20px;
-}
-
-.chart {
-  width: 100%;
-  height: 350px;
-}
-
-.recent-orders {
-  margin-top: 30px;
-}
-
-.orders-card {
-  transition: all 0.3s ease;
-  border-radius: 10px;
-  overflow: hidden;
-}
-
-.orders-card:hover {
-  box-shadow: 0 10px 20px rgba(0, 0, 0, 0.1);
-}
-
-.orders-table {
-  margin-top: 10px;
-}
-
-/* 响应式设计 */
-@media (max-width: 768px) {
-  .dashboard-header {
-    flex-direction: column;
-    align-items: flex-start;
-    gap: 10px;
-  }
-  
-  .el-row {
-    flex-direction: column;
-  }
-  
-  .el-col {
-    width: 100% !important;
-    margin-bottom: 20px;
-  }
-  
-  .chart {
-    height: 300px;
-  }
-}
-
-@media (max-width: 480px) {
-  .home {
-    padding: 10px;
-  }
-  
-  .card-content {
-    padding: 15px;
-  }
-  
-  .chart-container {
-    padding: 10px;
-  }
-  
-  .chart {
-    height: 250px;
-  }
-}
+.time-select { width: 120px; }
 </style>

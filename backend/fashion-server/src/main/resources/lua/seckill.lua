@@ -18,16 +18,24 @@ local user_id = ARGV[3]
 -- 获取开始时间
 local start_time = tonumber(redis.call('GET', start_time_key))
 
+-- 判断开始时间数据是否正常
+if start_time == nil then
+    return -5
+end
 -- 判断是否未开始
-if start_time and current_time < start_time then
+if current_time < start_time then
     return -3
 end
 
 -- 获取结束时间
 local end_time = tonumber(redis.call('GET', end_time_key))
 
+-- 判断结束时间数据是否正常
+if end_time == nil then
+    return -5
+end
 -- 判断是否已过期
-if end_time and current_time > end_time then
+if current_time > end_time then
     return -2
 end
 

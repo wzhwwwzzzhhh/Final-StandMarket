@@ -123,6 +123,46 @@ public class Orders implements Serializable {
     private BigDecimal shippingFee;
 
     /**
+     * 秒杀活动ID
+     */
+    private Long seckillActivityId;
+
+    /**
+     * 秒杀券ID
+     */
+    private Long seckillCouponId;
+
+    /**
+     * 是否秒杀订单 0否 1是
+     */
+    private Integer isSeckill;
+
+    /**
+     * 秒杀价
+     */
+    private BigDecimal seckillPrice;
+
+    /**
+     * 快递公司
+     */
+    private String trackingCompany;
+
+    /**
+     * 快递单号
+     */
+    private String trackingNumber;
+
+    /**
+     * 原价
+     */
+    private BigDecimal originalPrice;
+
+    /**
+     * 通用优惠券ID（下单锁定，取消/支付回调按它释放/核销）
+     */
+    private Long userCouponId;
+
+    /**
      * 订单明细
      */
     private List<OrderDetail> items;

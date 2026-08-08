@@ -1,6 +1,12 @@
-import { createRouter, createWebHistory } from 'vue-router'
+import { createRouter, createWebHashHistory } from 'vue-router'
 
 const routes = [
+  {
+    path: '/login',
+    name: 'Login',
+    component: () => import('../views/Login.vue'),
+    meta: { public: true }
+  },
   {
     path: '/',
     name: 'Home',
@@ -52,18 +58,70 @@ const routes = [
     component: () => import('../views/SpecialOffer.vue')
   },
   {
+    path: '/coupon/template',
+    name: 'CouponTemplateList',
+    component: () => import('../views/CouponTemplateList.vue')
+  },
+  {
+    path: '/coupon/user',
+    name: 'CouponUserList',
+    component: () => import('../views/CouponUserList.vue')
+  },
+  {
     path: '/user/list',
     name: 'UserList',
     component: () => import('../views/UserList.vue')
+  },
+  {
+    path: '/employee/list',
+    name: 'EmployeeList',
+    component: () => import('../views/EmployeeList.vue')
+  },
+  {
+    path: '/review/list',
+    name: 'ReviewList',
+    component: () => import('../views/ReviewList.vue')
+  },
+  {
+    path: '/refund/list',
+    name: 'RefundList',
+    component: () => import('../views/RefundList.vue')
+  },
+  {
+    path: '/es/sync',
+    name: 'EsSyncControl',
+    component: () => import('../views/EsSyncControl.vue')
+  },
+  {
+    path: '/operationLog/list',
+    name: 'OperationLogList',
+    component: () => import('../views/OperationLogList.vue')
+  },
+  {
+    path: '/:pathMatch(.*)*',
+    name: 'NotFound',
+    component: () => import('../views/NotFound.vue')
   }
 ]
 
 const router = createRouter({
-  history: createWebHistory(),
+  history: createWebHashHistory(),
   routes,
   scrollBehavior() {
     // 每次路由跳转时滚动到页面顶部
     return { top: 0 }
+  }
+})
+
+// 路由守卫：未登录跳转登录页
+router.beforeEach((to, from, next) => {
+  const token = localStorage.getItem('admin_token')
+  if (!to.meta.public && !token) {
+    next('/login')
+  } else if (to.path === '/login' && token) {
+    next('/')
+  } else {
+    next()
   }
 })
 

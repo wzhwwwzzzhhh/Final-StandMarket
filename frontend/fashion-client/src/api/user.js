@@ -12,16 +12,9 @@ const api = axios.create({
 // 请求拦截器，添加token
 api.interceptors.request.use(config => {
   const token = localStorage.getItem('token')
-  console.log('从localStorage获取的token:', token)
   if (token) {
     config.headers.Authorization = `Bearer ${token}`
-    console.log('添加到请求头的Authorization:', config.headers.Authorization)
-  } else {
-    console.log('localStorage中没有token')
-    console.log('localStorage中的所有数据:', localStorage)
   }
-  console.log('请求URL:', config.url)
-  console.log('请求头:', config.headers)
   return config
 }, error => {
   console.error('请求拦截器错误:', error)

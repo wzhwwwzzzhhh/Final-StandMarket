@@ -193,7 +193,6 @@ export default {
     const loadAddressList = async () => {
       try {
         const response = await addressApi.getAddressList();
-        console.log('加载地址列表的响应:', response);
         if (response && response.data && response.data.code === 1) {
           addressList.value = response.data.data || [];
         } else if (response && response.data && response.data.message) {
@@ -268,16 +267,12 @@ export default {
         await formRef.value.validate();
         // 将isDefault从布尔值转换为整数
         form.isDefault = form.isDefault ? 1 : 0;
-        console.log('保存地址前的表单数据:', form);
         let response;
         if (form.id) {
-          console.log('更新地址');
           response = await addressApi.updateAddress(form);
         } else {
-          console.log('添加地址');
           response = await addressApi.addAddress(form);
         }
-        console.log('保存地址的响应:', response);
         if (response && response.data && response.data.code === 1) {
           ElMessage.success(form.id ? '地址更新成功' : '地址添加成功');
           dialogVisible.value = false;
@@ -309,7 +304,6 @@ export default {
           type: 'warning'
         });
         const response = await addressApi.deleteAddress(id);
-        console.log('删除地址的响应:', response);
         if (response && response.data && response.data.code === 1) {
           ElMessage.success('地址删除成功');
           loadAddressList();
@@ -328,7 +322,6 @@ export default {
     const setDefault = async (id) => {
       try {
         const response = await addressApi.setDefaultAddress(id);
-        console.log('设置默认地址的响应:', response);
         if (response && response.data && response.data.code === 1) {
           ElMessage.success('默认地址设置成功');
           loadAddressList();

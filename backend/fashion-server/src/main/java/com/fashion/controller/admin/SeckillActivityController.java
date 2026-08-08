@@ -1,5 +1,6 @@
 package com.fashion.controller.admin;
 
+import com.fashion.common.annotation.OperationLog;
 import com.fashion.entity.SeckillActivity;
 import com.fashion.entity.PageResult;
 import com.fashion.result.Result;
@@ -23,6 +24,7 @@ public class SeckillActivityController {
      * 新增秒杀活动
      */
     @PostMapping
+    @OperationLog(module = "秒杀活动", operation = "新增秒杀活动")
     public Result<String> save(@RequestBody SeckillActivity seckillActivity) {
         seckillActivityService.save(seckillActivity);
         return Result.success();
@@ -39,9 +41,19 @@ public class SeckillActivityController {
     }
 
     /**
+     * 查询所有秒杀活动列表（不分页，用于下拉选择）
+     */
+    @GetMapping("/list")
+    public Result<List<SeckillActivity>> list() {
+        List<SeckillActivity> activities = seckillActivityService.listActivities(null);
+        return Result.success(activities);
+    }
+
+    /**
      * 删除秒杀活动
      */
     @DeleteMapping
+    @OperationLog(module = "秒杀活动", operation = "删除秒杀活动")
     public Result<String> delete(@RequestParam Long id) {
         if (id == null) {
             return Result.error("id不能为空");
@@ -57,6 +69,7 @@ public class SeckillActivityController {
      * 修改秒杀活动
      */
     @PutMapping
+    @OperationLog(module = "秒杀活动", operation = "修改秒杀活动")
     public Result<String> update(@RequestBody SeckillActivity seckillActivity) {
         if (seckillActivity.getId() == null) {
             return Result.error("id不能为空");

@@ -127,7 +127,6 @@ export default {
     },
     // 处理上传成功
     handleUploadSuccess(url) {
-      console.log('头像上传成功:', url)
       this.form.avatar = url
     },
     // 处理上传失败

@@ -64,7 +64,10 @@
             <if test="estimatedDeliveryTime != null">estimated_delivery_time = #{estimatedDeliveryTime},</if>
             <if test="deliveryStatus != null">delivery_status = #{deliveryStatus},</if>
             <if test="deliveryTime != null">delivery_time = #{deliveryTime},</if>
+            <if test="trackingCompany != null">tracking_company = #{trackingCompany},</if>
+            <if test="trackingNumber != null">tracking_number = #{trackingNumber},</if>
             <if test="shippingFee != null">shipping_fee = #{shippingFee},</if>
+            <if test="userCouponId != null">user_coupon_id = #{userCouponId},</if>
         </set>
         where id = #{id}
     </update>
@@ -85,12 +88,14 @@
             number, status, user_id, order_time, checkout_time,
             pay_method, pay_status, amount, remark, phone, address, user_name,
             consignee, cancel_reason, rejection_reason, cancel_time, estimated_delivery_time,
-            delivery_status, delivery_time, shipping_fee, address_book_id
+            delivery_status, delivery_time, shipping_fee, address_book_id,
+            tracking_company, tracking_number, user_coupon_id
         ) values (
             #{number}, #{status}, #{userId}, #{orderTime}, #{checkoutTime},
             #{payMethod}, #{payStatus}, #{amount}, #{remark}, #{phone}, #{address}, #{userName},
             #{consignee}, #{cancelReason}, #{rejectionReason}, #{cancelTime}, #{estimatedDeliveryTime},
-            #{deliveryStatus}, #{deliveryTime}, #{shippingFee}, #{addressBookId}
+            #{deliveryStatus}, #{deliveryTime}, #{shippingFee}, #{addressBookId},
+            #{trackingCompany}, #{trackingNumber}, #{userCouponId}
         )
     </insert>
     
@@ -102,5 +107,21 @@
             and status = #{status}
         </if>
         order by order_time desc
+    </select>
+
+    <!-- 获取最近订单 -->
+    <select id="selectRecentOrders" resultType="com.fashion.entity.Orders">
+        SELECT o.*, u.name AS userName
+        FROM orders o
+        LEFT JOIN user u ON o.user_id = u.id
+        ORDER BY o.order_time DESC
+        LIMIT #{limit}
+    </select>
+
+    <!-- 超时未支付且绑定了通用优惠券的订单（定时任务自动取消 + 释放券） -->
+    <select id="selectTimeoutCouponOrders" resultType="com.fashion.entity.Orders">
+        select * from orders
+        where status = 1 and user_coupon_id is not null
+          and order_time &lt; date_sub(now(), interval #{minutes} minute)
     </select>
 </mapper>
