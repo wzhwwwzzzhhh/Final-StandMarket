@@ -1,6 +1,7 @@
 package com.fashion.controller.admin;
 
 import com.fashion.common.annotation.OperationLog;
+import com.fashion.dto.OrderStatusUpdateDTO;
 import com.fashion.entity.Orders;
 import com.fashion.entity.PageResult;
 import com.fashion.entity.Payment;
@@ -10,7 +11,6 @@ import com.fashion.service.PaymentService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.*;
 
-import java.time.LocalDateTime;
 import java.util.Map;
 
 /**
@@ -75,36 +75,16 @@ public class OrderController {
      */
     @PutMapping("/{id}/status")
     @OperationLog(module = "订单管理", operation = "修改订单状态")
-    public Result<String> updateStatus(@PathVariable Long id, @RequestBody Orders orders) {
+    public Result<String> updateStatus(@PathVariable Long id, @RequestBody OrderStatusUpdateDTO request) {
         if (id == null) {
             return Result.error("id不能为空");
         }
-        orders.setId(id);
-        boolean flag = orderService.update(orders);
-        if (!flag) {
-            return Result.error("修改失败");
+        try {
+            orderService.updateAdminStatus(id, request == null ? null : request.getStatus());
+            return Result.success();
+        } catch (RuntimeException e) {
+            return Result.error(e.getMessage());
         }
-        return Result.success();
-    }
-
-    /**
-     * 确认支付（管理员手动确认到账）
-     */
-    @PutMapping("/{id}/confirm-payment")
-    @OperationLog(module = "订单管理", operation = "确认收款")
-    public Result<String> confirmPayment(@PathVariable Long id) {
-        Orders order = orderService.getById(id);
-        if (order == null) {
-            return Result.error("订单不存在");
-        }
-        if (order.getPayStatus() == 1) {
-            return Result.error("订单已支付");
-        }
-        order.setPayStatus(1);
-        order.setCheckoutTime(LocalDateTime.now());
-        order.setStatus(2);
-        orderService.update(order);
-        return Result.success("确认收款成功");
     }
 
     /**
@@ -141,7 +121,7 @@ public class OrderController {
      */
     @GetMapping("/{id}/payment")
     public Result<Payment> getPaymentInfo(@PathVariable Long id) {
-        Payment payment = paymentService.getByOrderId(id);
+        Payment payment = paymentService.getByOrderId(id, 0);
         if (payment == null) {
             return Result.error("暂无支付记录");
         }

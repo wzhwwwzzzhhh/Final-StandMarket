@@ -4,7 +4,6 @@ import com.fashion.context.BaseContext;
 import com.fashion.dto.OrderAmountCalculateDTO;
 import com.fashion.dto.UserCouponDto;
 import com.fashion.entity.PageResult;
-import com.fashion.entity.Payment;
 import com.fashion.entity.SeckillActivity;
 import com.fashion.entity.SeckillCoupon;
 import com.fashion.entity.SeckillOrder;
@@ -14,7 +13,6 @@ import com.fashion.mapper.SeckillCouponMapper;
 import com.fashion.mapper.SeckillOrderMapper;
 import com.fashion.mapper.UserMapper;
 import com.fashion.result.Result;
-import com.fashion.service.PaymentService;
 import com.fashion.service.SeckillOrderService;
 import com.fashion.vo.OrderAmountVO;
 import com.fashion.vo.SeckillOrderStatisticsVO;
@@ -44,8 +42,6 @@ public class SeckillOrderServiceImpl implements SeckillOrderService {
     private SeckillCouponMapper seckillCouponMapper;
     @Autowired
     private SeckillActivityMapper seckillActivityMapper;
-    @Autowired
-    private PaymentService paymentService;
 
     @Override
     public SeckillOrder getOrderByNumber(String orderNumber) {
@@ -161,46 +157,6 @@ public class SeckillOrderServiceImpl implements SeckillOrderService {
 
         } catch (Exception e) {
             log.error("取消订单失败，订单号：{}", orderNumber, e);
-            return false;
-        }
-    }
-
-    @Override
-    @Transactional
-    public boolean completePayment(String orderNumber) {
-        try {
-            SeckillOrder order = seckillOrderMapper.selectByOrderNumber(orderNumber);
-            if (order == null) {
-                log.warn("订单不存在，订单号：{}", orderNumber);
-                return false;
-            }
-
-            if (order.getStatus() != 1) {
-                log.warn("订单{}状态不是待支付，不能完成支付", orderNumber);
-                return false;
-            }
-
-            // 1. 创建支付记录
-            BigDecimal amount = order.getSeckillPrice() != null
-                    ? order.getSeckillPrice()
-                    : BigDecimal.ZERO;
-            Payment payment = paymentService.createPayment(order.getId(), 1, amount, 1);
-
-            // 2. 模拟支付处理（1.5~3秒延迟，95%成功率）
-            boolean success = paymentService.processPayment(payment.getPayNo());
-            if (!success) {
-                log.warn("支付失败，订单号：{}", orderNumber);
-                return false;
-            }
-
-            // 3. 更新订单状态
-            LocalDateTime payTime = LocalDateTime.now();
-            seckillOrderMapper.updatePayTime(orderNumber, payTime);
-            log.info("完成订单支付成功，订单号：{}，支付时间：{}", orderNumber, payTime);
-            return true;
-
-        } catch (Exception e) {
-            log.error("完成订单支付失败，订单号：{}", orderNumber, e);
             return false;
         }
     }

@@ -145,11 +145,6 @@ export const orderApi = {
     return api.put(`/user/order/cancel/${id}`, null, config)
   },
 
-  // 支付订单
-  payOrder: (id, config) => {
-    return api.put(`/user/order/pay/${id}`, null, config)
-  },
-
   // 确认收货
   confirmOrder: (id, config) => {
     return api.put(`/user/order/confirm/${id}`, null, config)

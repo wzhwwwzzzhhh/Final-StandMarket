@@ -100,11 +100,6 @@ export const seckillApi = {
     return api.get(url)
   },
 
-  // 支付秒杀订单
-  paySeckillOrder: (orderNumber) => {
-    return api.post(`/user/seckill/order/pay/${orderNumber}`)
-  },
-
   // 计算订单金额（根据选择的秒杀活动和秒杀券）
   calculateOrderAmount: (calculateData) => {
     return api.post('/user/seckill/order/calculate', calculateData)

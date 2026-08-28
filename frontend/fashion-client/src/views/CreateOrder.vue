@@ -214,8 +214,8 @@
       <div class="section">
         <h3>支付方式</h3>
         <el-radio-group v-model="selectedPaymentMethod" class="payment-methods">
-          <el-radio value="1">微信支付</el-radio>
-          <el-radio value="2">支付宝</el-radio>
+          <el-radio :value="1" disabled>微信支付（暂未接入）</el-radio>
+          <el-radio :value="2">支付宝</el-radio>
         </el-radio-group>
       </div>
 
@@ -338,7 +338,7 @@ const calculatedAmount = ref({
 // 收货地址相关
 const addressList = ref([])
 const selectedAddress = ref(null)
-const selectedPaymentMethod = ref(1) // 1微信支付
+const selectedPaymentMethod = ref(2) // 当前仅开放支付宝真实支付
 const deliveryStatus = ref('1') // 1立即送出，0选择具体时间
 const estimatedDeliveryTime = ref(null) // 预计配送时间
 const showAddressDialog = ref(false)

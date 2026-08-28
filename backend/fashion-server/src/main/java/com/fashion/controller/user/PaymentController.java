@@ -16,7 +16,6 @@ import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.*;
 
-import java.time.LocalDateTime;
 import java.util.HashMap;
 import java.util.Map;
 
@@ -52,20 +51,12 @@ public class PaymentController {
         }
 
         try {
+            // Service 在订单行锁内校验本人待支付订单，并只使用持久化金额创建/复用流水。
+            Payment payment = paymentService.createAlipayPayment(orderId);
             Orders order = orderService.getById(orderId);
             if (order == null) {
                 return Result.error("订单不存在");
             }
-            if (!order.getUserId().equals(userId)) {
-                return Result.error("无权操作该订单");
-            }
-            if (order.getStatus() != 1) {
-                return Result.error("订单状态不是待支付");
-            }
-
-            // 创建支付记录
-            Payment payment = paymentService.createPayment(
-                    order.getId(), 0, order.getAmount(), 2);
 
             // 构建支付宝跳转请求
             AlipayTradePagePayRequest request = new AlipayTradePagePayRequest();
@@ -78,7 +69,7 @@ public class PaymentController {
             String bizContent = "{" +
                     "    \"out_trade_no\":\"" + payment.getPayNo() + "\"," +
                     "    \"product_code\":\"FAST_INSTANT_TRADE_PAY\"," +
-                    "    \"total_amount\":" + order.getAmount() + "," +
+                    "    \"total_amount\":" + payment.getAmount() + "," +
                     "    \"subject\":\"末路衣橱-订单" + order.getNumber() + "\"" +
                     "}";
             request.setBizContent(bizContent);
@@ -95,6 +86,9 @@ public class PaymentController {
         } catch (AlipayApiException e) {
             log.error("支付宝支付调用失败 orderId={}: {}", orderId, e.getMessage(), e);
             return Result.error("支付调用失败");
+        } catch (IllegalStateException e) {
+            log.warn("支付宝支付创建被拒绝 orderId={}, reason={}", orderId, e.getMessage());
+            return Result.error(e.getMessage());
         }
     }
 
@@ -103,7 +97,13 @@ public class PaymentController {
      */
     @GetMapping("/status/{orderId}")
     public Result<Map<String, Object>> payStatus(@PathVariable Long orderId) {
-        Payment payment = paymentService.getByOrderId(orderId);
+        Long userId = BaseContext.getUserId();
+        Orders order = orderService.getById(orderId);
+        if (userId == null || order == null || !userId.equals(order.getUserId())) {
+            return Result.error("订单不存在或无权查看");
+        }
+
+        Payment payment = paymentService.getByOrderId(orderId, 0);
         Map<String, Object> result = new HashMap<>();
         if (payment != null) {
             result.put("payStatus", payment.getStatus());
@@ -122,45 +122,37 @@ public class PaymentController {
     @PostMapping("/alipay/verify")
     public Result<Map<String, Object>> verifyReturn(@RequestBody Map<String, String> params) {
         String outTradeNo = params.get("out_trade_no");
-        String tradeNo = params.get("trade_no");
-        String orderIdStr = params.get("orderId");
-
-        log.info("支付宝回跳验签 outTradeNo={}, tradeNo={}", outTradeNo, tradeNo);
+        log.info("支付宝回跳验签 outTradeNo={}", outTradeNo);
 
         try {
-            // 1. 验签
             boolean signVerified = AlipaySignature.rsaCheckV1(
                     params, alipayConfig.getAlipayPublicKey(), "UTF-8", "RSA2");
-
-            if (!signVerified && orderIdStr == null) {
-                log.warn("支付宝回跳验签失败");
-                Map<String, Object> result = new HashMap<>();
-                result.put("payStatus", 3);
-                result.put("msg", "验签失败");
-                return Result.success(result);
+            if (!signVerified) {
+                log.warn("支付宝回跳验签失败 outTradeNo={}", outTradeNo);
+                return Result.error("验签失败");
+            }
+            if (!alipayConfig.getAppId().equals(params.get("app_id"))) {
+                log.warn("支付宝回跳 app_id 不匹配 outTradeNo={}", outTradeNo);
+                return Result.error("验签失败");
+            }
+            if (outTradeNo == null || outTradeNo.trim().isEmpty()) {
+                return Result.error("支付流水号缺失");
             }
 
-            // 2. 找到支付记录并更新
-            Payment payment = null;
-            if (outTradeNo != null) {
-                payment = paymentService.getPaymentStatus(outTradeNo);
-            }
-            if (payment == null && orderIdStr != null) {
-                payment = paymentService.getByOrderId(Long.valueOf(orderIdStr));
-            }
-
-            if (payment == null) {
+            Payment payment = paymentService.getPaymentStatus(outTradeNo);
+            if (payment == null || payment.getOrderType() == null || payment.getOrderType() != 0) {
                 return Result.error("支付记录不存在");
             }
 
-            // 3. 只有待支付状态才更新
-            if (payment.getStatus() == 0) {
-                orderService.handlePayCallback(payment.getOrderId(), payment.getId(), tradeNo, LocalDateTime.now());
-                log.info("支付宝回跳验签成功，订单已更新 orderId={}", payment.getOrderId());
+            Long userId = BaseContext.getUserId();
+            Orders order = orderService.getById(payment.getOrderId());
+            if (userId == null || order == null || !userId.equals(order.getUserId())) {
+                return Result.error("订单不存在或无权查看");
             }
 
+            // 同步回跳仅用于展示支付状态；订单状态只接受服务器端异步通知更新。
             Map<String, Object> result = new HashMap<>();
-            result.put("payStatus", 2);
+            result.put("payStatus", payment.getStatus());
             result.put("payNo", payment.getPayNo());
             return Result.success(result);
         } catch (AlipayApiException e) {

@@ -1,6 +1,5 @@
 package com.fashion.controller.notify;
 
-import com.alipay.api.AlipayApiException;
 import com.alipay.api.internal.util.AlipaySignature;
 import com.fashion.config.AlipayConfig;
 import com.fashion.entity.Orders;
@@ -17,7 +16,6 @@ import org.springframework.web.bind.annotation.RestController;
 import javax.servlet.http.HttpServletRequest;
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
-import java.util.Enumeration;
 import java.util.HashMap;
 import java.util.Map;
 
@@ -55,7 +53,7 @@ public class PayNotifyController {
                     params, alipayConfig.getAlipayPublicKey(), "UTF-8", "RSA2");
 
             if (!signVerified) {
-                log.error("支付宝回调验签失败：{}", params);
+                log.warn("支付宝回调验签失败 outTradeNo={}", params.get("out_trade_no"));
                 return "failure";
             }
 
@@ -64,56 +62,66 @@ public class PayNotifyController {
             String tradeNo = params.get("trade_no");
             String tradeStatus = params.get("trade_status");
 
-            log.info("支付宝回调成功 outTradeNo={}, tradeNo={}, tradeStatus={}",
-                    outTradeNo, tradeNo, tradeStatus);
+            if (isBlank(outTradeNo) || isBlank(tradeStatus)) {
+                log.warn("支付宝回调缺少必要字段 outTradeNo={}, tradeStatus={}", outTradeNo, tradeStatus);
+                return "failure";
+            }
 
-            // 4. 只处理支付成功的情况
-            if (!"TRADE_SUCCESS".equals(tradeStatus)) {
+            if (!alipayConfig.getAppId().equals(params.get("app_id"))) {
+                log.warn("支付宝回调 app_id 不匹配 outTradeNo={}", outTradeNo);
+                return "failure";
+            }
+
+            // 已验签但尚未成功的通知确认收到，避免无意义重试，且不触碰业务数据。
+            boolean successfulTrade = "TRADE_SUCCESS".equals(tradeStatus)
+                    || "TRADE_FINISHED".equals(tradeStatus);
+            if (!successfulTrade) {
+                log.info("支付宝回调非成功状态 outTradeNo={}, tradeStatus={}", outTradeNo, tradeStatus);
                 return "success";
+            }
+            if (isBlank(tradeNo) || isBlank(params.get("total_amount"))) {
+                log.warn("支付宝成功回调缺少必要字段 outTradeNo={}", outTradeNo);
+                return "failure";
             }
 
             // 5. 查询支付记录
             Payment payment = paymentService.getPaymentStatus(outTradeNo);
-            if (payment == null) {
-                log.warn("支付记录不存在 outTradeNo={}", outTradeNo);
+            if (payment == null || payment.getOrderType() == null || payment.getOrderType() != 0) {
+                log.warn("普通订单支付记录不存在 outTradeNo={}", outTradeNo);
                 return "failure";
             }
 
             // 5.1 比对回调金额与支付记录金额，防止金额被篡改
             String totalAmountStr = params.get("total_amount");
-            if (totalAmountStr == null) {
-                log.error("支付宝回调缺少 total_amount outTradeNo={}", outTradeNo);
-                return "failure";
-            }
+            BigDecimal callbackAmount;
             try {
-                BigDecimal callbackAmount = new BigDecimal(totalAmountStr);
+                callbackAmount = new BigDecimal(totalAmountStr);
                 if (payment.getAmount() == null || callbackAmount.compareTo(payment.getAmount()) != 0) {
-                    log.error("支付宝回调金额不匹配 outTradeNo={}, 回调金额={}, 应支付金额={}",
-                            outTradeNo, totalAmountStr, payment.getAmount());
+                    log.warn("支付宝回调金额不匹配 outTradeNo={}", outTradeNo);
                     return "failure";
                 }
             } catch (NumberFormatException e) {
-                log.error("支付宝回调金额格式非法 outTradeNo={}, total_amount={}", outTradeNo, totalAmountStr);
+                log.warn("支付宝回调金额格式非法 outTradeNo={}", outTradeNo);
                 return "failure";
             }
 
-            // 6. 验证 app_id 防止跨应用回调
-            if (!alipayConfig.getAppId().equals(params.get("app_id"))) {
-                log.error("支付宝回调 app_id 不匹配：{}", params.get("app_id"));
+            Orders order = orderService.getById(payment.getOrderId());
+            if (order == null || !payment.getOrderId().equals(order.getId())
+                    || order.getAmount() == null
+                    || order.getAmount().compareTo(payment.getAmount()) != 0
+                    || order.getAmount().compareTo(callbackAmount) != 0) {
+                log.warn("支付宝回调订单归属或金额不匹配 outTradeNo={}, orderId={}",
+                        outTradeNo, payment.getOrderId());
                 return "failure";
             }
 
-            // 7. 避免重复处理（非待支付状态直接跳过）
-            if (payment.getStatus() != 0) {
-                log.info("支付记录已处理 outTradeNo={}, status={}", outTradeNo, payment.getStatus());
-                return "success";
-            }
-
-            // 8. 事务性更新支付记录 + 订单状态
+            // 幂等性和并发状态均在锁定记录后的事务服务中判定。
             orderService.handlePayCallback(payment.getOrderId(), payment.getId(), tradeNo, LocalDateTime.now());
+            log.info("支付宝成功回调已处理 outTradeNo={}, tradeNo={}, tradeStatus={}",
+                    outTradeNo, tradeNo, tradeStatus);
             return "success";
-        } catch (AlipayApiException e) {
-            log.error("支付宝回调处理异常：{}", e.getMessage(), e);
+        } catch (Exception e) {
+            log.error("支付宝回调处理失败 errorType={}", e.getClass().getSimpleName());
             return "failure";
         }
     }
@@ -129,5 +137,9 @@ public class PayNotifyController {
             params.put(paramName, request.getParameter(paramName));
         }
         return params;
+    }
+
+    private boolean isBlank(String value) {
+        return value == null || value.trim().isEmpty();
     }
 }

@@ -20,6 +20,7 @@ docs/workpack/
 
 | 阶段 | 切片 | 状态 | 需求源 | Plan | Review | Evidence |
 |---|---|---|---|---|---|---|
+| B1 | payment-trust-boundary | 本地已验证 | [阶段 B B1](../plans/阶段B-P0P1交易链路修复.md#b1支付入口通知校验与幂等p0) | [plan](B1-payment-trust-boundary/plan.md) | [PASS](B1-payment-trust-boundary/review.md) | [evidence](B1-payment-trust-boundary/evidence.md) |
 
 
 ## 已归档

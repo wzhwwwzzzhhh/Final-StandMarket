@@ -123,42 +123,6 @@ public class UserSeckillOrderController {
     }
 
     /**
-     * 完成订单支付
-     */
-    @PostMapping("/pay/{orderNumber}")
-    public Result<String> payOrder(@PathVariable String orderNumber) {
-        try {
-            if (orderNumber == null || orderNumber.trim().isEmpty()) {
-                return Result.error("订单号不能为空");
-            }
-            
-            Long currentUserId = BaseContext.getUserId();
-            if (currentUserId == null) {
-                return Result.error("请先登录");
-            }
-            SeckillOrder order = seckillOrderService.getOrderByNumber(orderNumber);
-            if (order == null) {
-                return Result.error("订单不存在");
-            }
-            
-            if (!order.getUserId().equals(currentUserId)) {
-                return Result.error("无权支付此订单");
-            }
-            
-            boolean success = seckillOrderService.completePayment(orderNumber);
-            if (success) {
-                return Result.success("支付成功");
-            } else {
-                return Result.error("支付失败");
-            }
-            
-        } catch (Exception e) {
-            log.error("支付秒杀订单失败，订单号：{}", orderNumber, e);
-            return Result.error("支付失败：" + e.getMessage());
-        }
-    }
-
-    /**
      * 计算订单金额（根据选择的秒杀活动和秒杀券）
      */
     @PostMapping("/calculate")

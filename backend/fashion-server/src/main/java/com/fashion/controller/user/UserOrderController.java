@@ -70,15 +70,6 @@ public class UserOrderController {
     }
     
     /**
-     * 支付订单
-     */
-    @PutMapping("/pay/{id}")
-    public Result<String> pay(@PathVariable Long id) {
-        orderService.pay(id);
-        return Result.success("支付成功");
-    }
-    
-    /**
      * 确认收货
      */
     @PutMapping("/confirm/{id}")

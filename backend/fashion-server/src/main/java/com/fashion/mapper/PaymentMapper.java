@@ -11,11 +11,17 @@ public interface PaymentMapper {
 
     Payment getByPayNo(@Param("payNo") String payNo);
 
-    Payment getByOrderId(@Param("orderId") Long orderId);
+    Payment getByIdForUpdate(@Param("id") Long id);
 
-    int updateStatus(@Param("id") Long id, @Param("status") Integer status);
+    Payment getByOrderIdAndType(@Param("orderId") Long orderId, @Param("orderType") Integer orderType);
 
-    int updateTradeNo(@Param("id") Long id, @Param("tradeNo") String tradeNo);
+    Payment getActiveByOrderIdAndType(@Param("orderId") Long orderId,
+                                      @Param("orderType") Integer orderType);
 
-    int updatePayTime(@Param("id") Long id, @Param("payTime") java.time.LocalDateTime payTime);
+    Payment getActiveByOrderIdAndTypeForUpdate(@Param("orderId") Long orderId,
+                                               @Param("orderType") Integer orderType);
+
+    int markSuccess(@Param("id") Long id,
+                    @Param("tradeNo") String tradeNo,
+                    @Param("payTime") java.time.LocalDateTime payTime);
 }

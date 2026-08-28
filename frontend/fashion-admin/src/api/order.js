@@ -22,11 +22,6 @@ export const orderApi = {
     return request.get(`/admin/order/${id}/payment`)
   },
 
-  // 确认收款（管理员手动确认）
-  confirmPayment: (id) => {
-    return request.put(`/admin/order/${id}/confirm-payment`)
-  },
-
   // 发货
   deliver: (data) => {
     return request.put('/admin/order/deliver', data)

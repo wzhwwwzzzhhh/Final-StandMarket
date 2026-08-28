@@ -12,20 +12,32 @@
         SELECT * FROM payment WHERE pay_no = #{payNo}
     </select>
 
-    <select id="getByOrderId" resultType="com.fashion.entity.Payment">
-        SELECT * FROM payment WHERE order_id = #{orderId} ORDER BY create_time DESC LIMIT 1
+    <select id="getByIdForUpdate" resultType="com.fashion.entity.Payment">
+        SELECT * FROM payment WHERE id = #{id} FOR UPDATE
     </select>
 
-    <update id="updateStatus">
-        UPDATE payment SET status = #{status} WHERE id = #{id}
-    </update>
+    <select id="getByOrderIdAndType" resultType="com.fashion.entity.Payment">
+        SELECT * FROM payment
+        WHERE order_id = #{orderId} AND order_type = #{orderType}
+        ORDER BY create_time DESC, id DESC LIMIT 1
+    </select>
 
-    <update id="updateTradeNo">
-        UPDATE payment SET trade_no = #{tradeNo} WHERE id = #{id}
-    </update>
+    <select id="getActiveByOrderIdAndType" resultType="com.fashion.entity.Payment">
+        SELECT * FROM payment
+        WHERE order_id = #{orderId} AND order_type = #{orderType} AND status IN (0, 1)
+        ORDER BY id DESC LIMIT 1
+    </select>
 
-    <update id="updatePayTime">
-        UPDATE payment SET pay_time = #{payTime} WHERE id = #{id}
+    <select id="getActiveByOrderIdAndTypeForUpdate" resultType="com.fashion.entity.Payment">
+        SELECT * FROM payment
+        WHERE order_id = #{orderId} AND order_type = #{orderType} AND status IN (0, 1)
+        ORDER BY id DESC LIMIT 1 FOR UPDATE
+    </select>
+
+    <update id="markSuccess">
+        UPDATE payment
+        SET status = 2, trade_no = #{tradeNo}, pay_time = #{payTime}
+        WHERE id = #{id} AND status IN (0, 1)
     </update>
 
 </mapper>

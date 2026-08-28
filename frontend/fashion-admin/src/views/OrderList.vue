@@ -91,16 +91,6 @@
                 查看
               </el-button>
               <el-button
-                v-if="scope.row.status === 1"
-                type="success"
-                size="small"
-                class="payment-button"
-                @click="handleConfirmPayment(scope.row)"
-              >
-                <el-icon><Check /></el-icon>
-                确认收款
-              </el-button>
-              <el-button
                 v-if="scope.row.status === 2"
                 type="warning"
                 size="small"
@@ -492,23 +482,6 @@ export default {
         case 3: return '支付失败'
         default: return '未知'
       }
-    },
-
-    // 确认收款
-    handleConfirmPayment(row) {
-      this.$confirm(`确定确认订单 ${row.number} 的收款吗？`, '提示', {
-        confirmButtonText: '确定',
-        cancelButtonText: '取消',
-        type: 'warning'
-      }).then(() => {
-        orderApi.confirmPayment(row.id).then(response => {
-          this.$message.success('确认收款成功')
-          this.getOrderList()
-        }).catch(error => {
-          console.error('确认收款失败:', error)
-          this.$message.error('确认收款失败')
-        })
-      }).catch(() => {})
     },
 
     // 页面大小变化
