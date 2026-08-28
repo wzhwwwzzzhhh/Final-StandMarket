@@ -9,7 +9,7 @@
 | B0-AC3 | 密码专用 JSON DTO/Mapper、BCrypt-only 校验、注册/管理端新增/首次设置/正常修改/旧密码错误、资料更新白名单和真实 MyBatis 动态 SQL 契约测试通过；初始化 SQL 明文计数 0、BCrypt 计数 112 | PASS（本地）；既有运行库明文账号迁移不在本包内 |
 | B0-AC4 | 递归结构化脱敏测试、验证码实值捕获、登录 Token/哈希日志测试、支付回调完整 Map 日志模式检查通过；限定敏感模式扫描无匹配 | PASS（本地） |
 | B0-AC5 | Controller JSON 请求契约测试通过；设置页仅使用 `hasPassword`，两种路径均调用专用 JSON 密码 API；用户端构建通过 | PASS（本地） |
-| B0-AC6 | 固定 JWT 默认值已改为环境变量占位符；但本机无 `gitleaks`/Docker，未获授权运行远程 Secret Scan，且外部凭据无平台轮换证据 | BLOCKED；不得标记 B0 完成 |
+| B0-AC6 | 固定 JWT 默认值已改为环境变量占位符；PR #5 的 GitHub Gitleaks 已通过；外部凭据仍无轮换、旧凭据失效或“从未共享”的可核验证据 | BLOCKED（外部凭据）；不得标记 B0 完成 |
 
 ## Verification runs
 
@@ -43,14 +43,14 @@
 | 2026-08-28 | `git commit` | `f2e1e61 fix(security): 收紧 B0 凭据与日志边界` | 34 个 B0 文件；除支付回调单行日志收敛外未包含 B1 文件 |
 | 2026-08-28 | SSH 非强制 push | exit 0；`codex/b0-credential-log-safety` | Git HTTPS 连接超时后使用已认证的 GitHub SSH 官方通道；未 force push |
 | 2026-08-28 | 创建 Draft [PR #5](https://github.com/wzhwwwzzzhhh/Final-StandMarket/pull/5) | OPEN / DRAFT | `master` ← `codex/b0-credential-log-safety`；使用 `Refs #4`，AC6 阻塞期间不自动关闭 Issue |
+| 2026-08-28 | PR #5 checks（提交 `82e05db`） | 5/5 SUCCESS | Java backend、Python agent、fashion-client、fashion-admin、Gitleaks 全部由 GitHub 对目标提交实际执行 |
 
 ## Not run or blocked
 
-- `gitleaks git . --redact --no-banner` 未运行：本机没有 `gitleaks`，同时没有 Docker 可使用固定版本容器；不能用普通 `rg` 冒充秘密扫描。
-- GitHub Secret Scan / checks 正在 PR #5 上运行；只有 GitHub 对最新目标提交的真实结果才计入证据，未全绿前不得合并。
+- 本地 `gitleaks git . --redact --no-banner` 未运行：本机没有 `gitleaks` 或 Docker；已由 PR #5 的 GitHub Gitleaks 真实检查补齐远程秘密扫描证据。
 - JWT、OSS、支付宝、微信、AI Provider、MySQL、Redis、RabbitMQ 的真实凭据轮换/旧凭据失效验证未运行：当前没有目标环境或平台权限，所需证据与负责人见 `plan.md` 登记表。
 - 既有共享/生产数据库中的明文密码迁移未运行；本包只保证新密码写入和初始化 SQL 使用 BCrypt。
 
 ## Local delivery summary
 
-B0 的本地产品改动、TDD 测试、后端全量测试、两端构建、diff 与限定敏感模式扫描已完成。首轮独立审查的 P1/P2 已按有效 RED/GREEN 修复并补强覆盖；同一审查者复审结论为 PASS，P0-P3 均无未关闭发现，并独立重跑后端 37/37。代码提交 `f2e1e61` 已推送并建立 Draft PR #5，等待 GitHub CI/安全检查。AC1-AC5 有本地 PASS 证据；AC6 因正式秘密扫描和真实外部凭据轮换证据缺失保持 BLOCKED，因此 workpack 不能归档，也不能声称 Issue #4 已完成。
+B0 的本地产品改动、TDD 测试、后端全量测试、两端构建、diff 与限定敏感模式扫描已完成。首轮独立审查的 P1/P2 已按有效 RED/GREEN 修复并补强覆盖；同一审查者复审结论为 PASS，P0-P3 均无未关闭发现，并独立重跑后端 37/37。Draft PR #5 的 Java、Python、两端前端与 Gitleaks 五项检查均通过。AC1-AC5 和正式秘密扫描已有 PASS 证据；AC6 仍因真实外部凭据轮换/未共享证明缺失保持 BLOCKED，因此 workpack 不能归档，也不能声称 Issue #4 已完成或合并 PR。
