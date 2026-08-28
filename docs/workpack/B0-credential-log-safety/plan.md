@@ -1,6 +1,6 @@
 # B0-credential-log-safety · Workpack plan
 
-> Status: 外部证据阻塞（代码审查 PASS）
+> Status: CI 验证中（PR #5；AC6 外部证据阻塞）
 > Requirement source: [阶段 B：B0 密码、Token 与日志安全](../../plans/阶段B-P0P1交易链路修复.md#b0密码token-与日志安全p0)
 > Execution tracker: [GitHub Issue #4](https://github.com/wzhwwwzzzhhh/Final-StandMarket/issues/4)
 > Design: 无；阶段 B 已确认本项安全边界，当前调查未发现需要新增高风险设计选择
