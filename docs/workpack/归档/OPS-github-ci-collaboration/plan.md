@@ -1,7 +1,7 @@
 # OPS-github-ci-collaboration · Workpack plan
 
-> Status: 本地已验证
-> Requirement source: [生产上线与 GitHub CI/CD 主计划](../../plans/生产上线与GitHub-CICD主计划.md) §4 + 2026-08-28 用户指令
+> Status: 已归档
+> Requirement source: [生产上线与 GitHub CI/CD 主计划](../../../plans/生产上线与GitHub-CICD主计划.md) §4 + 2026-08-28 用户指令
 > Design: 无；本工作包不改变业务架构或生产部署架构
 
 > Plan confirmed: 2026-08-28；用户同时授权本工作包后续执行 commit、push、PR、CI 修复、合并和分支保护配置

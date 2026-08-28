@@ -20,12 +20,13 @@ docs/workpack/
 
 | 阶段 | 切片 | 状态 | 需求源 | Plan | Review | Evidence |
 |---|---|---|---|---|---|---|
-| OPS | github-ci-collaboration | 本地已验证 | 生产上线与 GitHub CI/CD 主计划 §4 | [plan](OPS-github-ci-collaboration/plan.md) | [review](OPS-github-ci-collaboration/review.md) | [evidence](OPS-github-ci-collaboration/evidence.md) |
+
 
 ## 已归档
 
 | 阶段 | 切片 | 本地交付日期 | Review | Evidence |
 |---|---|---|---|---|
+| OPS | github-ci-collaboration | 2026-08-28 | [PASS](归档/OPS-github-ci-collaboration/review.md) | [evidence](归档/OPS-github-ci-collaboration/evidence.md) |
 
 ## 状态
 
