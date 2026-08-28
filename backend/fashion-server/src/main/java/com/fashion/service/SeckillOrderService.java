@@ -63,13 +63,6 @@ public interface SeckillOrderService {
     List<UserCouponDto> getUserCoupons(Long userId, Integer status);
     
     /**
-     * 完成订单支付
-     * @param orderNumber 订单号
-     * @return 是否成功
-     */
-    boolean completePayment(String orderNumber);
-    
-    /**
      * 管理端：分页查询秒杀订单列表
      * @param page 页码
      * @param pageSize 页大小

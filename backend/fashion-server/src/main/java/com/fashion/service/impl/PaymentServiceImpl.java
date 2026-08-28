@@ -1,16 +1,20 @@
 package com.fashion.service.impl;
 
 import com.fashion.entity.Payment;
+import com.fashion.entity.Orders;
+import com.fashion.context.BaseContext;
+import com.fashion.mapper.OrderMapper;
 import com.fashion.mapper.PaymentMapper;
 import com.fashion.service.PaymentService;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.dao.DuplicateKeyException;
 
-import java.math.BigDecimal;
 import java.time.LocalDateTime;
-import java.util.Random;
+import java.util.Objects;
+import java.util.UUID;
 
 @Service
 @Slf4j
@@ -19,62 +23,71 @@ public class PaymentServiceImpl implements PaymentService {
     @Autowired
     private PaymentMapper paymentMapper;
 
-    private final Random random = new Random();
+    @Autowired
+    private OrderMapper orderMapper;
 
     @Override
     @Transactional
-    public Payment createPayment(Long orderId, Integer orderType, BigDecimal amount, Integer payMethod) {
-        String payNo = "PAY" + System.currentTimeMillis() + String.format("%04d", random.nextInt(10000));
+    public Payment createAlipayPayment(Long orderId) {
+        Long userId = BaseContext.getUserId();
+        if (userId == null) {
+            throw new IllegalStateException("请先登录");
+        }
+        Orders order = orderMapper.getByIdForUpdate(orderId);
+        validatePayableOrder(order, userId);
+
+        Payment existing = paymentMapper.getActiveByOrderIdAndType(orderId, 0);
+        if (existing != null) {
+            validateReusablePayment(existing, order);
+            return existing;
+        }
+
+        String payNo = "PAY" + UUID.randomUUID().toString().replace("-", "");
 
         Payment payment = new Payment();
         payment.setOrderId(orderId);
-        payment.setOrderType(orderType);
+        payment.setOrderType(0);
         payment.setPayNo(payNo);
-        payment.setAmount(amount);
-        payment.setPayMethod(payMethod);
+        payment.setAmount(order.getAmount());
+        payment.setPayMethod(2);
         payment.setStatus(0); // 待支付
         payment.setCreateTime(LocalDateTime.now());
 
-        paymentMapper.insert(payment);
-        log.info("创建支付记录成功，支付流水号：{}，金额：{}", payNo, amount);
+        try {
+            paymentMapper.insert(payment);
+        } catch (DuplicateKeyException conflict) {
+            Payment winner = paymentMapper.getActiveByOrderIdAndTypeForUpdate(orderId, 0);
+            if (winner == null) {
+                throw conflict;
+            }
+            validateReusablePayment(winner, order);
+            return winner;
+        }
+        log.info("创建支付记录成功 payNo={}, amount={}", payNo, order.getAmount());
         return payment;
     }
 
-    @Override
-    @Transactional
-    public boolean processPayment(String payNo) {
-        Payment payment = paymentMapper.getByPayNo(payNo);
-        if (payment == null) {
-            log.warn("支付记录不存在，流水号：{}", payNo);
-            return false;
+    private void validatePayableOrder(Orders order, Long userId) {
+        if (order == null || !Objects.equals(order.getUserId(), userId)) {
+            throw new IllegalStateException("订单不存在或无权操作");
         }
-        if (payment.getStatus() != 0) {
-            log.warn("支付记录状态异常，流水号：{}，当前状态：{}", payNo, payment.getStatus());
-            return false;
+        if (order.getStatus() == null || order.getStatus() != 1
+                || order.getPayStatus() == null || order.getPayStatus() != 0) {
+            throw new IllegalStateException("订单状态不是待支付");
         }
-
-        // 更新为支付中
-        paymentMapper.updateStatus(payment.getId(), 1);
-
-        // 模拟支付网关处理延迟
-        try {
-            Thread.sleep(1500 + random.nextInt(1500)); // 1.5~3秒
-        } catch (InterruptedException e) {
-            Thread.currentThread().interrupt();
+        if (order.getAmount() == null) {
+            throw new IllegalStateException("订单金额无效");
         }
+    }
 
-        // 95% 成功率模拟
-        boolean success = random.nextInt(100) < 95;
-        if (success) {
-            paymentMapper.updateStatus(payment.getId(), 2);
-            paymentMapper.updatePayTime(payment.getId(), LocalDateTime.now());
-            log.info("支付成功，流水号：{}", payNo);
-        } else {
-            paymentMapper.updateStatus(payment.getId(), 3);
-            log.warn("支付失败，流水号：{}", payNo);
+    private void validateReusablePayment(Payment payment, Orders order) {
+        if (payment.getOrderType() == null || payment.getOrderType() != 0
+                || !Objects.equals(payment.getOrderId(), order.getId())
+                || payment.getStatus() == null || (payment.getStatus() != 0 && payment.getStatus() != 1)
+                || payment.getAmount() == null || payment.getAmount().compareTo(order.getAmount()) != 0
+                || payment.getPayMethod() == null || payment.getPayMethod() != 2) {
+            throw new IllegalStateException("活动支付记录与订单不一致");
         }
-
-        return success;
     }
 
     @Override
@@ -83,18 +96,24 @@ public class PaymentServiceImpl implements PaymentService {
     }
 
     @Override
-    public Payment getByOrderId(Long orderId) {
-        return paymentMapper.getByOrderId(orderId);
+    public Payment getByIdForUpdate(Long id) {
+        return paymentMapper.getByIdForUpdate(id);
+    }
+
+    @Override
+    public Payment getByOrderId(Long orderId, Integer orderType) {
+        return paymentMapper.getByOrderIdAndType(orderId, orderType);
     }
 
     @Override
     @Transactional
-    public void updatePaySuccess(Long id, String tradeNo, LocalDateTime payTime) {
-        paymentMapper.updateStatus(id, 2);
-        if (tradeNo != null) {
-            paymentMapper.updateTradeNo(id, tradeNo);
+    public boolean updatePaySuccess(Long id, String tradeNo, LocalDateTime payTime) {
+        int rows = paymentMapper.markSuccess(id, tradeNo, payTime);
+        if (rows > 0) {
+            log.info("支付记录更新成功 id={}, tradeNo={}", id, tradeNo);
+            return true;
         }
-        paymentMapper.updatePayTime(id, payTime);
-        log.info("支付记录更新成功 id={}, tradeNo={}", id, tradeNo);
+        log.info("支付记录已处理，忽略重复成功通知 id={}, tradeNo={}", id, tradeNo);
+        return false;
     }
 }

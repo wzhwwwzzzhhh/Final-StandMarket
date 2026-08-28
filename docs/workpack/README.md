@@ -27,6 +27,7 @@ docs/workpack/
 
 | 阶段 | 切片 | 本地交付日期 | Review | Evidence |
 |---|---|---|---|---|
+| B1 | payment-trust-boundary | 2026-08-28 | [PASS](归档/B1-payment-trust-boundary/review.md) | [evidence](归档/B1-payment-trust-boundary/evidence.md) |
 | OPS | github-ci-collaboration | 2026-08-28 | [PASS](归档/OPS-github-ci-collaboration/review.md) | [evidence](归档/OPS-github-ci-collaboration/evidence.md) |
 
 ## 状态

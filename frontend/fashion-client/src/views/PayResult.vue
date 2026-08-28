@@ -66,19 +66,14 @@ export default {
   },
   created() {
     this.orderId = this.$route.query.orderId
-    // 收集支付宝回跳参数（如果有）
-    this.alipayParams = {}
-    const query = this.$route.query
-    // 支付宝回跳会带这些参数
-    const alipayKeys = ['out_trade_no', 'trade_no', 'total_amount', 'sign', 'sign_type', 'charset', 'timestamp', 'auth_app_id']
-    alipayKeys.forEach(key => {
-      if (query[key]) {
-        this.alipayParams[key] = query[key]
-      }
-    })
+    // 验签必须保留支付宝返回的完整参数集合，只排除本站追加的 orderId。
+    this.alipayParams = Object.fromEntries(
+      Object.entries(this.$route.query)
+        .filter(([key]) => key !== 'orderId')
+        .map(([key, value]) => [key, Array.isArray(value) ? value[0] : value])
+    )
     // 如果有支付宝回跳参数，走验签流程
     if (this.alipayParams.out_trade_no || this.alipayParams.trade_no) {
-      this.alipayParams.orderId = this.orderId
       this.verifyAlipayReturn()
     } else if (this.orderId) {
       this.queryPayStatus()

@@ -10,7 +10,12 @@ CREATE TABLE IF NOT EXISTS `payment` (
   `trade_no` varchar(64) DEFAULT NULL COMMENT '支付宝交易号',
   `pay_time` datetime DEFAULT NULL COMMENT '支付时间',
   `create_time` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
+  `active_order_id` bigint(20) GENERATED ALWAYS AS
+    (CASE WHEN `status` IN (0, 1) THEN `order_id` ELSE NULL END) STORED COMMENT '活动支付订单ID',
+  `active_order_type` tinyint(4) GENERATED ALWAYS AS
+    (CASE WHEN `status` IN (0, 1) THEN `order_type` ELSE NULL END) STORED COMMENT '活动支付订单类型',
   PRIMARY KEY (`id`),
   UNIQUE KEY `uk_pay_no` (`pay_no`),
+  UNIQUE KEY `uk_payment_active_order` (`active_order_id`, `active_order_type`),
   KEY `idx_order_id` (`order_id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='支付记录表';

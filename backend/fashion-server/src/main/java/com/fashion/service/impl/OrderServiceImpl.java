@@ -23,6 +23,7 @@ import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 
 @Service
 @Slf4j
@@ -134,8 +135,27 @@ public class OrderServiceImpl implements OrderService {
     }
 
     @Override
-    public boolean update(Orders orders) {
-        return orderMapper.update(orders) > 0;
+    public void updateAdminStatus(Long id, Integer status) {
+        if (id == null || status == null) {
+            throw new RuntimeException("订单ID和状态不能为空");
+        }
+        if (status == 2) {
+            throw new RuntimeException("支付状态只能由可信支付通知更新");
+        }
+        if (status < 3 || status > 5) {
+            throw new RuntimeException("不支持的订单状态");
+        }
+
+        Orders order = orderMapper.getById(id);
+        if (order == null) {
+            throw new RuntimeException("订单不存在");
+        }
+        if (order.getPayStatus() == null || order.getPayStatus() != 1) {
+            throw new RuntimeException("未支付订单不能由管理端推进状态");
+        }
+        if (orderMapper.updateAdminStatus(id, status) == 0) {
+            throw new RuntimeException("订单状态已变化，请刷新后重试");
+        }
     }
 
     @Override
@@ -281,9 +301,10 @@ public class OrderServiceImpl implements OrderService {
         if (order == null || !order.getUserId().equals(userId)) {
             throw new RuntimeException("订单不存在或无权操作");
         }
-        order.setStatus(5);
-        order.setCancelTime(LocalDateTime.now());
-        orderMapper.update(order);
+        int rows = orderMapper.cancelPending(id, LocalDateTime.now());
+        if (rows == 0) {
+            throw new IllegalStateException("订单状态已变化，无法取消");
+        }
         // 订单取消 → 释放已锁定的通用优惠券（幂等）
         couponService.release(order.getUserId(), id);
     }
@@ -296,44 +317,14 @@ public class OrderServiceImpl implements OrderService {
             return;
         }
         for (Orders order : timeoutOrders) {
-            order.setStatus(5);
-            order.setCancelReason("超时未支付，系统自动取消");
-            order.setCancelTime(LocalDateTime.now());
-            orderMapper.update(order);
+            int rows = orderMapper.cancelPending(order.getId(), LocalDateTime.now());
+            if (rows == 0) {
+                log.info("超时取消跳过已变化订单 orderId={}", order.getId());
+                continue;
+            }
             couponService.release(order.getUserId(), order.getId());
             log.info("超时未支付订单自动取消并释放券 orderId={}, userId={}", order.getId(), order.getUserId());
         }
-    }
-
-    @Transactional
-    @Override
-    public void pay(Long id) {
-        Long userId = BaseContext.getUserId() != null ? BaseContext.getUserId() : 1L;
-        Orders order = orderMapper.getById(id);
-        if (order == null || !order.getUserId().equals(userId)) {
-            throw new RuntimeException("订单不存在或无权操作");
-        }
-        if (order.getStatus() != 1) {
-            throw new RuntimeException("订单状态不是待支付，无法支付");
-        }
-
-        Payment payment = paymentService.createPayment(
-                order.getId(), 0, order.getAmount(),
-                order.getPayMethod() != null ? order.getPayMethod() : 1);
-
-        boolean success = paymentService.processPayment(payment.getPayNo());
-        if (!success) {
-            // 支付失败：支付记录随事务回滚，订单保持待支付、券保持锁定（绑定本单），
-            // 用户可重试支付（成功则核销）或取消订单（释放券），避免同一张券出现两次优惠
-            throw new RuntimeException("支付失败，请重试");
-        }
-
-        order.setPayStatus(1);
-        order.setCheckoutTime(LocalDateTime.now());
-        order.setStatus(2);
-        orderMapper.update(order);
-        // 支付成功 → 核销通用优惠券（幂等）
-        couponService.markUsed(userId, id);
     }
 
     @Transactional
@@ -347,21 +338,6 @@ public class OrderServiceImpl implements OrderService {
         order.setStatus(4);
         order.setDeliveryTime(LocalDateTime.now());
         orderMapper.update(order);
-    }
-
-    @Transactional
-    @Override
-    public void updatePaySuccess(Long id) {
-        Orders order = orderMapper.getById(id);
-        if (order == null) {
-            throw new RuntimeException("订单不存在");
-        }
-        order.setPayStatus(1);
-        order.setCheckoutTime(LocalDateTime.now());
-        order.setStatus(2);
-        orderMapper.update(order);
-        couponService.markUsed(order.getUserId(), id);
-        log.info("订单支付成功更新 orderId={}, number={}", id, order.getNumber());
     }
 
     @Transactional
@@ -385,20 +361,68 @@ public class OrderServiceImpl implements OrderService {
     @Transactional
     @Override
     public void handlePayCallback(Long orderId, Long paymentId, String tradeNo, LocalDateTime payTime) {
-        // 更新支付记录
-        paymentService.updatePaySuccess(paymentId, tradeNo, payTime);
-        // 更新订单状态（同一个事务中）
-        Orders order = orderMapper.getById(orderId);
-        if (order != null) {
-            order.setPayStatus(1);
-            order.setCheckoutTime(payTime);
-            order.setStatus(2);
-            orderMapper.update(order);
-            // 支付成功回调 → 核销通用优惠券（幂等）
-            couponService.markUsed(order.getUserId(), orderId);
-            log.info("支付宝回调处理完成 orderId={}, tradeNo={}", orderId, tradeNo);
-        } else {
-            log.warn("支付宝回调订单不存在 orderId={}", orderId);
+        // 所有支付路径统一按订单 -> 支付记录的顺序加锁，避免与取消/重复回调交叉写入。
+        Orders order = orderMapper.getByIdForUpdate(orderId);
+        Payment payment = paymentService.getByIdForUpdate(paymentId);
+        validatePaymentOwnership(orderId, paymentId, order, payment);
+
+        if (payment.getStatus() != null && payment.getStatus() == 2) {
+            if (!Objects.equals(payment.getTradeNo(), tradeNo)) {
+                throw new IllegalStateException("支付流水号与已确认记录不一致");
+            }
+            if (!isAcknowledgedPaidOrder(order)) {
+                throw new IllegalStateException("支付记录与订单状态不一致");
+            }
+            log.info("支付宝重复回调幂等返回 orderId={}, tradeNo={}", orderId, tradeNo);
+            return;
         }
+
+        if (payment.getStatus() == null || (payment.getStatus() != 0 && payment.getStatus() != 1)) {
+            throw new IllegalStateException("支付记录当前状态不允许确认成功");
+        }
+        if (order.getStatus() == null || order.getStatus() != 1
+                || order.getPayStatus() == null || order.getPayStatus() != 0) {
+            throw new IllegalStateException("订单当前状态不允许确认支付");
+        }
+
+        if (!paymentService.updatePaySuccess(paymentId, tradeNo, payTime)) {
+            throw new IllegalStateException("支付记录状态已变化");
+        }
+        int rows = orderMapper.markPaid(orderId, payTime);
+        if (rows == 0) {
+            throw new IllegalStateException("订单状态已变化，无法确认支付");
+        }
+        couponService.markUsed(order.getUserId(), orderId);
+        log.info("支付宝回调处理完成 orderId={}, tradeNo={}", orderId, tradeNo);
+    }
+
+    private void validatePaymentOwnership(Long orderId, Long paymentId, Orders order, Payment payment) {
+        if (order == null) {
+            throw new IllegalStateException("订单不存在");
+        }
+        if (payment == null) {
+            throw new IllegalStateException("支付记录不存在");
+        }
+        if (!Objects.equals(order.getId(), orderId)
+                || !Objects.equals(payment.getId(), paymentId)
+                || !Objects.equals(payment.getOrderId(), orderId)
+                || payment.getOrderType() == null || payment.getOrderType() != 0) {
+            throw new IllegalStateException("支付记录与订单不匹配");
+        }
+        if (order.getAmount() == null || payment.getAmount() == null
+                || order.getAmount().compareTo(payment.getAmount()) != 0) {
+            throw new IllegalStateException("支付记录与订单金额不一致");
+        }
+    }
+
+    private boolean isAcknowledgedPaidOrder(Orders order) {
+        if (order.getStatus() == null || order.getPayStatus() == null) {
+            return false;
+        }
+        if (order.getPayStatus() == 1) {
+            return order.getStatus() == 2 || order.getStatus() == 3
+                    || order.getStatus() == 4 || order.getStatus() == 6;
+        }
+        return order.getPayStatus() == 2 && order.getStatus() == 6;
     }
 }

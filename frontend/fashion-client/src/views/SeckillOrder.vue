@@ -76,14 +76,6 @@
             <div class="order-actions">
               <el-button 
                 v-if="order.status === 1" 
-                type="primary" 
-                size="small"
-                @click="handlePay(order)"
-              >
-                立即支付
-              </el-button>
-              <el-button 
-                v-if="order.status === 1" 
                 type="danger" 
                 size="small"
                 @click="handleCancel(order)"
@@ -231,24 +223,6 @@ const handleCurrentChange = (current) => {
 }
 
 // 订单操作
-const handlePay = async (order) => {
-  try {
-    await ElMessageBox.confirm('确定要支付该订单吗？', '支付确认', {
-      confirmButtonText: '确定',
-      cancelButtonText: '取消',
-      type: 'warning'
-    })
-    
-    // 这里调用支付接口
-    ElMessage.success('支付成功')
-    await loadSeckillOrders() // 重新加载列表
-  } catch (error) {
-    if (error !== 'cancel') {
-      ElMessage.error('支付失败')
-    }
-  }
-}
-
 const handleCancel = async (order) => {
   try {
     await ElMessageBox.confirm('确定要取消该订单吗？', '取消确认', {

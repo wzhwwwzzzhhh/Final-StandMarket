@@ -294,49 +294,35 @@ export default {
       const order = this.orders.find(o => o.id === orderId)
       const isAlipay = order && order.payMethod === 2
 
+      if (!isAlipay) {
+        this.$message.warning('该支付方式暂未接入，请重新下单并选择支付宝')
+        return
+      }
+
       this.$confirm(
-        isAlipay ? '即将跳转到支付宝支付' : '确认支付该订单？',
+        '即将跳转到支付宝支付',
         '支付确认',
         { confirmButtonText: '确定', cancelButtonText: '取消', type: 'warning' }
       ).then(() => {
-        if (isAlipay) {
-          // 支付宝支付 — 调后端获取表单后跳转
-          this.loading = true
-          paymentApi.alipayPay(orderId).then(response => {
-            if (response.data.code === 1 && response.data.data) {
-              const formHtml = response.data.data.form
-              // 动态创建 form 并提交，跳转到支付宝沙箱
-              const div = document.createElement('div')
-              div.innerHTML = formHtml
-              document.body.appendChild(div)
-              document.querySelector('#alipay_submit')?.click() || div.querySelector('form')?.submit()
-              document.body.removeChild(div)
-            } else {
-              this.$message.error(response.data.msg || '支付调用失败')
-            }
-          }).catch(error => {
-            console.error('支付宝支付失败:', error)
-            this.$message.error('支付调用失败')
-          }).finally(() => {
-            this.loading = false
-          })
-        } else {
-          // 微信支付 — 保持原有 mock 逻辑
-          this.loading = true
-          orderApi.payOrder(orderId).then(response => {
-            if (response.data.code === 1) {
-              this.$message.success('支付成功')
-              this.loadOrders()
-            } else {
-              this.$message.error(response.data.msg || '支付失败')
-            }
-          }).catch(error => {
-            console.error('支付失败:', error)
-            this.$message.error('支付失败')
-          }).finally(() => {
-            this.loading = false
-          })
-        }
+        this.loading = true
+        paymentApi.alipayPay(orderId).then(response => {
+          if (response.data.code === 1 && response.data.data) {
+            const formHtml = response.data.data.form
+            // 动态创建 form 并提交，跳转到支付宝沙箱
+            const div = document.createElement('div')
+            div.innerHTML = formHtml
+            document.body.appendChild(div)
+            document.querySelector('#alipay_submit')?.click() || div.querySelector('form')?.submit()
+            document.body.removeChild(div)
+          } else {
+            this.$message.error(response.data.msg || '支付调用失败')
+          }
+        }).catch(error => {
+          console.error('支付宝支付失败:', error)
+          this.$message.error('支付调用失败')
+        }).finally(() => {
+          this.loading = false
+        })
       }).catch(() => {})
     },
     handleCancel(orderId) {

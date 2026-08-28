@@ -39,6 +39,10 @@
     <select id="getById" parameterType="long" resultType="com.fashion.entity.Orders">
         select * from orders where id = #{id}
     </select>
+
+    <select id="getByIdForUpdate" parameterType="long" resultType="com.fashion.entity.Orders">
+        select * from orders where id = #{id} for update
+    </select>
     
     <!-- 更新订单 -->
     <update id="update" parameterType="com.fashion.entity.Orders">
@@ -70,6 +74,24 @@
             <if test="userCouponId != null">user_coupon_id = #{userCouponId},</if>
         </set>
         where id = #{id}
+    </update>
+
+    <update id="updateAdminStatus">
+        update orders
+        set status = #{status}
+        where id = #{id} and pay_status = 1
+    </update>
+
+    <update id="markPaid">
+        update orders
+        set pay_status = 1, status = 2, checkout_time = #{payTime}
+        where id = #{id} and status = 1 and pay_status = 0
+    </update>
+
+    <update id="cancelPending">
+        update orders
+        set status = 5, cancel_time = #{cancelTime}
+        where id = #{id} and status = 1 and pay_status = 0
     </update>
     
     <!-- 统计订单总数 -->

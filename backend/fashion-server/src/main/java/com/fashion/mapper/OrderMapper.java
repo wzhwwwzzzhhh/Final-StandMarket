@@ -32,6 +32,8 @@ public interface OrderMapper {
      * @return 订单
      */
     Orders getById(Long id);
+
+    Orders getByIdForUpdate(Long id);
     
     /**
      * 更新订单
@@ -39,6 +41,12 @@ public interface OrderMapper {
      * @return 影响行数
      */
     int update(Orders orders);
+
+    int updateAdminStatus(@Param("id") Long id, @Param("status") Integer status);
+
+    int markPaid(@Param("id") Long id, @Param("payTime") java.time.LocalDateTime payTime);
+
+    int cancelPending(@Param("id") Long id, @Param("cancelTime") java.time.LocalDateTime cancelTime);
     
     /**
      * 统计订单总数

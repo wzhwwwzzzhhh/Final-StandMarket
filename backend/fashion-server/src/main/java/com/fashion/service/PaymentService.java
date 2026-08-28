@@ -7,13 +7,7 @@ public interface PaymentService {
     /**
      * 创建支付记录
      */
-    Payment createPayment(Long orderId, Integer orderType, java.math.BigDecimal amount, Integer payMethod);
-
-    /**
-     * 处理支付（模拟支付网关）
-     * @return true-支付成功 false-支付失败
-     */
-    boolean processPayment(String payNo);
+    Payment createAlipayPayment(Long orderId);
 
     /**
      * 查询支付状态
@@ -21,12 +15,18 @@ public interface PaymentService {
     Payment getPaymentStatus(String payNo);
 
     /**
-     * 根据订单ID查询支付记录
+     * 在当前事务中锁定支付记录，供支付状态迁移使用。
      */
-    Payment getByOrderId(Long orderId);
+    Payment getByIdForUpdate(Long id);
 
     /**
-     * 更新支付成功
+     * 根据订单ID和订单类型查询最新支付记录
      */
-    void updatePaySuccess(Long id, String tradeNo, java.time.LocalDateTime payTime);
+    Payment getByOrderId(Long orderId, Integer orderType);
+
+    /**
+     * 更新支付成功（条件更新，重复通知幂等）
+     * @return true 表示本次完成状态迁移，false 表示记录已处理
+     */
+    boolean updatePaySuccess(Long id, String tradeNo, java.time.LocalDateTime payTime);
 }

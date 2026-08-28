@@ -40,12 +40,7 @@ public interface OrderService {
      */
     Orders getById(Long id);
     
-    /**
-     * 更新订单
-     * @param orders 订单信息
-     * @return 是否成功
-     */
-    boolean update(Orders orders);
+    void updateAdminStatus(Long id, Integer status);
     
     /**
      * 统计订单总数
@@ -81,12 +76,6 @@ public interface OrderService {
     void cancel(Long id);
     
     /**
-     * 支付订单
-     * @param id 订单ID
-     */
-    void pay(Long id);
-
-    /**
      * 定时任务：自动取消超时未支付且绑定了通用优惠券的订单并释放券
      */
     void autoCancelTimeoutCouponOrders();
@@ -96,12 +85,6 @@ public interface OrderService {
      * @param id 订单ID
      */
     void confirm(Long id);
-
-    /**
-     * 支付成功更新订单状态
-     * @param id 订单ID
-     */
-    void updatePaySuccess(Long id);
 
     /**
      * 支付宝回调处理（支付记录 + 订单状态在一个事务中）

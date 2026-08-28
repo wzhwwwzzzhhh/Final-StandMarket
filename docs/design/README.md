@@ -23,3 +23,4 @@ P0/P1 审查发现会阻止确认。独立审查不可用时标记 `tooling_bloc
 
 | 阶段 | 领域 | Design | 状态 | Review |
 |---|---|---|---|---|
+| B1 | 支付 | [支付可信边界与并发幂等](payment/B1-payment-trust-boundary-design.md) | 已确认 | PASS |
