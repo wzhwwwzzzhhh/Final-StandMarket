@@ -53,7 +53,7 @@ public class PayNotifyController {
                     params, alipayConfig.getAlipayPublicKey(), "UTF-8", "RSA2");
 
             if (!signVerified) {
-                log.warn("支付宝回调验签失败 outTradeNo={}", params.get("out_trade_no"));
+                log.error("支付宝回调验签失败");
                 return "failure";
             }
 

@@ -271,15 +271,14 @@ export default {
         if (response.data.code === 1) {
           const userInfo = response.data.data
           this.userInfo = userInfo
-          // 检查是否有密码
-          this.hasPassword = userInfo.password !== undefined && userInfo.password !== ''
+          this.hasPassword = Boolean(userInfo.hasPassword)
         } else {
           // 从localStorage获取用户信息作为备份
           const userInfoStr = localStorage.getItem('userInfo')
           if (userInfoStr) {
             try {
               this.userInfo = JSON.parse(userInfoStr)
-              this.hasPassword = this.userInfo.password !== undefined && this.userInfo.password !== ''
+              this.hasPassword = Boolean(this.userInfo.hasPassword)
             } catch (error) {
               console.error('解析用户信息失败:', error)
             }
@@ -292,7 +291,7 @@ export default {
         if (userInfoStr) {
           try {
             this.userInfo = JSON.parse(userInfoStr)
-            this.hasPassword = this.userInfo.password !== undefined && this.userInfo.password !== ''
+            this.hasPassword = Boolean(this.userInfo.hasPassword)
           } catch (error) {
             console.error('解析用户信息失败:', error)
           }
@@ -325,9 +324,7 @@ export default {
               }
             } else {
               // 设置密码
-              const response = await userApi.updateUserInfo({
-                password: this.passwordForm.newPassword
-              })
+              const response = await userApi.changePassword(null, this.passwordForm.newPassword)
               if (response.data.code === 1) {
                 this.$message.success('密码设置成功')
                 this.hasPassword = true

@@ -1,6 +1,8 @@
 package com.fashion.aspect;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.node.ObjectNode;
 import com.fashion.context.BaseContext;
 import com.fashion.entity.Employee;
 import com.fashion.entity.OperationLog;
@@ -21,8 +23,9 @@ import javax.servlet.ServletResponse;
 import javax.servlet.http.HttpServletRequest;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
+import java.util.Iterator;
 import java.util.List;
-import java.util.regex.Pattern;
+import java.util.Map;
 
 /**
  * 管理端操作日志切面：拦截标注了 @OperationLog 的 Controller 写操作方法，
@@ -93,10 +96,6 @@ public class OperationLogAspect {
                 + "#" + joinPoint.getSignature().getName();
     }
 
-    private static final Pattern SENSITIVE_KEY_PATTERN = Pattern.compile(
-            "(\"([^\"]*(?:password|secret|token|credential)[^\"]*)\"\\s*:\\s*)\"[^\"]*\"",
-            Pattern.CASE_INSENSITIVE);
-
     private String buildParams(ProceedingJoinPoint joinPoint) {
         List<Object> args = new ArrayList<>();
         for (Object arg : joinPoint.getArgs()) {
@@ -106,11 +105,50 @@ public class OperationLogAspect {
             args.add(arg);
         }
         try {
-            String json = objectMapper.writeValueAsString(args);
-            return SENSITIVE_KEY_PATTERN.matcher(json).replaceAll("$1\"***\"");
+            JsonNode tree = objectMapper.valueToTree(args);
+            redact(tree);
+            return objectMapper.writeValueAsString(tree);
         } catch (Exception e) {
-            return args.toString();
+            return "[\"<unserializable>\"]";
         }
+    }
+
+    private void redact(JsonNode node) {
+        if (node == null) {
+            return;
+        }
+        if (node.isObject()) {
+            ObjectNode object = (ObjectNode) node;
+            Iterator<Map.Entry<String, JsonNode>> fields = object.fields();
+            while (fields.hasNext()) {
+                Map.Entry<String, JsonNode> field = fields.next();
+                if (isSensitiveKey(field.getKey())) {
+                    object.put(field.getKey(), "***");
+                } else {
+                    redact(field.getValue());
+                }
+            }
+        } else if (node.isArray()) {
+            for (JsonNode child : node) {
+                redact(child);
+            }
+        }
+    }
+
+    private boolean isSensitiveKey(String key) {
+        String normalized = key == null ? "" : key.toLowerCase().replaceAll("[^a-z0-9]", "");
+        return normalized.contains("password")
+                || normalized.contains("passwd")
+                || normalized.contains("secret")
+                || normalized.contains("token")
+                || normalized.contains("credential")
+                || normalized.contains("authorization")
+                || normalized.contains("privatekey")
+                || normalized.contains("accesskey")
+                || normalized.contains("smscode")
+                || normalized.contains("verificationcode")
+                || normalized.contains("captcha")
+                || normalized.contains("otp");
     }
 
     private boolean isSkippable(Object arg) {

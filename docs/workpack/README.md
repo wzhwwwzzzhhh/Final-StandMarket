@@ -20,6 +20,7 @@ docs/workpack/
 
 | 阶段 | 切片 | 状态 | 需求源 | Plan | Review | Evidence |
 |---|---|---|---|---|---|---|
+| B0 | credential-log-safety | CI 已通过（[PR #5](https://github.com/wzhwwwzzzhhh/Final-StandMarket/pull/5)；AC6 外部凭据证据阻塞） | [阶段 B B0](../plans/阶段B-P0P1交易链路修复.md#b0密码token-与日志安全p0) / [Issue #4](https://github.com/wzhwwwzzzhhh/Final-StandMarket/issues/4) | [plan](B0-credential-log-safety/plan.md) | [PASS](B0-credential-log-safety/review.md) | [evidence](B0-credential-log-safety/evidence.md) |
 | B1 | payment-trust-boundary | 本地已验证 | [阶段 B B1](../plans/阶段B-P0P1交易链路修复.md#b1支付入口通知校验与幂等p0) | [plan](B1-payment-trust-boundary/plan.md) | [PASS](B1-payment-trust-boundary/review.md) | [evidence](B1-payment-trust-boundary/evidence.md) |
 
 

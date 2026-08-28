@@ -16,6 +16,13 @@
 - Round 2：FAIL（P0 0 / P1 1 / P2 0 / P3 0）。产品与测试问题已全部关闭，唯一 P1 为 evidence 仍保留修复前计数和待办文字；已修正，等待最终复核。
 - Round 3：PASS（P0-P3 均无）。最终复核确认产品修复、MySQL 9 项门禁、全量 59 项结果、两端构建、diff/敏感信息检查、范围边界与 residual risks 均准确。
 
+## Post-B0 integration review
+
+- Status: PASS（P0 0 / P1 0 / P2 0 / P3 0）。
+- Conflict scope: `PayNotifyController.java` and `docs/workpack/README.md` only.
+- Resolution intent: preserve B0 log minimization, preserve B1 callback trust checks, and retain both active workpack entries.
+- Result: merge parents/base、45 个 B1 路径集合、冲突解决、敏感配置清理与集成验证证据均经独立只读复核确认。
+
 ## Acceptance evidence review
 
 | AC | Code/test evidence | Result |
@@ -31,6 +38,6 @@
 
 ## Residual risks
 
-- 当前 B1 分支基于较早本地基线；后续远程交付前必须与已合并 B0 的目标分支安全集成并重新执行全部门禁，不能把范围外本地改动混入。
+- B1 已在隔离 worktree 集成远端 B0，且合并冲突和相对 `master` 的范围已独立复核 PASS。
 - 增量迁移执行前需要停止支付写入；若发现历史活动流水冲突或部分/错误 schema，脚本会拒绝继续并要求人工核对，不会自动删数据。
 - 两个 Vue 项目当前仅有生产构建脚本，没有 test/lint/typecheck 脚本，因此未声称这些检查通过。

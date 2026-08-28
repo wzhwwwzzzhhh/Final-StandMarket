@@ -51,11 +51,17 @@
 | 2026-08-28 | 移除路径 `rg` + B1 新文件敏感字面量扫描 | pass | 普通订单、用户秒杀模拟支付及管理端普通确认入口由契约测试证明已移除；命中的管理端秒杀确认属于保留范围；新增测试、SQL 未发现硬编码 password/secret/private key/access key |
 | 2026-08-28 | 独立实现审查（round 2） | FAIL：1 P1（仅证据门禁） | 代码问题全部关闭；要求把修复后的 9 项 MySQL、59 项全量测试和已完成验证准确回填本文档 |
 | 2026-08-28 | 独立实现审查（round 3） | PASS：P0-P3 均无 | 独立复核确认代码问题、证据计数、范围边界与 residual risks 均准确，可本地交付 |
+| 2026-08-28 | `gh api repos/wzhwwwzzzhhh/Final-StandMarket/commits/master --jq .sha` | `94627c5...` | 在两次 Git HTTPS fetch 超时后，通过 GitHub API 新鲜确认远端 `master` 与本地远端引用一致 |
+| 2026-08-28 | 在隔离 worktree 合并 `Final-StandMarket/master` | 2 个冲突已解决 | `PayNotifyController` 保留 B0 更严格的无业务标识验签失败日志与 B1 校验逻辑；workpack 索引同时保留 B0/B1；当前 checkout 的 3 个范围外修改未移动、未暂存 |
+| 2026-08-28 | B0+B1 集成后 `backend: mvn test` | 90 tests / 0 failures / 0 errors / 9 skipped，BUILD SUCCESS | 合并基线上全量测试通过；9 个真实 MySQL 门禁按属性默认跳过 |
+| 2026-08-28 | B0+B1 集成后显式 `PaymentMysqlIntegrationTest` | 9 tests / 0 failures / 0 errors / 0 skipped | 独立 worktree 首次因忽略配置不存在而 1 error；临时复制当前项目既有 `application-dev.yml` 后重跑通过，临时配置和隔离 schema 均已删除，未输出或暂存配置内容 |
+| 2026-08-28 | B0+B1 集成后两端 `npm ci && npm run build` | client/admin 均 exit 0 | 新 worktree 首次因无 `node_modules` 无法找到 Vite；按锁文件安装依赖后生产构建通过，保留既有大资源/chunk 警告 |
+| 2026-08-28 | B0+B1 集成独立只读复核 | PASS：P0-P3 均无 | 确认父提交、两处冲突解决、相对远端 `master` 的 45 个 B1 路径集合、敏感配置清理和验证证据均准确 |
 
-## Not run or blocked
+## Remote delivery status
 
-- 未执行 commit、push、PR 或 merge：用户未在本次请求中授权远程交付。
+- 用户已授权 push、PR、merge；B1 本地提交为 `9f2d137`。B0 集成提交、push、PR、CI 和 merge 正在执行，只有 GitHub 返回结果后才登记为通过。
 
 ## Local delivery summary
 
-三个 Slice 已实现；后端全量、两端生产构建、真实 MySQL 8 隔离库门禁、diff 与敏感信息复核均已完成，最终独立审查 PASS。本 workpack 已达到本地交付条件；远程交付仍需用户另行授权，并在安全集成 B0 后重新验证。
+三个 Slice 已实现；本地原始基线和 B0 集成基线均已完成后端全量、两端生产构建与真实 MySQL 8 门禁。远程交付已获授权，当前等待集成 diff 独立复核及 GitHub CI。

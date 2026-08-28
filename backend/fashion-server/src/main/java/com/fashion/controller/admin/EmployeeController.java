@@ -7,6 +7,7 @@ import com.fashion.entity.PageResult;
 import com.fashion.result.Result;
 import com.fashion.service.EmployeeService;
 import com.fashion.vo.AdminLoginVo;
+import com.fashion.vo.EmployeeSafeVO;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.*;
 
@@ -44,9 +45,9 @@ public class EmployeeController {
      * 分页查询
      */
     @GetMapping("/page")
-    public Result<PageResult<Employee>> page(int page, int pageSize, String name) {
+    public Result<PageResult<EmployeeSafeVO>> page(int page, int pageSize, String name) {
         // 调用Service层的分页查询方法
-        PageResult<Employee> pageResult = employeeService.pageEmployees(page, pageSize, name);
+        PageResult<EmployeeSafeVO> pageResult = employeeService.pageEmployees(page, pageSize, name);
         return Result.success(pageResult);
     }
 
@@ -74,8 +75,8 @@ public class EmployeeController {
      * 根据id查询员工
      */
     @GetMapping("/getById")
-    public Result<Employee> getById(@RequestParam Long id) {
-        Employee employee = employeeService.getById(id);
+    public Result<EmployeeSafeVO> getById(@RequestParam Long id) {
+        EmployeeSafeVO employee = employeeService.getById(id);
         return Result.success(employee);
     }
 }
