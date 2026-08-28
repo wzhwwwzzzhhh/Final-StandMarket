@@ -1,0 +1,70 @@
+name: 新功能建议
+description: 提议阶段 B 之外的新用户能力或产品改进
+title: "[Feature] "
+labels: [enhancement]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        新功能先描述用户结果和验收标准，不在 Issue 中提前写死实现方案。确认后以仓库内 PRD 为需求事实来源。
+
+  - type: textarea
+    id: outcome
+    attributes:
+      label: 目标结果
+      description: 让哪类用户能够达成什么结果？为什么现在值得做？
+    validations:
+      required: true
+
+  - type: textarea
+    id: current
+    attributes:
+      label: 当前问题或替代方式
+      description: 目前用户怎样处理？现有方式的主要成本是什么？
+    validations:
+      required: true
+
+  - type: textarea
+    id: in-scope
+    attributes:
+      label: 建议范围
+      description: 最小可交付范围包含什么？
+    validations:
+      required: true
+
+  - type: textarea
+    id: out-of-scope
+    attributes:
+      label: 明确不做
+      description: 本次不应顺带加入哪些能力？
+
+  - type: textarea
+    id: acceptance
+    attributes:
+      label: 可测验收标准
+      placeholder: |
+        - AC1: 当……时，系统……
+        - AC2: ……
+    validations:
+      required: true
+
+  - type: dropdown
+    id: priority
+    attributes:
+      label: 建议优先级
+      options:
+        - P0 - 阻断交易、安全或数据正确性
+        - P1 - 重要业务闭环或明显体验问题
+        - P2 - 可选增强
+    validations:
+      required: true
+
+  - type: checkboxes
+    id: checks
+    attributes:
+      label: 提交前确认
+      options:
+        - label: 该建议不属于阶段 B 已有 B0-B11 修复范围。
+          required: true
+        - label: 我没有在 Issue 中附带真实凭据或未脱敏业务数据。
+          required: true

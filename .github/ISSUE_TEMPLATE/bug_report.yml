@@ -1,0 +1,80 @@
+name: Bug 报告
+description: 报告可以稳定复现的功能、数据或接口问题
+title: "[Bug] "
+labels: [bug]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        请提供可复现、可验证的信息。不要粘贴密码、Token、密钥、完整支付回调或未脱敏用户数据。
+
+  - type: dropdown
+    id: module
+    attributes:
+      label: 影响模块
+      options:
+        - Java 后端
+        - 用户端 fashion-client
+        - 管理端 fashion-admin
+        - Python Agent
+        - MySQL / Redis / RabbitMQ / Elasticsearch
+        - GitHub CI / 文档 / 工具链
+        - 其他
+    validations:
+      required: true
+
+  - type: textarea
+    id: problem
+    attributes:
+      label: 问题描述
+      description: 实际发生了什么？影响了谁或哪条业务链路？
+    validations:
+      required: true
+
+  - type: textarea
+    id: steps
+    attributes:
+      label: 复现步骤
+      placeholder: |
+        1. ...
+        2. ...
+        3. ...
+    validations:
+      required: true
+
+  - type: textarea
+    id: expected
+    attributes:
+      label: 期望结果
+    validations:
+      required: true
+
+  - type: textarea
+    id: actual
+    attributes:
+      label: 实际结果和脱敏证据
+      description: 可以附日志摘要、截图或错误信息，但必须先脱敏。
+    validations:
+      required: true
+
+  - type: input
+    id: version
+    attributes:
+      label: 版本或提交
+      description: 分支、短提交号或发生日期。
+
+  - type: textarea
+    id: acceptance
+    attributes:
+      label: 建议验收条件
+      description: 修复后怎样客观证明问题已关闭？
+
+  - type: checkboxes
+    id: checks
+    attributes:
+      label: 提交前确认
+      options:
+        - label: 我已搜索现有 Issue，未发现重复报告。
+          required: true
+        - label: 我已删除或脱敏所有凭据、Token、个人信息和支付敏感参数。
+          required: true

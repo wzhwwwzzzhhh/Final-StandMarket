@@ -1,8 +1,10 @@
 ﻿# 末路衣橱生产上线与 GitHub CI/CD 主计划（第一版）
 
-> 状态：方案讨论中，尚未实施
+> 状态：基础 GitHub 协作与 CI 已实施；镜像发布、CD 和生产上线仍待规划
 >
 > 创建日期：2026-07-22
+>
+> 最近更新：2026-08-28（PR #2 完成首轮远程 CI 验证）
 >
 > 适用范围：`Final-StandMarket`（Spring Boot、Vue 用户端、Vue 管理端、Redis、RabbitMQ、MySQL，以及可选的 AI 客服与 Elasticsearch）
 >
@@ -19,7 +21,7 @@
 ```text
 本地开发与自测
   ↓
-推送 GitHub 私有仓库
+推送 GitHub 仓库（当前远程仓库为 public，禁止提交任何秘密）
   ↓
 GitHub Actions 执行测试、构建并制作 Docker 镜像（CI）
   ↓
@@ -99,7 +101,7 @@ GitHub Actions 执行测试、构建并制作 Docker 镜像（CI）
 
 ```mermaid
 flowchart LR
-    A[本地开发] --> B[GitHub 私有仓库]
+    A[本地开发] --> B[GitHub 仓库]
     B --> C[GitHub Actions CI]
     C --> C1[后端编译与测试]
     C --> C2[前端构建]
@@ -161,7 +163,9 @@ flowchart LR
 
 ### 4.2 CI 应执行的检查
 
-GitHub Actions 的第一版工作流应包括：
+2026-08-28 已先交付不接触生产凭据的基础质量门禁：Java 测试、两个前端生产构建、Python 测试和 Gitleaks。下列镜像构建、推送和发布摘要仍属于后续独立 workpack，不得把“基础 CI 已启用”误写为“生产 CI/CD 已完成”。
+
+完整发布工作流后续应包括：
 
 1. 拉取指定提交的代码；
 2. 后端执行 Maven 编译与测试；
@@ -473,7 +477,7 @@ Elasticsearch 已经占用该服务器资源，因此第一版应用部署不能
 | 阶段 1 | 容器化核心应用 | 后端/前端 Dockerfile、生产 compose 模板 | 待规划 |
 | 阶段 2 | 生产配置与安全治理 | 配置模板、服务器 `.env` 约定、密钥清单 | 待规划 |
 | 阶段 3 | 数据库迁移与备份 | Flyway 接入、备份脚本、恢复演练记录 | 待规划 |
-| 阶段 4 | GitHub Actions CI | 工作流、镜像构建与国内仓库推送 | 待规划 |
+| 阶段 4 | GitHub Actions CI | 基础测试/构建/敏感扫描已启用；镜像构建与国内仓库推送待后续 workpack | 部分完成 |
 | 阶段 5 | 人工确认式 CD | 面板/服务器部署脚本、版本与回滚记录 | 待规划 |
 | 阶段 6 | 监控、告警与自动化 CD | 健康检查、日志策略、可选自动触发部署 | 待规划 |
 | 阶段 7 | AI 客服与 ES 独立部署评估 | 资源评估、独立部署方案 | 待规划 |
