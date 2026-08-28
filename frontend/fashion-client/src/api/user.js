@@ -63,7 +63,7 @@ export const userApi = {
 
   // 修改密码
   changePassword: (oldPassword, newPassword) => {
-    return api.put('/user/password', null, { params: { oldPassword, newPassword } })
+    return api.put('/user/password', { oldPassword, newPassword })
   },
 
   // 退出登录

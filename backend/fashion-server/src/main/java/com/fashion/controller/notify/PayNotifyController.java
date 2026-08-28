@@ -55,7 +55,7 @@ public class PayNotifyController {
                     params, alipayConfig.getAlipayPublicKey(), "UTF-8", "RSA2");
 
             if (!signVerified) {
-                log.error("支付宝回调验签失败：{}", params);
+                log.error("支付宝回调验签失败");
                 return "failure";
             }
 

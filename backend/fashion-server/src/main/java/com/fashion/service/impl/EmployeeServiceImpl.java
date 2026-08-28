@@ -1,7 +1,5 @@
 package com.fashion.service.impl;
 
-import cn.hutool.core.bean.BeanUtil;
-import cn.hutool.core.bean.copier.CopyOptions;
 import cn.hutool.core.lang.UUID;
 import com.github.pagehelper.PageHelper;
 import com.github.pagehelper.PageInfo;
@@ -13,11 +11,13 @@ import com.fashion.mapper.EmployeeMapper;
 import com.fashion.result.Result;
 import com.fashion.service.EmployeeService;
 import com.fashion.vo.AdminLoginVo;
+import com.fashion.vo.EmployeeSafeVO;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.stereotype.Service;
+import java.time.LocalDateTime;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -36,38 +36,56 @@ public class EmployeeServiceImpl implements EmployeeService {
     private final BCryptPasswordEncoder passwordEncoder = new BCryptPasswordEncoder();
     
     @Override
-    public List<Employee> list(String name) {
-        return employeeMapper.list(name);
+    public List<EmployeeSafeVO> list(String name) {
+        List<EmployeeSafeVO> result = new java.util.ArrayList<>();
+        for (Employee employee : employeeMapper.list(name)) {
+            result.add(toSafeVO(employee));
+        }
+        return result;
     }
     
     @Override
-    public PageResult<Employee> pageEmployees(int page, int pageSize, String name) {
+    public PageResult<EmployeeSafeVO> pageEmployees(int page, int pageSize, String name) {
         // 开始分页
         PageHelper.startPage(page, pageSize);
         // 执行查询
         List<Employee> employees = employeeMapper.list(name);
         // 包装成PageInfo
         PageInfo<Employee> pageInfo = new PageInfo<>(employees);
+        List<EmployeeSafeVO> safeEmployees = new java.util.ArrayList<>();
+        for (Employee employee : pageInfo.getList()) {
+            safeEmployees.add(toSafeVO(employee));
+        }
         // 构造PageResult返回
-        return new PageResult<>(pageInfo.getTotal(), pageInfo.getList());
+        return new PageResult<>(pageInfo.getTotal(), safeEmployees);
     }
     
     @Override
-    public Employee getById(Long id) {
-        return employeeMapper.getById(id);
+    public EmployeeSafeVO getById(Long id) {
+        return toSafeVO(employeeMapper.getById(id));
     }
     
     @Override
     public boolean save(Employee employee) {
-        if (employee.getPassword() != null && !employee.getPassword().isEmpty()
-                && !employee.getPassword().startsWith("$2")) {
+        if (employee.getPassword() != null && !employee.getPassword().isEmpty()) {
             employee.setPassword(passwordEncoder.encode(employee.getPassword()));
+        }
+        LocalDateTime now = LocalDateTime.now();
+        if (employee.getStatus() == null) {
+            employee.setStatus(1);
+        }
+        if (employee.getCreateTime() == null) {
+            employee.setCreateTime(now);
+        }
+        if (employee.getUpdateTime() == null) {
+            employee.setUpdateTime(now);
         }
         return employeeMapper.save(employee) > 0;
     }
     
     @Override
     public boolean update(Employee employee) {
+        employee.setPassword(null);
         return employeeMapper.update(employee) > 0;
     }
     
@@ -89,25 +107,20 @@ public class EmployeeServiceImpl implements EmployeeService {
             return Result.error("账号已被禁用");
         }
         String dbPassword = employee.getPassword();
-        boolean passwordOk;
-        if (dbPassword != null && dbPassword.startsWith("$2")) {
-            // BCrypt 哈希比对
-            passwordOk = passwordEncoder.matches(adminLoginDto.getPassword(), dbPassword);
-        } else {
-            // 兼容存量明文密码（迁移脚本执行前）
-            passwordOk = adminLoginDto.getPassword().equals(dbPassword);
-        }
+        boolean passwordOk = dbPassword != null
+                && dbPassword.startsWith("$2")
+                && passwordEncoder.matches(adminLoginDto.getPassword(), dbPassword);
         if (!passwordOk) {
             log.warn("管理端登录失败：用户名={}", adminLoginDto.getUsername());
             return Result.error("密码错误");
         }
 
         String token = UUID.randomUUID().toString();
-        Map<String, Object> empMap = BeanUtil.beanToMap(employee, new HashMap<>(),
-                CopyOptions.create()
-                        .setIgnoreNullValue(true)
-                        .setFieldValueEditor((fieldName, fieldValue) ->
-                                fieldValue != null ? fieldValue.toString() : null));
+        Map<String, Object> empMap = new HashMap<>();
+        putIfNotNull(empMap, "id", employee.getId());
+        putIfNotNull(empMap, "name", employee.getName());
+        putIfNotNull(empMap, "username", employee.getUsername());
+        putIfNotNull(empMap, "phone", employee.getPhone());
         redisTemplate.opsForHash().putAll(RedisKey.ADMIN_LOGIN_KEY + token, empMap);
         redisTemplate.expire(RedisKey.ADMIN_LOGIN_KEY + token, 30 * 60, TimeUnit.SECONDS);
         log.info("管理端登录成功：username={}", adminLoginDto.getUsername());
@@ -117,5 +130,30 @@ public class EmployeeServiceImpl implements EmployeeService {
         vo.setEmployeeId(employee.getId());
         vo.setName(employee.getName());
         return Result.success(vo);
+    }
+
+    private EmployeeSafeVO toSafeVO(Employee employee) {
+        if (employee == null) {
+            return null;
+        }
+        EmployeeSafeVO vo = new EmployeeSafeVO();
+        vo.setId(employee.getId());
+        vo.setName(employee.getName());
+        vo.setUsername(employee.getUsername());
+        vo.setPhone(employee.getPhone());
+        vo.setSex(employee.getSex());
+        vo.setIdNumber(employee.getIdNumber());
+        vo.setStatus(employee.getStatus());
+        vo.setCreateTime(employee.getCreateTime());
+        vo.setUpdateTime(employee.getUpdateTime());
+        vo.setCreateUser(employee.getCreateUser());
+        vo.setUpdateUser(employee.getUpdateUser());
+        return vo;
+    }
+
+    private void putIfNotNull(Map<String, Object> target, String key, Object value) {
+        if (value != null) {
+            target.put(key, value.toString());
+        }
     }
 }

@@ -30,6 +30,11 @@ public interface UserMapper {
     void update(User user);
 
     /**
+     * 专用密码更新，避免资料更新路径写入密码。
+     */
+    int updatePassword(@Param("id") Long id, @Param("password") String password);
+
+    /**
      * 根据id查询用户
      * @param id 用户id
      * @return 用户信息

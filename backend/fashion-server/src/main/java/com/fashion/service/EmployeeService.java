@@ -5,6 +5,7 @@ import com.fashion.entity.Employee;
 import com.fashion.entity.PageResult;
 import com.fashion.result.Result;
 import com.fashion.vo.AdminLoginVo;
+import com.fashion.vo.EmployeeSafeVO;
 import java.util.List;
 
 public interface EmployeeService {
@@ -13,7 +14,7 @@ public interface EmployeeService {
      * @param name 员工名称
      * @return 员工列表
      */
-    List<Employee> list(String name);
+    List<EmployeeSafeVO> list(String name);
     
     /**
      * 分页查询员工
@@ -22,14 +23,14 @@ public interface EmployeeService {
      * @param name 员工名称
      * @return 分页后的员工列表
      */
-    PageResult<Employee> pageEmployees(int page, int pageSize, String name);
+    PageResult<EmployeeSafeVO> pageEmployees(int page, int pageSize, String name);
     
     /**
      * 根据ID查询员工
      * @param id 员工ID
      * @return 员工
      */
-    Employee getById(Long id);
+    EmployeeSafeVO getById(Long id);
     
     /**
      * 新增员工

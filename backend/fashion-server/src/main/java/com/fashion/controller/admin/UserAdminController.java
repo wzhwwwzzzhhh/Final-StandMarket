@@ -5,6 +5,7 @@ import com.fashion.entity.User;
 import com.fashion.entity.PageResult;
 import com.fashion.result.Result;
 import com.fashion.service.UserService;
+import com.fashion.vo.UserSafeVO;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.*;
 
@@ -32,9 +33,9 @@ public class UserAdminController {
      * 分页查询
      */
     @GetMapping("/page")
-    public Result<PageResult<User>> page(int page, int pageSize, String name, String phone) {
+    public Result<PageResult<UserSafeVO>> page(int page, int pageSize, String name, String phone) {
         // 调用Service层的分页查询方法
-        PageResult<User> pageResult = userService.pageUsers(page, pageSize, name, phone);
+        PageResult<UserSafeVO> pageResult = userService.pageUsers(page, pageSize, name, phone);
         return Result.success(pageResult);
     }
 
@@ -68,11 +69,11 @@ public class UserAdminController {
      * 根据id查询用户
      */
     @GetMapping("/getById")
-    public Result<User> getById(@RequestParam Long id) {
+    public Result<UserSafeVO> getById(@RequestParam Long id) {
         if(id == null){
             return Result.error("id不能为空");
         }
-        User user = userService.getById(id);
+        UserSafeVO user = userService.getById(id);
         if(user == null){
             return Result.error("用户不存在");
         }
