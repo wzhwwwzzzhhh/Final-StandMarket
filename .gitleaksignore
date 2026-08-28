@@ -1,0 +1,4 @@
+# Historical API-document examples removed in commit 8fc6c54.
+# Keep these fingerprint-scoped exceptions narrow so new findings still fail CI.
+41efb4482acd1390f4bdc9f42069212cea1bc130:md/api-doc.md:generic-api-key:30
+41efb4482acd1390f4bdc9f42069212cea1bc130:md/api-doc01.md:generic-api-key:21

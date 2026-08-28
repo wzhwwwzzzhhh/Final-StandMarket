@@ -149,35 +149,39 @@ python app/main.py
 - `address_book` — 地址簿
 - `combination` / `combination_product` — 组合套餐
 
-## 功能拓展工作流
+## 本地工作流
 
-每一步功能拓展必须按以下流程执行：
+当前工程规则以 `docs/开发规范.md` 为准，使用三条按需组合的本地工作流：
 
-1. **第一层**: 确定做什么业务（记录在主计划 MD）
-2. **第二层**: 确定该业务的具体执行步骤（记录在阶段 MD）
-3. **第三层**: 确定每步要修改/添加哪些代码文件（代码实现）
-4. **每个阶段完成后**:
-   - 审查子代理（code-reviewer）审查代码
-   - 审查报告记录在阶段 MD 文件中
-   - 前端检查：新功能页面是否正常、相关页面有无冗余
+- **PM / 需求**：`fsm-pm-workflow`，管理方向、PRD、验收和状态。
+- **架构**：`fsm-architecture-workflow`，只处理支付/退款契约、交易状态机、Redis/MySQL 一致性、MQ、迁移、鉴权和跨服务契约等高风险决策。
+- **开发交付**：`fsm-development-workflow`，管理 workpack、测试先行、独立审查、证据和本地归档。
 
-> 规则: 每一步的详细步骤都要用 MD 文档保存，存放在 `docs/plans/` 目录下。禁止在没有文档规划的情况下直接写代码。
-> 例外: 前端代码不需要详细步骤文档，只需在后端步骤文档中附带说明涉及的前端文件即可。
+阶段 B 的 B0-B11 以 `docs/plans/阶段B-P0P1交易链路修复.md` 为已确认需求源，不重复创建 PRD。阶段 B 之外的新增用户能力先写 PRD；小型 Bug 和已确认行为修复可以直接进入 workpack。
+
+标准代码改动使用 `docs/workpack/<phase>-<slice>/` 下的 `plan.md`、`review.md`、`evidence.md`。计划未经用户确认不修改产品代码；独立审查不可用时记录 `tooling_blocked`，不能冒充 PASS。
 
 ## Git 工作流
 
 - 主分支: `master` / `main`
+- 基础 GitHub CI、敏感扫描和协作模板位于 `.github/`；生产 CD 尚未启用。
+- 未经用户明确要求，不执行 commit、push、建 PR、合并或修改远程仓库设置；获得授权后也必须走功能分支和全绿 CI，禁止直推 `master` 或绕过失败检查。
+- 单人串行开发可以使用当前分支；并行或文件可能重叠时使用独立分支和 worktree。
+- 提交前必须有 `review.md` PASS、完整 `evidence.md` 和新鲜本地验证；提交信息遵循 Conventional Commits。远程完成还要求目标提交的 GitHub checks 全绿。
 - 不要提交 `application-dev.yml`、`application-prod.yml`、`*.properties`、`.env` 等敏感配置
 - `target/`、`dist/`、`node_modules/` 已 gitignore
 
 ## 项目级 Skills（`.claude/skills/`）
 
-仅覆盖「开发 → 测试 → 审查 → 提交」四步，不涉及 push/PR/分支管理。轻量、项目内生效，已 gitignore。
+覆盖 PM、架构、本地开发、测试、审查、证据、GitHub PR/CI 和归档。远程操作仍要求用户明确授权；项目内生效，已 gitignore。
 
+- **fsm-pm-workflow** — 方向规划、PRD 写作与需求审查；B0-B11 不重复写 PRD
+- **fsm-architecture-workflow** — 高风险 Design 与独立架构审查
+- **fsm-development-workflow** — workpack 计划、执行、独立审查、证据与本地归档
 - **test-driven-development** — 开发：先写失败测试再写实现，防逻辑 bug
 - **verification-before-completion** — 测试：声称"完成/通过"前必须先跑验证命令（如 `mvn test`、`npm run build`），凭证据不凭断言
 - **conventional-commit** — 提交：按本仓库历史的 `feat: Phase N 描述` 风格写提交信息
 
-**审查环节**不依赖额外 skill：使用官方 `pr-review-toolkit` 插件，以及项目 `.claude/agents/` 下的 `ai-module-security-review`、`ai-guide-test-writer` 等 agent。
+独立审查不绑定某个固定代理名称；使用当前环境允许的只读独立上下文。无法获得独立上下文时记录 `tooling_blocked`，交用户决定，不得伪造 PASS。
 
 > 新增 skill：在 `.claude/skills/` 下建文件夹 + `SKILL.md`（带 frontmatter）即可，项目内生效。
