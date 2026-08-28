@@ -5,6 +5,7 @@ import com.fashion.entity.User;
 import com.fashion.entity.PageResult;
 import com.fashion.result.Result;
 import com.fashion.vo.UserLoginVo;
+import com.fashion.vo.UserSafeVO;
 import org.springframework.stereotype.Service;
 
 import javax.servlet.http.HttpSession;
@@ -37,7 +38,7 @@ public interface UserService {
      * @param id 用户id
      * @return 用户信息
      */
-    User getById(Long id);
+    UserSafeVO getById(Long id);
 
     /**
      * 分页查询用户
@@ -47,7 +48,7 @@ public interface UserService {
      * @param phone 手机号
      * @return 分页结果
      */
-    PageResult<User> pageUsers(int page, int pageSize, String name, String phone);
+    PageResult<UserSafeVO> pageUsers(int page, int pageSize, String name, String phone);
 
     /**
      * 统计用户数量
@@ -75,7 +76,7 @@ public interface UserService {
      * @param token
      * @return
      */
-    Result<User> getUserInfo(String token);
+    Result<UserSafeVO> getUserInfo(String token);
 
     /**
      * 更新用户信息
