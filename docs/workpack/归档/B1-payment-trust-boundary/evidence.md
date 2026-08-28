@@ -57,11 +57,12 @@
 | 2026-08-28 | B0+B1 集成后显式 `PaymentMysqlIntegrationTest` | 9 tests / 0 failures / 0 errors / 0 skipped | 独立 worktree 首次因忽略配置不存在而 1 error；临时复制当前项目既有 `application-dev.yml` 后重跑通过，临时配置和隔离 schema 均已删除，未输出或暂存配置内容 |
 | 2026-08-28 | B0+B1 集成后两端 `npm ci && npm run build` | client/admin 均 exit 0 | 新 worktree 首次因无 `node_modules` 无法找到 Vite；按锁文件安装依赖后生产构建通过，保留既有大资源/chunk 警告 |
 | 2026-08-28 | B0+B1 集成独立只读复核 | PASS：P0-P3 均无 | 确认父提交、两处冲突解决、相对远端 `master` 的 45 个 B1 路径集合、敏感配置清理和验证证据均准确 |
+| 2026-08-28 | [PR #7](https://github.com/wzhwwwzzzhhh/Final-StandMarket/pull/7) 首轮 GitHub checks（head `ba1559d`） | 5/5 pass | Java backend、Python agent、fashion-client build、fashion-admin build、Gitleaks 全绿；未用本地结果冒充远程 CI |
 
 ## Remote delivery status
 
-- 用户已授权 push、PR、merge；B1 本地提交为 `9f2d137`。B0 集成提交、push、PR、CI 和 merge 正在执行，只有 GitHub 返回结果后才登记为通过。
+- 用户已授权 push、PR、merge；B1 本地提交 `9f2d137`、B0 集成提交 `ba1559d` 已推送并创建 PR #7，首轮 5 项 GitHub checks 全绿。workpack 已归档，归档提交仍需再次通过 GitHub checks 后才允许合并。
 
 ## Local delivery summary
 
-三个 Slice 已实现；本地原始基线和 B0 集成基线均已完成后端全量、两端生产构建与真实 MySQL 8 门禁。远程交付已获授权，当前等待集成 diff 独立复核及 GitHub CI。
+三个 Slice 已实现；本地原始基线和 B0 集成基线均完成后端全量、两端生产构建与真实 MySQL 8 门禁，集成复核 PASS，PR #7 首轮 CI 全绿。workpack 已归档；当前等待归档提交的第二轮 GitHub checks 后合并。

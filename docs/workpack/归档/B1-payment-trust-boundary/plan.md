@@ -1,9 +1,9 @@
 # B1-payment-trust-boundary · Workpack plan
 
-> Status: 本地已验证（待用户决定远程交付）
-> Requirement source: [阶段 B：B1 支付入口、通知校验与幂等](../../plans/阶段B-P0P1交易链路修复.md#b1支付入口通知校验与幂等p0)
+> Status: 已归档（PR #7 首轮 CI 全绿，等待归档提交复验后合并）
+> Requirement source: [阶段 B：B1 支付入口、通知校验与幂等](../../../plans/阶段B-P0P1交易链路修复.md#b1支付入口通知校验与幂等p0)
 > Tracking: [GitHub Issue #6](https://github.com/wzhwwwzzzhhh/Final-StandMarket/issues/6)
-> Design: [B1 支付可信边界与并发幂等](../../design/payment/B1-payment-trust-boundary-design.md)（已确认，Design Review PASS）
+> Design: [B1 支付可信边界与并发幂等](../../../design/payment/B1-payment-trust-boundary-design.md)（已确认，Design Review PASS）
 
 ## Execution gates
 
