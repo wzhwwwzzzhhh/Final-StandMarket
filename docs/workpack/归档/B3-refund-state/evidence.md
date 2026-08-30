@@ -52,4 +52,12 @@
 ## Local delivery summary
 
 - B3 产品代码、测试、迁移脚本和本地验证完成；独立实现审查 PASS（P0/P1/P2/P3 均为 0）。
-- 交付状态仅为“本地已验证”：没有执行生产迁移、commit、push、PR、CI、merge 或部署。
+- 未执行生产迁移或部署；B0-AC6 与 B11 继续阻塞任何生产发布声明。
+
+## Remote delivery
+
+- 产品提交：`e2b65f72d43c44e85d7f86ddab031383f097ecef`（`fix(refund): 分离审核与退款完成状态`）。
+- 功能分支：`codex/b3-refund-state`，通过 GitHub SSH over 443 非强推推送；远端提交 SHA 与本地一致。
+- Pull Request：[PR #11](https://github.com/wzhwwwzzzhhh/Final-StandMarket/pull/11)，目标 `master`，关联并关闭 Issue #10。
+- 首轮 GitHub checks（目标提交 `e2b65f7`）全部通过：Java backend、Frontend build (fashion-admin)、Frontend build (fashion-client)、Python agent、Gitleaks。
+- 本次仅同步归档/远程证据；推送后必须等待该最终文档提交的 GitHub checks 再次全绿，方可合并。

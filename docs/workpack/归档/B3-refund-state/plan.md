@@ -1,6 +1,6 @@
 # B3-refund-state · Workpack plan
 
-> Status: 已归档（2026-08-30；本地已验证，独立实现审查 PASS；未执行远程交付）
+> Status: 已归档（2026-08-30；PR #11 首轮 checks 全绿，等待证据同步提交复检后合并）
 > Requirement source: `docs/plans/阶段B-P0P1交易链路修复.md` B3 / GitHub Issue #10
 > Design: `docs/design/refund/B3-refund-state-design.md`（已确认，独立审查 PASS）
 > Baseline: `master` @ `26394d64c7ce11dcee31a9154bd6ee939d8ad61e`
