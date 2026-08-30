@@ -35,6 +35,7 @@
 | 2026-08-30 | 独立实现审查 final | PASS：P0/P1/P2 均为 0 | 首轮 4 P1/2 P2、第二轮 1 P1/1 P2 全部关闭 |
 | 2026-08-30 | `git diff --check` | exit 0 | 仅 Git LF→CRLF 提示，无空白错误 |
 | 2026-08-30 | 限定范围和敏感信息扫描 | 0 forbidden config / 0 potential secret assignments | 未纳入 ignored datasource 配置或凭据值 |
+| 2026-08-30 | PR #9 checks @ `cf3d52f` | 5/5 PASS | Java backend、fashion-admin、fashion-client、Python agent、Gitleaks 全绿；CI run `33294746355`，Gitleaks run `33294746357` |
 
 ## MySQL safety
 
@@ -44,10 +45,14 @@
 
 ## Remote delivery status
 
-- 未授权、未执行 commit、push、PR、merge 或远程设置修改。
+- 用户已明确授权 commit、push、创建 PR 和 checks 全绿后合并。
+- 产品提交 `cf3d52f` 已非强制推送至 `codex/b2-order-inventory-state`，PR [#9](https://github.com/wzhwwwzzzhhh/Final-StandMarket/pull/9) 已创建并关联关闭 Issue #8。
+- PR 首轮 5 项 GitHub checks 全绿；归档提交和第二轮 checks 尚待完成，当前尚未合并。
+- Git HTTPS 连接失败后改用已认证的 SSH-over-443 推送；未修改仓库 remote、分支保护或其他远程设置。
+- 未执行生产迁移或部署。
 
 ## Local delivery summary
 
-- B2 已在 `codex/b2-order-inventory-state` 独立 worktree 完成本地实现、真实 MySQL 验证和独立 Review PASS。
+- B2 已在 `codex/b2-order-inventory-state` 独立 worktree 完成本地实现、真实 MySQL 验证、独立 Review PASS 和 PR 首轮 CI 验证。
 - 主工作树三项用户未提交修改和 `stage-b-ac6-gate` worktree 保持原状，未 reset、stash、暂存或混入 B2。
 - B3 未完成前 B2 不可部署；生产迁移与发布仍受 B0/B3/B10/B11 门禁约束。

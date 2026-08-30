@@ -21,13 +21,12 @@ docs/workpack/
 | 阶段 | 切片 | 状态 | 需求源 | Plan | Review | Evidence |
 |---|---|---|---|---|---|---|
 | B0 | credential-log-safety | AC1-AC5 与 CI 已通过；AC6 阻塞 Issue #4、B11 与生产发布，不阻塞 B1-B10 本地开发 | [阶段 B B0](../plans/阶段B-P0P1交易链路修复.md#b0密码token-与日志安全p0) / [Issue #4](https://github.com/wzhwwwzzzhhh/Final-StandMarket/issues/4) | [plan](B0-credential-log-safety/plan.md) | [PASS](B0-credential-log-safety/review.md) | [evidence](B0-credential-log-safety/evidence.md) |
-| B2 | order-inventory-state | 本地已验证；B3 前不可部署；未提交 | [阶段 B B2](../plans/阶段B-P0P1交易链路修复.md#b2普通订单库存与状态闭环p0) / [Issue #8](https://github.com/wzhwwwzzzhhh/Final-StandMarket/issues/8) | [plan](B2-order-inventory-state/plan.md) | [PASS](B2-order-inventory-state/review.md) | [evidence](B2-order-inventory-state/evidence.md) |
-
 
 ## 已归档
 
 | 阶段 | 切片 | 本地交付日期 | Review | Evidence |
 |---|---|---|---|---|
+| B2 | order-inventory-state | 2026-08-30 | [PASS](归档/B2-order-inventory-state/review.md) | [evidence](归档/B2-order-inventory-state/evidence.md) |
 | B1 | payment-trust-boundary | 2026-08-28 | [PASS](归档/B1-payment-trust-boundary/review.md) | [evidence](归档/B1-payment-trust-boundary/evidence.md) |
 | OPS | github-ci-collaboration | 2026-08-28 | [PASS](归档/OPS-github-ci-collaboration/review.md) | [evidence](归档/OPS-github-ci-collaboration/evidence.md) |
 

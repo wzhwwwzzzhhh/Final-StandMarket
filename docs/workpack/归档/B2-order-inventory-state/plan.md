@@ -1,9 +1,9 @@
 # B2-order-inventory-state · Workpack plan
 
-> Status: 本地已验证（B3 前不可部署；未提交）
-> Requirement source: [阶段 B：B2 普通订单库存与状态闭环](../../plans/阶段B-P0P1交易链路修复.md#b2普通订单库存与状态闭环p0)
+> Status: 已归档（PR #9 首轮 checks 全绿，待合并；B3 前不可部署）
+> Requirement source: [阶段 B：B2 普通订单库存与状态闭环](../../../plans/阶段B-P0P1交易链路修复.md#b2普通订单库存与状态闭环p0)
 > Tracking: [GitHub Issue #8](https://github.com/wzhwwwzzzhhh/Final-StandMarket/issues/8)
-> Design: [B2 普通订单库存与状态闭环](../../design/order/B2-order-inventory-state-design.md)（2026-08-30 原版及历史兼容修订均经用户确认，Design Review PASS）
+> Design: [B2 普通订单库存与状态闭环](../../../design/order/B2-order-inventory-state-design.md)（2026-08-30 原版及历史兼容修订均经用户确认，Design Review PASS）
 > Baseline: `master` @ `df5a480d851b8802bdef6e8bf8aaf2d9d09b5736`
 > Plan review: PASS（第三次独立复审，P0/P1/P2 均为零）
 > Amendment: 2026-08-30 实现审查发现历史履约兼容缺口；修订经独立复审 PASS，并由用户回复“继续”确认后实施。
