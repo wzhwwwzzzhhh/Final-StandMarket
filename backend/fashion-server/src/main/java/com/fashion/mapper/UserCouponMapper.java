@@ -45,7 +45,8 @@ public interface UserCouponMapper {
     /**
      * 回填锁定券的核销订单id
      */
-    int setUseOrderId(@Param("id") Long id, @Param("orderId") Long orderId);
+    int setUseOrderId(@Param("id") Long id, @Param("userId") Long userId,
+                      @Param("orderId") Long orderId);
 
     /**
      * 核销券（仅锁定中可核销，按订单幂等）

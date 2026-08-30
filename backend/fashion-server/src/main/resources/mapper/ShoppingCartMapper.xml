@@ -66,6 +66,15 @@
         select * from shopping_cart 
         where id = #{id}
     </select>
+
+    <select id="findByIdsAndUserId" resultType="com.fashion.entity.ShoppingCart">
+        select * from shopping_cart
+        where user_id = #{userId}
+          and id in
+        <foreach collection="ids" item="id" open="(" separator="," close=")">
+            #{id}
+        </foreach>
+    </select>
     
     <!-- 根据id删除购物车项 -->
     <delete id="deleteById">

@@ -55,10 +55,10 @@ class OrderAdminStatusTest {
     }
 
     @Test
-    @DisplayName("已支付订单可进入非支付的管理状态迁移")
-    void allowsPaidOrderOperationalStatus() {
-        assertDoesNotThrow(() -> service.updateAdminStatus(100L, 3));
+    @DisplayName("管理端通用状态入口不能绕过发货专用流程")
+    void rejectsOperationalStateBypass() {
+        assertThrows(IllegalStateException.class, () -> service.updateAdminStatus(100L, 3));
 
-        verify(orderMapper).updateAdminStatus(100L, 3);
+        verify(orderMapper, never()).updateAdminStatus(100L, 3);
     }
 }

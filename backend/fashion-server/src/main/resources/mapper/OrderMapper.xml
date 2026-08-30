@@ -85,13 +85,38 @@
     <update id="markPaid">
         update orders
         set pay_status = 1, status = 2, checkout_time = #{payTime}
-        where id = #{id} and status = 1 and pay_status = 0
+        where id = #{id} and status = 1 and pay_status = 0 and stock_deducted = 1
     </update>
 
     <update id="cancelPending">
         update orders
-        set status = 5, cancel_time = #{cancelTime}
-        where id = #{id} and status = 1 and pay_status = 0
+        set status = 5, cancel_time = #{cancelTime}, stock_deducted = 0
+        where id = #{id}
+          and status = 1
+          and pay_status = 0
+          and stock_deducted = #{expectedStockDeducted}
+    </update>
+
+    <update id="deliverPaidOrder">
+        update orders
+        set status = 3,
+            tracking_company = #{trackingCompany},
+            tracking_number = #{trackingNumber},
+            delivery_time = #{deliveryTime}
+        where id = #{id}
+          and status = 2
+          and pay_status = 1
+          and stock_deducted = 1
+    </update>
+
+    <update id="confirmDeliveredOrder">
+        update orders
+        set status = 4, delivery_time = #{deliveryTime}
+        where id = #{id}
+          and user_id = #{userId}
+          and status = 3
+          and pay_status = 1
+          and stock_deducted = 1
     </update>
     
     <!-- 统计订单总数 -->
@@ -111,13 +136,17 @@
             pay_method, pay_status, amount, remark, phone, address, user_name,
             consignee, cancel_reason, rejection_reason, cancel_time, estimated_delivery_time,
             delivery_status, delivery_time, shipping_fee, address_book_id,
-            tracking_company, tracking_number, user_coupon_id
+            tracking_company, tracking_number, user_coupon_id,
+            original_price, seckill_activity_id, seckill_coupon_id, is_seckill,
+            seckill_price, stock_deducted
         ) values (
             #{number}, #{status}, #{userId}, #{orderTime}, #{checkoutTime},
             #{payMethod}, #{payStatus}, #{amount}, #{remark}, #{phone}, #{address}, #{userName},
             #{consignee}, #{cancelReason}, #{rejectionReason}, #{cancelTime}, #{estimatedDeliveryTime},
             #{deliveryStatus}, #{deliveryTime}, #{shippingFee}, #{addressBookId},
-            #{trackingCompany}, #{trackingNumber}, #{userCouponId}
+            #{trackingCompany}, #{trackingNumber}, #{userCouponId},
+            #{originalPrice}, #{seckillActivityId}, #{seckillCouponId}, #{isSeckill},
+            #{seckillPrice}, #{stockDeducted}
         )
     </insert>
     
@@ -140,10 +169,14 @@
         LIMIT #{limit}
     </select>
 
-    <!-- 超时未支付且绑定了通用优惠券的订单（定时任务自动取消 + 释放券） -->
-    <select id="selectTimeoutCouponOrders" resultType="com.fashion.entity.Orders">
+    <select id="selectTimeoutOrders" resultType="com.fashion.entity.Orders">
         select * from orders
-        where status = 1 and user_coupon_id is not null
+        where status = 1
+          and pay_status = 0
+          and is_seckill = 0
           and order_time &lt; date_sub(now(), interval #{minutes} minute)
+          and id &gt; #{afterId}
+        order by id asc
+        limit #{limit}
     </select>
 </mapper>

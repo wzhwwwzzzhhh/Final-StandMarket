@@ -117,6 +117,14 @@
         </set>
         where id = #{id}
     </update>
+
+    <update id="deductStock">
+        update product
+        set stock = stock - #{quantity}
+        where id = #{productId}
+          and status = 1
+          and stock >= #{quantity}
+    </update>
     
     <!-- 删除商品 -->
     <delete id="deleteById">

@@ -121,6 +121,53 @@ class OrderServiceImplPaymentTest {
         verify(couponService, never()).markUsed(anyLong(), anyLong());
     }
 
+    @Test
+    @DisplayName("历史已支付库存标识为零时相同 trade_no 仍零写入幂等成功")
+    void historicalPaidOrderAcceptsExactDuplicateWithoutInventoryFact() {
+        Orders order = order(2, 1);
+        order.setStockDeducted(0);
+        Payment payment = payment(2, "TRADE-HISTORY");
+        resetLockedRecords(order, payment);
+
+        assertDoesNotThrow(() -> service.handlePayCallback(
+                100L, 10L, "TRADE-HISTORY", LocalDateTime.now()));
+
+        verify(paymentService, never()).updatePaySuccess(anyLong(), any(), any());
+        verify(orderMapper, never()).markPaid(anyLong(), any());
+        verify(couponService, never()).markUsed(anyLong(), anyLong());
+    }
+
+    @Test
+    @DisplayName("历史已支付库存标识为零时不同 trade_no 仍拒绝")
+    void historicalPaidOrderRejectsConflictingDuplicate() {
+        Orders order = order(2, 1);
+        order.setStockDeducted(0);
+        Payment payment = payment(2, "TRADE-HISTORY");
+        resetLockedRecords(order, payment);
+
+        assertThrows(IllegalStateException.class, () -> service.handlePayCallback(
+                100L, 10L, "TRADE-CONFLICT", LocalDateTime.now()));
+
+        verify(paymentService, never()).updatePaySuccess(anyLong(), any(), any());
+        verify(orderMapper, never()).markPaid(anyLong(), any());
+        verify(couponService, never()).markUsed(anyLong(), anyLong());
+    }
+
+    @Test
+    @DisplayName("未成功扣库存的订单拒绝支付成功回调")
+    void rejectsCallbackWithoutDeductedInventory() {
+        Orders order = order(1, 0);
+        order.setStockDeducted(0);
+        resetLockedRecords(order, payment(0, null));
+
+        assertThrows(IllegalStateException.class, () -> service.handlePayCallback(
+                100L, 10L, "TRADE-100", LocalDateTime.now()));
+
+        verify(paymentService, never()).updatePaySuccess(anyLong(), any(), any());
+        verify(orderMapper, never()).markPaid(anyLong(), any());
+        verify(couponService, never()).markUsed(anyLong(), anyLong());
+    }
+
     private void resetLockedRecords(Orders order, Payment payment) {
         orderMapper = mock(OrderMapper.class, invocation -> {
             String name = invocation.getMethod().getName();
@@ -146,6 +193,7 @@ class OrderServiceImplPaymentTest {
         order.setAmount(new BigDecimal("10.00"));
         order.setStatus(status);
         order.setPayStatus(payStatus);
+        order.setStockDeducted(1);
         return order;
     }
 

@@ -41,6 +41,12 @@ public interface ShoppingCartMapper {
      * 根据id查询购物车项
      */
     ShoppingCart findById(Long id);
+
+    /**
+     * 一次读取当前用户选中的购物车项，供订单事务建立一致快照。
+     */
+    List<ShoppingCart> findByIdsAndUserId(@Param("userId") Long userId,
+                                          @Param("ids") List<Long> ids);
     
     /**
      * 根据id删除购物车项

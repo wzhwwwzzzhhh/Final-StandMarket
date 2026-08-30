@@ -53,7 +53,7 @@
     <!-- 回填锁定券的核销订单id -->
     <update id="setUseOrderId">
         update user_coupon set use_order_id = #{orderId}
-        where id = #{id} and status = 3 and use_order_id is null
+        where id = #{id} and user_id = #{userId} and status = 3 and use_order_id is null
     </update>
 
     <!-- 核销券：仅锁定中可核销（幂等：按订单id条件） -->

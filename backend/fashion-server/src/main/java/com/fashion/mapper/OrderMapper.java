@@ -46,7 +46,17 @@ public interface OrderMapper {
 
     int markPaid(@Param("id") Long id, @Param("payTime") java.time.LocalDateTime payTime);
 
-    int cancelPending(@Param("id") Long id, @Param("cancelTime") java.time.LocalDateTime cancelTime);
+    int cancelPending(@Param("id") Long id,
+                      @Param("expectedStockDeducted") Integer expectedStockDeducted,
+                      @Param("cancelTime") java.time.LocalDateTime cancelTime);
+
+    int deliverPaidOrder(@Param("id") Long id,
+                         @Param("trackingCompany") String trackingCompany,
+                         @Param("trackingNumber") String trackingNumber,
+                         @Param("deliveryTime") java.time.LocalDateTime deliveryTime);
+
+    int confirmDeliveredOrder(@Param("id") Long id, @Param("userId") Long userId,
+                              @Param("deliveryTime") java.time.LocalDateTime deliveryTime);
     
     /**
      * 统计订单总数
@@ -83,9 +93,9 @@ public interface OrderMapper {
     List<Orders> selectRecentOrders(@Param("limit") int limit);
 
     /**
-     * 查询超时未支付且绑定了通用优惠券的订单（用于定时自动取消并释放券）
-     * @param minutes 超时分钟数
-     * @return 订单列表
+     * 按主键游标分批查询所有超时待支付普通订单（含无券订单）。
      */
-    List<Orders> selectTimeoutCouponOrders(@Param("minutes") int minutes);
+    List<Orders> selectTimeoutOrders(@Param("minutes") int minutes,
+                                     @Param("afterId") long afterId,
+                                     @Param("limit") int limit);
 }

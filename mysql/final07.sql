@@ -251,11 +251,15 @@ CREATE TABLE `orders` (
   `is_seckill` tinyint(1) DEFAULT '0' COMMENT '是否为秒杀订单 0:否 1:是',
   `seckill_price` decimal(10,2) DEFAULT NULL COMMENT '秒杀价格',
   `original_price` decimal(10,2) DEFAULT NULL COMMENT '原价',
+  `user_coupon_id` bigint DEFAULT NULL COMMENT '通用优惠券id（逻辑外键，下单锁定）',
+  `stock_deducted` tinyint(1) NOT NULL DEFAULT '0' COMMENT '普通订单库存已扣减且尚未回补 0否 1是',
   PRIMARY KEY (`id`),
   UNIQUE KEY `idx_orders_number` (`number`),
   KEY `idx_orders_user_time` (`user_id`,`order_time` DESC),
   KEY `idx_orders_status` (`status`,`order_time` DESC),
-  KEY `idx_orders_pay_status` (`pay_status`,`order_time` DESC)
+  KEY `idx_orders_pay_status` (`pay_status`,`order_time` DESC),
+  KEY `idx_orders_timeout` (`status`,`pay_status`,`order_time`),
+  CONSTRAINT `chk_orders_stock_deducted` CHECK ((`stock_deducted` in (0,1)))
 ) ENGINE=InnoDB AUTO_INCREMENT=43829 DEFAULT CHARSET=utf8mb3 COLLATE=utf8mb3_bin COMMENT='订单表';
 /*!40101 SET character_set_client = @saved_cs_client */;
 
@@ -265,7 +269,7 @@ CREATE TABLE `orders` (
 
 LOCK TABLES `orders` WRITE;
 /*!40000 ALTER TABLE `orders` DISABLE KEYS */;
-INSERT INTO `orders` VALUES (43825,'ORD1776833285875',1,20,14,'2026-04-22 12:48:06',NULL,1,0,118.00,NULL,'12356235623','上海市上海市黄浦区大西街',NULL,'张三',NULL,NULL,NULL,NULL,1,NULL,0,NULL,NULL,0,NULL,NULL),(43826,'ORD1776833347541',1,20,14,'2026-04-22 12:49:08',NULL,1,0,1047.00,NULL,'12356235623','上海市上海市黄浦区大西街',NULL,'张三',NULL,NULL,NULL,NULL,1,NULL,0,NULL,NULL,0,NULL,NULL),(43827,'ORD1776834118072',1,20,14,'2026-04-22 13:01:58',NULL,1,0,1347.00,NULL,'12356235623','上海市上海市黄浦区大西街',NULL,'张三',NULL,NULL,NULL,NULL,1,NULL,0,NULL,NULL,0,NULL,NULL),(43828,'ORD1776835169460',1,20,14,'2026-04-22 13:19:29',NULL,1,0,76.00,NULL,'12356235623','上海市上海市黄浦区大西街',NULL,'张三',NULL,NULL,NULL,NULL,1,NULL,0,NULL,NULL,0,NULL,NULL);
+INSERT INTO `orders` VALUES (43825,'ORD1776833285875',1,20,14,'2026-04-22 12:48:06',NULL,1,0,118.00,NULL,'12356235623','上海市上海市黄浦区大西街',NULL,'张三',NULL,NULL,NULL,NULL,1,NULL,0,NULL,NULL,0,NULL,NULL,NULL,0),(43826,'ORD1776833347541',1,20,14,'2026-04-22 12:49:08',NULL,1,0,1047.00,NULL,'12356235623','上海市上海市黄浦区大西街',NULL,'张三',NULL,NULL,NULL,NULL,1,NULL,0,NULL,NULL,0,NULL,NULL,NULL,0),(43827,'ORD1776834118072',1,20,14,'2026-04-22 13:01:58',NULL,1,0,1347.00,NULL,'12356235623','上海市上海市黄浦区大西街',NULL,'张三',NULL,NULL,NULL,NULL,1,NULL,0,NULL,NULL,0,NULL,NULL,NULL,0),(43828,'ORD1776835169460',1,20,14,'2026-04-22 13:19:29',NULL,1,0,76.00,NULL,'12356235623','上海市上海市黄浦区大西街',NULL,'张三',NULL,NULL,NULL,NULL,1,NULL,0,NULL,NULL,0,NULL,NULL,NULL,0);
 /*!40000 ALTER TABLE `orders` ENABLE KEYS */;
 UNLOCK TABLES;
 

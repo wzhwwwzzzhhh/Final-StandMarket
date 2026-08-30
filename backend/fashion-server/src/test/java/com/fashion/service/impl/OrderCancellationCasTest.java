@@ -3,7 +3,6 @@ package com.fashion.service.impl;
 import com.fashion.context.BaseContext;
 import com.fashion.entity.Orders;
 import com.fashion.mapper.OrderMapper;
-import com.fashion.service.CouponService;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
@@ -14,8 +13,7 @@ import java.util.Collections;
 
 import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertThrows;
-import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.anyLong;
+import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
@@ -26,7 +24,7 @@ class OrderCancellationCasTest {
 
     private OrderServiceImpl service;
     private OrderMapper orderMapper;
-    private CouponService couponService;
+    private OrderCancellationService cancellationService;
     private Orders pendingOrder;
 
     @BeforeEach
@@ -39,12 +37,11 @@ class OrderCancellationCasTest {
         pendingOrder.setPayStatus(0);
 
         orderMapper = mock(OrderMapper.class);
-        couponService = mock(CouponService.class);
-        when(orderMapper.getById(100L)).thenReturn(pendingOrder);
+        cancellationService = mock(OrderCancellationService.class);
 
         service = new OrderServiceImpl();
         ReflectionTestUtils.setField(service, "orderMapper", orderMapper);
-        ReflectionTestUtils.setField(service, "couponService", couponService);
+        ReflectionTestUtils.setField(service, "orderCancellationService", cancellationService);
     }
 
     @AfterEach
@@ -55,31 +52,32 @@ class OrderCancellationCasTest {
     @Test
     @DisplayName("用户取消 CAS 失败时拒绝释放优惠券")
     void userCancelDoesNotReleaseCouponWhenStateChanged() {
-        when(orderMapper.cancelPending(anyLong(), any())).thenReturn(0);
+        doThrow(new IllegalStateException("state changed"))
+                .when(cancellationService).cancelForUser(100L, 7L);
 
         assertThrows(IllegalStateException.class, () -> service.cancel(100L));
 
-        verify(couponService, never()).release(anyLong(), anyLong());
+        verify(cancellationService).cancelForUser(100L, 7L);
     }
 
     @Test
     @DisplayName("用户取消 CAS 成功后才释放优惠券")
     void userCancelReleasesCouponAfterSuccessfulTransition() {
-        when(orderMapper.cancelPending(anyLong(), any())).thenReturn(1);
+        when(cancellationService.cancelForUser(100L, 7L)).thenReturn(true);
 
         assertDoesNotThrow(() -> service.cancel(100L));
 
-        verify(couponService).release(7L, 100L);
+        verify(cancellationService).cancelForUser(100L, 7L);
     }
 
     @Test
     @DisplayName("超时取消 CAS 失败时不释放优惠券")
     void timeoutCancelDoesNotReleaseCouponWhenPaymentWonRace() {
-        when(orderMapper.selectTimeoutCouponOrders(30)).thenReturn(Collections.singletonList(pendingOrder));
-        when(orderMapper.cancelPending(anyLong(), any())).thenReturn(0);
+        when(orderMapper.selectTimeoutOrders(30, 0L, 100)).thenReturn(Collections.singletonList(pendingOrder));
+        when(cancellationService.cancelTimeout(100L)).thenReturn(false);
 
-        service.autoCancelTimeoutCouponOrders();
+        service.autoCancelTimeoutOrders();
 
-        verify(couponService, never()).release(anyLong(), anyLong());
+        verify(cancellationService).cancelTimeout(100L);
     }
 }

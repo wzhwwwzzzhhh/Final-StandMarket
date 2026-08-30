@@ -253,7 +253,9 @@ public class CouponServiceImpl implements CouponService {
     @Transactional
     public void bindUseOrder(Long userId, Long userCouponId, Long orderId) {
         if (userCouponId != null && orderId != null) {
-            userCouponMapper.setUseOrderId(userCouponId, orderId);
+            if (userCouponMapper.setUseOrderId(userCouponId, userId, orderId) != 1) {
+                throw new IllegalStateException("优惠券绑定订单失败");
+            }
         }
     }
 
@@ -264,9 +266,10 @@ public class CouponServiceImpl implements CouponService {
             return;
         }
         int rows = userCouponMapper.useCoupon(orderId, userId);
-        if (rows > 0) {
-            log.info("优惠券核销成功 orderId={}, userId={}", orderId, userId);
+        if (rows != 1) {
+            throw new IllegalStateException("优惠券核销失败");
         }
+        log.info("优惠券核销成功 orderId={}, userId={}", orderId, userId);
     }
 
     @Override
@@ -276,9 +279,10 @@ public class CouponServiceImpl implements CouponService {
             return;
         }
         int rows = userCouponMapper.releaseCoupon(orderId, userId);
-        if (rows > 0) {
-            log.info("优惠券释放成功 orderId={}, userId={}", orderId, userId);
+        if (rows != 1) {
+            throw new IllegalStateException("优惠券释放失败");
         }
+        log.info("优惠券释放成功 orderId={}, userId={}", orderId, userId);
     }
 
     @Override
