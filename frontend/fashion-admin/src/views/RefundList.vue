@@ -6,7 +6,8 @@
         <el-select v-model="statusFilter" placeholder="筛选状态" @change="loadRefunds" style="width: 140px">
           <el-option label="全部" :value="null"></el-option>
           <el-option label="待审核" :value="0"></el-option>
-          <el-option label="已退款" :value="2"></el-option>
+          <el-option label="已同意，等待退款处理" :value="1"></el-option>
+          <el-option label="退款完成" :value="2"></el-option>
           <el-option label="已拒绝" :value="3"></el-option>
         </el-select>
         <el-button type="primary" @click="loadRefunds">刷新</el-button>
@@ -108,7 +109,7 @@ export default {
       }).then(() => {
         refundApi.approve({ id: row.id, opinion: '同意退款' }).then(response => {
           if (response.data.code === 1) {
-            this.$message.success('退款成功')
+            this.$message.success('已同意，等待退款处理')
             this.loadRefunds()
           } else {
             this.$message.error(response.data.msg || '操作失败')
@@ -149,11 +150,11 @@ export default {
       })
     },
     statusText(status) {
-      const map = { 0: '待审核', 2: '已退款', 3: '已拒绝' }
+      const map = { 0: '待审核', 1: '已同意，等待退款处理', 2: '退款完成', 3: '已拒绝' }
       return map[status] || '未知'
     },
     statusTagType(status) {
-      const map = { 0: 'warning', 2: 'success', 3: 'danger' }
+      const map = { 0: 'warning', 1: 'info', 2: 'success', 3: 'danger' }
       return map[status] || 'info'
     }
   }

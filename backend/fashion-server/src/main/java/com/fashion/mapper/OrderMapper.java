@@ -57,6 +57,13 @@ public interface OrderMapper {
 
     int confirmDeliveredOrder(@Param("id") Long id, @Param("userId") Long userId,
                               @Param("deliveryTime") java.time.LocalDateTime deliveryTime);
+
+    int markRefunding(@Param("id") Long id,
+                      @Param("userId") Long userId,
+                      @Param("expectedStatus") Integer expectedStatus);
+
+    int restoreRejectedRefundOrder(@Param("id") Long id,
+                                   @Param("targetStatus") Integer targetStatus);
     
     /**
      * 统计订单总数

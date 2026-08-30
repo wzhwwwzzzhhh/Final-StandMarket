@@ -25,7 +25,7 @@ public interface RefundService {
     List<Refund> listAllRefunds(Integer status);
 
     /**
-     * 同意退款（恢复库存 + 更新订单状态）
+     * 审核同意（仅 0 -> 1，等待外部退款处理，不修改订单、支付或库存）
      */
     void approve(Long id, String opinion);
 

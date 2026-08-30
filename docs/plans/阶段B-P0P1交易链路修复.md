@@ -571,7 +571,11 @@ cd agent-service && python -m pytest -q
 
 ### 实现后审查
 
-待各工作包实现、测试、独立审查和证据归档后补充：
+已归档工作包：
+
+- B3（2026-08-30）：本地已验证，独立实现审查 PASS（P0/P1/P2/P3 均为 0）；后端干净全量 163 tests、显式 B3 MySQL/Spring 10 tests、两端生产构建通过。详见 [B3 review](../workpack/归档/B3-refund-state/review.md) 与 [evidence](../workpack/归档/B3-refund-state/evidence.md)。真实 `1 -> 2`、生产历史对账、B0-AC6/B11 发布门禁仍未完成。
+
+其余工作包实现、测试、独立审查和证据归档后补充：
 
 - 审查范围：
 - 发现问题：

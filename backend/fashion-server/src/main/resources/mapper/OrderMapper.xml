@@ -118,6 +118,23 @@
           and pay_status = 1
           and stock_deducted = 1
     </update>
+
+    <update id="markRefunding">
+        update orders
+        set status = 6
+        where id = #{id}
+          and user_id = #{userId}
+          and status = #{expectedStatus}
+          and #{expectedStatus} in (3,4)
+    </update>
+
+    <update id="restoreRejectedRefundOrder">
+        update orders
+        set status = #{targetStatus}
+        where id = #{id}
+          and status = 6
+          and #{targetStatus} in (3,4)
+    </update>
     
     <!-- 统计订单总数 -->
     <select id="count" resultType="long">

@@ -48,7 +48,7 @@ public class RefundController {
             String opinion = (String) params.get("opinion");
 
             refundService.approve(id, opinion);
-            return Result.success("退款成功");
+            return Result.success("已同意，等待退款处理");
         } catch (RuntimeException e) {
             return Result.error(e.getMessage());
         }
