@@ -76,7 +76,7 @@ export default {
       })
     },
     getStatusText(status) {
-      const map = { 0: '待审核', 2: '已退款', 3: '已拒绝' }
+      const map = { 0: '待审核', 1: '已同意，等待退款处理', 2: '退款完成', 3: '已拒绝' }
       return map[status] || '未知'
     },
     formatTime(time) {
@@ -177,6 +177,11 @@ export default {
 .status-0 {
   color: var(--accent-orange);
   border: 1px solid var(--accent-orange);
+}
+
+.status-1 {
+  color: var(--accent-purple);
+  border: 1px solid var(--accent-purple);
 }
 
 .status-2 {

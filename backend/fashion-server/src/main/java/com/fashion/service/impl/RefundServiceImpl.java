@@ -1,12 +1,9 @@
 package com.fashion.service.impl;
 
 import com.fashion.context.BaseContext;
-import com.fashion.entity.OrderDetail;
 import com.fashion.entity.Orders;
 import com.fashion.entity.Refund;
-import com.fashion.mapper.OrderDetailMapper;
 import com.fashion.mapper.OrderMapper;
-import com.fashion.mapper.ProductMapper;
 import com.fashion.mapper.RefundMapper;
 import com.fashion.service.RefundService;
 import lombok.extern.slf4j.Slf4j;
@@ -27,12 +24,6 @@ public class RefundServiceImpl implements RefundService {
 
     @Autowired
     private OrderMapper orderMapper;
-
-    @Autowired
-    private OrderDetailMapper orderDetailMapper;
-
-    @Autowired
-    private ProductMapper productMapper;
 
     @Transactional
     @Override
@@ -69,15 +60,17 @@ public class RefundServiceImpl implements RefundService {
         refund.setRefundNo(refundNo);
         refund.setReason(reason);
         refund.setAmount(order.getAmount());
-        refund.setStatus(0); // 待审核
+        refund.setStatus(Refund.STATUS_PENDING);
         refund.setOrderStatus(order.getStatus()); // 保存当前订单状态，拒绝时恢复用
         refund.setCreateTime(LocalDateTime.now());
         refund.setUpdateTime(LocalDateTime.now());
-        refundMapper.insert(refund);
+        if (refundMapper.insert(refund) != 1) {
+            throw new IllegalStateException("退款申请创建失败");
+        }
 
-        // 更新订单状态为 6（退款中）
-        order.setStatus(6);
-        orderMapper.update(order);
+        if (orderMapper.markRefunding(orderId, userId, order.getStatus()) != 1) {
+            throw new IllegalStateException("订单状态已变化，退款申请失败");
+        }
 
         log.info("退款申请已提交 orderId={}, refundNo={}, userId={}", orderId, refundNo, userId);
         return refund;
@@ -100,34 +93,11 @@ public class RefundServiceImpl implements RefundService {
     @Transactional
     @Override
     public void approve(Long id, String opinion) {
-        Refund refund = refundMapper.getById(id);
-        if (refund == null) {
-            throw new RuntimeException("退款记录不存在");
+        LocalDateTime now = LocalDateTime.now();
+        if (refundMapper.approvePending(id, opinion, now, now) != 1) {
+            throw new RuntimeException("退款记录不存在或已处理");
         }
-        if (refund.getStatus() != 0) {
-            throw new RuntimeException("该退款申请已处理，不可重复操作");
-        }
-
-        // 更新退款记录为已退款
-        refund.setStatus(2); // 已退款
-        refund.setAuditOpinion(opinion);
-        refund.setAuditTime(LocalDateTime.now());
-        refund.setRefundTime(LocalDateTime.now());
-        refund.setUpdateTime(LocalDateTime.now());
-        refundMapper.update(refund);
-
-        // 恢复库存（product 级别，按 order_detail 中的 product_id 和 number）
-        List<OrderDetail> details = orderDetailMapper.listByOrderId(refund.getOrderId());
-        for (OrderDetail detail : details) {
-            if (detail.getProductId() != null && detail.getNumber() != null) {
-                productMapper.restoreStock(detail.getProductId(), detail.getNumber());
-                log.info("恢复库存 productId={}, delta={}", detail.getProductId(), detail.getNumber());
-            }
-        }
-
-        // 订单保持 status=6（退款状态）
-        // TODO: MVP 阶段仅恢复库存，未调用支付网关退款（如支付宝 alipay.trade.refund）
-        log.warn("退款已同意，但未触发支付网关退款（MVP 限制），refundId={}, refundNo={}", id, refund.getRefundNo());
+        log.info("退款审核已同意，等待外部退款处理 refundId={}", id);
     }
 
     @Transactional
@@ -137,30 +107,21 @@ public class RefundServiceImpl implements RefundService {
         if (refund == null) {
             throw new RuntimeException("退款记录不存在");
         }
-        if (refund.getStatus() != 0) {
+        if (refund.getStatus() == null || refund.getStatus() != Refund.STATUS_PENDING) {
             throw new RuntimeException("该退款申请已处理，不可重复操作");
         }
-
-        // 更新退款记录为拒绝
-        refund.setStatus(3); // 拒绝
-        refund.setAuditOpinion(opinion);
-        refund.setAuditTime(LocalDateTime.now());
-        refund.setUpdateTime(LocalDateTime.now());
-        refundMapper.update(refund);
-
-        // 恢复订单到申请退款前的状态（用 refund.order_status）
-        if (refund.getOrderStatus() != null) {
-            Orders order = orderMapper.getById(refund.getOrderId());
-            if (order != null) {
-                order.setStatus(refund.getOrderStatus());
-                orderMapper.update(order);
-                log.info("退款拒绝，订单状态恢复到 status={}", refund.getOrderStatus());
-            }
-        } else {
-            log.warn("退款拒绝时 order_status 为空，订单 status=6 无法恢复，orderId={}, refundId={}",
-                     refund.getOrderId(), refund.getId());
+        if (refund.getOrderStatus() == null
+                || (refund.getOrderStatus() != 3 && refund.getOrderStatus() != 4)) {
+            throw new RuntimeException("退款申请前订单状态不可恢复");
         }
 
-        log.info("退款已拒绝 refundId={}, refundNo={}, opinion={}", id, refund.getRefundNo(), opinion);
+        LocalDateTime now = LocalDateTime.now();
+        if (refundMapper.rejectPending(id, opinion, now, now) != 1) {
+            throw new RuntimeException("退款记录不存在或已处理");
+        }
+        if (orderMapper.restoreRejectedRefundOrder(refund.getOrderId(), refund.getOrderStatus()) != 1) {
+            throw new IllegalStateException("订单状态已变化，拒绝退款失败");
+        }
+        log.info("退款已拒绝 refundId={}, refundNo={}", id, refund.getRefundNo());
     }
 }

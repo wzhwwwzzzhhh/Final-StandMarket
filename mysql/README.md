@@ -13,6 +13,7 @@
 | `payment_table.sql` | 支付记录表 | 历史功能脚本 |
 | `add_payment_active_unique.sql` | B1 活动支付流水唯一约束 | 已有库增量脚本；执行前停支付写入，冲突/部分结构会主动失败 |
 | `refund_table.sql` | 售后退款表 | 历史功能脚本 |
+| `add_refund_review_state.sql` | B3 退款审核四状态与申请前状态约束 | 已有库增量脚本；首次迁移遇到不可证明历史事实或部分 marker 时主动失败 |
 | `add_discount_to_activity.sql` | 秒杀活动折扣字段变更 | 历史结构变更，需确认目标库是否已执行 |
 | `data_enrichment.sql` | 开发/演示数据补充 | 不应直接导入生产环境 |
 | `add_indexes.sql` | 商品、订单、秒杀与用户高频查询索引 | 可重复执行；在目标库执行前仍需评审执行窗口和索引重复性 |

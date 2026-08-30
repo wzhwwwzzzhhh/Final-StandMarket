@@ -4,6 +4,7 @@ import com.fashion.entity.Refund;
 import org.apache.ibatis.annotations.Mapper;
 import org.apache.ibatis.annotations.Param;
 
+import java.time.LocalDateTime;
 import java.util.List;
 
 /**
@@ -42,8 +43,13 @@ public interface RefundMapper {
      */
     List<Refund> listByOrderIdAndStatus(@Param("orderId") Long orderId, @Param("status") Integer status);
 
-    /**
-     * 更新退款记录
-     */
-    int update(Refund refund);
+    int approvePending(@Param("id") Long id,
+                       @Param("opinion") String opinion,
+                       @Param("auditTime") LocalDateTime auditTime,
+                       @Param("updateTime") LocalDateTime updateTime);
+
+    int rejectPending(@Param("id") Long id,
+                      @Param("opinion") String opinion,
+                      @Param("auditTime") LocalDateTime auditTime,
+                      @Param("updateTime") LocalDateTime updateTime);
 }

@@ -14,6 +14,11 @@ public class Refund implements Serializable {
 
     private static final long serialVersionUID = 1L;
 
+    public static final int STATUS_PENDING = 0;
+    public static final int STATUS_WAITING_EXTERNAL_REFUND = 1;
+    public static final int STATUS_COMPLETED = 2;
+    public static final int STATUS_REJECTED = 3;
+
     private Long id;
 
     /**
@@ -47,7 +52,7 @@ public class Refund implements Serializable {
     private BigDecimal amount;
 
     /**
-     * 状态 0待审核 2已退款 3拒绝
+     * 状态 0待审核 1已同意/待外部退款 2退款完成 3已拒绝
      */
     private Integer status;
 
