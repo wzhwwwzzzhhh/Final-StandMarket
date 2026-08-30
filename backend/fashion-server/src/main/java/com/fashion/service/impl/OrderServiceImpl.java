@@ -21,9 +21,12 @@ import java.time.ZoneId;
 import java.time.ZoneOffset;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.TreeMap;
 
 @Service
 @Slf4j
@@ -41,56 +44,17 @@ public class OrderServiceImpl implements OrderService {
     @Autowired
     private ProductMapper productMapper;
     @Autowired
-    private SeckillActivityMapper seckillActivityMapper;
-    @Autowired
-    private SeckillCouponMapper seckillCouponMapper;
-    @Autowired
     private PaymentService paymentService;
     @Autowired
     private StringRedisTemplate stringRedisTemplate;
     @Autowired
     private CouponService couponService;
+    @Autowired
+    private OrderCancellationService orderCancellationService;
 
     @Override
     public List<Orders> selectByCondition(Map<String, Object> params) {
         return orderMapper.selectByCondition(params);
-    }
-
-    /**
-     * 服务端应用秒杀活动/秒杀券优惠（与结算页计算逻辑一致，且以服务端配置为准）
-     */
-    private BigDecimal applyDiscount(BigDecimal totalAmount, Long activityId, Long couponId) {
-        BigDecimal discount = BigDecimal.ZERO;
-        LocalDateTime now = LocalDateTime.now();
-
-        if (activityId != null && activityId > 0) {
-            SeckillActivity activity = seckillActivityMapper.selectById(activityId);
-            if (activity != null
-                    && (now.isAfter(activity.getStartTime()) && now.isBefore(activity.getEndTime()))) {
-                BigDecimal discountRate = activity.getDiscount();
-                if (discountRate == null || discountRate.compareTo(BigDecimal.ZERO) <= 0
-                        || discountRate.compareTo(new BigDecimal("10")) > 0) {
-                    discountRate = new BigDecimal("10");
-                }
-                BigDecimal activityDiscount = totalAmount.multiply(
-                                BigDecimal.ONE.subtract(discountRate.divide(new BigDecimal("10"), 2, BigDecimal.ROUND_HALF_UP)))
-                        .setScale(2, BigDecimal.ROUND_HALF_UP);
-                discount = discount.add(activityDiscount);
-            }
-        }
-
-        if (couponId != null && couponId > 0) {
-            SeckillCoupon coupon = seckillCouponMapper.selectById(couponId);
-            if (coupon != null && coupon.getStatus() != null && coupon.getStatus() == 1
-                    && (now.isAfter(coupon.getStartTime()) && now.isBefore(coupon.getEndTime()))
-                    && coupon.getOriginalPrice() != null && coupon.getSeckillPrice() != null) {
-                BigDecimal couponDiscount = BigDecimal.valueOf(coupon.getOriginalPrice())
-                        .subtract(BigDecimal.valueOf(coupon.getSeckillPrice()))
-                        .setScale(2, BigDecimal.ROUND_HALF_UP);
-                discount = discount.add(couponDiscount);
-            }
-        }
-        return discount;
     }
 
     /**
@@ -139,23 +103,7 @@ public class OrderServiceImpl implements OrderService {
         if (id == null || status == null) {
             throw new RuntimeException("订单ID和状态不能为空");
         }
-        if (status == 2) {
-            throw new RuntimeException("支付状态只能由可信支付通知更新");
-        }
-        if (status < 3 || status > 5) {
-            throw new RuntimeException("不支持的订单状态");
-        }
-
-        Orders order = orderMapper.getById(id);
-        if (order == null) {
-            throw new RuntimeException("订单不存在");
-        }
-        if (order.getPayStatus() == null || order.getPayStatus() != 1) {
-            throw new RuntimeException("未支付订单不能由管理端推进状态");
-        }
-        if (orderMapper.updateAdminStatus(id, status) == 0) {
-            throw new RuntimeException("订单状态已变化，请刷新后重试");
-        }
+        throw new IllegalStateException("订单状态必须通过支付、发货、确认收货或取消专用流程更新");
     }
 
     @Override
@@ -177,6 +125,9 @@ public class OrderServiceImpl implements OrderService {
         }
         if (orderCreateDTO == null || orderCreateDTO.getProductIds() == null || orderCreateDTO.getProductIds().isEmpty()) {
             throw new RuntimeException("请选择要结算的商品");
+        }
+        if (new HashSet<>(orderCreateDTO.getProductIds()).size() != orderCreateDTO.getProductIds().size()) {
+            throw new IllegalArgumentException("购物车项不能重复");
         }
 
         Orders orders = new Orders();
@@ -209,14 +160,29 @@ public class OrderServiceImpl implements OrderService {
         List<OrderDetail> orderDetails = new ArrayList<>();
         List<Long> orderProductIds = new ArrayList<>();
         BigDecimal totalAmount = BigDecimal.ZERO;
+        List<ShoppingCart> selectedCartItems = shoppingCartMapper.findByIdsAndUserId(
+                userId, orderCreateDTO.getProductIds());
+        if (selectedCartItems == null || selectedCartItems.size() != orderCreateDTO.getProductIds().size()) {
+            throw new IllegalStateException("购物车商品不存在或无权操作");
+        }
+        Map<Long, ShoppingCart> cartItemsById = new HashMap<>();
+        for (ShoppingCart selectedCartItem : selectedCartItems) {
+            if (selectedCartItem == null || selectedCartItem.getId() == null
+                    || cartItemsById.put(selectedCartItem.getId(), selectedCartItem) != null) {
+                throw new IllegalStateException("购物车快照无效");
+            }
+        }
         for (Long cartItemId : orderCreateDTO.getProductIds()) {
-            ShoppingCart cartItem = shoppingCartMapper.findById(cartItemId);
+            ShoppingCart cartItem = cartItemsById.get(cartItemId);
             if (cartItem == null) {
                 throw new RuntimeException("购物车商品不存在");
             }
             // 校验购物车项归属当前用户
-            if (!cartItem.getUserId().equals(userId)) {
+            if (!Objects.equals(cartItem.getUserId(), userId)) {
                 throw new RuntimeException("存在无权操作的商品");
+            }
+            if (cartItem.getNumber() == null || cartItem.getNumber() <= 0) {
+                throw new IllegalArgumentException("购物车商品数量必须大于零");
             }
             Product product = productMapper.getById(cartItem.getProductId());
             if (product == null) {
@@ -243,17 +209,21 @@ public class OrderServiceImpl implements OrderService {
             throw new RuntimeException("购物车为空");
         }
 
-        // 秒杀订单（秒杀活动/秒杀券）不可叠加通用优惠券，避免多重优惠；0 视为未选择
-        Long userCouponId = orderCreateDTO.getUserCouponId();
-        boolean seckillOrder = (orderCreateDTO.getActivityId() != null && orderCreateDTO.getActivityId() > 0)
-                || (orderCreateDTO.getCouponId() != null && orderCreateDTO.getCouponId() > 0);
-        if (userCouponId != null && userCouponId > 0 && seckillOrder) {
-            throw new RuntimeException("秒杀订单不可叠加通用优惠券");
+        Map<Long, Integer> quantityByProductId = new TreeMap<>();
+        for (OrderDetail orderDetail : orderDetails) {
+            quantityByProductId.merge(orderDetail.getProductId(), orderDetail.getNumber(), Math::addExact);
+        }
+        for (Map.Entry<Long, Integer> entry : quantityByProductId.entrySet()) {
+            int affectedRows = productMapper.deductStock(entry.getKey(), entry.getValue());
+            if (affectedRows != 1) {
+                throw new IllegalStateException("商品库存不足，商品ID：" + entry.getKey());
+            }
         }
 
-        // 服务端重算订单金额（商品总价），并应用秒杀活动/秒杀券/通用券优惠，忽略前端传值
-        BigDecimal discount = applyDiscount(totalAmount, orderCreateDTO.getActivityId(), orderCreateDTO.getCouponId());
-        // 通用优惠券：锁券（status=3）并按券计算抵扣，与秒杀优惠互斥（已在上方校验）
+        // 普通订单不信任客户端携带的秒杀活动/券标识，只允许使用服务端校验的通用券。
+        Long userCouponId = orderCreateDTO.getUserCouponId();
+        BigDecimal discount = BigDecimal.ZERO;
+        // 通用优惠券：锁券（status=3）并按券计算抵扣。
         BigDecimal couponDiscount = BigDecimal.ZERO;
         if (userCouponId != null && userCouponId > 0) {
             couponDiscount = couponService.lockAndDiscount(userId, userCouponId, totalAmount, orderProductIds);
@@ -261,12 +231,16 @@ public class OrderServiceImpl implements OrderService {
         }
         orders.setAmount(totalAmount.subtract(discount).max(BigDecimal.ZERO));
         orders.setOriginalPrice(totalAmount);
-        orders.setSeckillActivityId(orderCreateDTO.getActivityId() != null && orderCreateDTO.getActivityId() > 0 ? orderCreateDTO.getActivityId() : null);
-        orders.setSeckillCouponId(orderCreateDTO.getCouponId() != null && orderCreateDTO.getCouponId() > 0 ? orderCreateDTO.getCouponId() : null);
+        orders.setSeckillActivityId(null);
+        orders.setSeckillCouponId(null);
+        orders.setSeckillPrice(null);
         orders.setUserCouponId(userCouponId != null && userCouponId > 0 ? userCouponId : null);
-        orders.setIsSeckill(seckillOrder ? 1 : 0);
+        orders.setIsSeckill(0);
+        orders.setStockDeducted(1);
 
-        orderMapper.insert(orders);
+        if (orderMapper.insert(orders) != 1) {
+            throw new IllegalStateException("订单写入失败");
+        }
 
         // 通用券绑定订单号（幂等核销/释放按订单 id 定位）
         if (userCouponId != null && userCouponId > 0) {
@@ -277,14 +251,16 @@ public class OrderServiceImpl implements OrderService {
         for (OrderDetail detail : orderDetails) {
             detail.setOrderId(orders.getId());
         }
-        orderDetailMapper.batchInsert(orderDetails);
+        if (orderDetailMapper.batchInsert(orderDetails) != orderDetails.size()) {
+            throw new IllegalStateException("订单明细写入不完整");
+        }
 
         return orders;
     }
 
     @Override
     public List<Orders> listUserOrders(Integer status) {
-        Long userId = BaseContext.getUserId() != null ? BaseContext.getUserId() : 1L;
+        Long userId = requireCurrentUserId();
         List<Orders> orders = orderMapper.listUserOrders(userId, status);
         for (Orders order : orders) {
             List<OrderDetail> orderDetails = orderDetailMapper.listByOrderId(order.getId());
@@ -293,68 +269,52 @@ public class OrderServiceImpl implements OrderService {
         return orders;
     }
 
-    @Transactional
     @Override
     public void cancel(Long id) {
-        Long userId = BaseContext.getUserId() != null ? BaseContext.getUserId() : 1L;
-        Orders order = orderMapper.getById(id);
-        if (order == null || !order.getUserId().equals(userId)) {
-            throw new RuntimeException("订单不存在或无权操作");
-        }
-        int rows = orderMapper.cancelPending(id, LocalDateTime.now());
-        if (rows == 0) {
-            throw new IllegalStateException("订单状态已变化，无法取消");
-        }
-        // 订单取消 → 释放已锁定的通用优惠券（幂等）
-        couponService.release(order.getUserId(), id);
+        Long userId = requireCurrentUserId();
+        orderCancellationService.cancelForUser(id, userId);
     }
 
     @Override
-    @Transactional
-    public void autoCancelTimeoutCouponOrders() {
-        List<Orders> timeoutOrders = orderMapper.selectTimeoutCouponOrders(30);
-        if (timeoutOrders == null || timeoutOrders.isEmpty()) {
-            return;
-        }
-        for (Orders order : timeoutOrders) {
-            int rows = orderMapper.cancelPending(order.getId(), LocalDateTime.now());
-            if (rows == 0) {
-                log.info("超时取消跳过已变化订单 orderId={}", order.getId());
-                continue;
+    public void autoCancelTimeoutOrders() {
+        final int batchSize = 100;
+        long afterId = 0L;
+        while (true) {
+            List<Orders> timeoutOrders = orderMapper.selectTimeoutOrders(30, afterId, batchSize);
+            if (timeoutOrders == null || timeoutOrders.isEmpty()) {
+                return;
             }
-            couponService.release(order.getUserId(), order.getId());
-            log.info("超时未支付订单自动取消并释放券 orderId={}, userId={}", order.getId(), order.getUserId());
+            for (Orders order : timeoutOrders) {
+                afterId = order.getId();
+                try {
+                    if (orderCancellationService.cancelTimeout(order.getId())) {
+                        log.info("超时未支付普通订单自动取消 orderId={}, userId={}", order.getId(), order.getUserId());
+                    }
+                } catch (RuntimeException failure) {
+                    log.error("超时订单取消失败，保留待重试 orderId={}", order.getId(), failure);
+                }
+            }
+            if (timeoutOrders.size() < batchSize) {
+                return;
+            }
         }
     }
 
     @Transactional
     @Override
     public void confirm(Long id) {
-        Long userId = BaseContext.getUserId() != null ? BaseContext.getUserId() : 1L;
-        Orders order = orderMapper.getById(id);
-        if (order == null || !order.getUserId().equals(userId)) {
-            throw new RuntimeException("订单不存在或无权操作");
+        Long userId = requireCurrentUserId();
+        if (orderMapper.confirmDeliveredOrder(id, userId, LocalDateTime.now()) != 1) {
+            throw new IllegalStateException("订单不存在、无权操作或当前状态不能确认收货");
         }
-        order.setStatus(4);
-        order.setDeliveryTime(LocalDateTime.now());
-        orderMapper.update(order);
     }
 
     @Transactional
     @Override
     public void deliver(Long id, String trackingCompany, String trackingNumber) {
-        Orders order = orderMapper.getById(id);
-        if (order == null) {
-            throw new RuntimeException("订单不存在");
+        if (orderMapper.deliverPaidOrder(id, trackingCompany, trackingNumber, LocalDateTime.now()) != 1) {
+            throw new IllegalStateException("订单不存在或当前状态不能发货");
         }
-        if (order.getStatus() != 2) {
-            throw new RuntimeException("只有待发货订单可以发货，当前状态：" + order.getStatus());
-        }
-        order.setTrackingCompany(trackingCompany);
-        order.setTrackingNumber(trackingNumber);
-        order.setDeliveryTime(LocalDateTime.now());
-        order.setStatus(3);
-        orderMapper.update(order);
         log.info("订单发货成功 orderId={}, company={}, number={}", id, trackingCompany, trackingNumber);
     }
 
@@ -377,6 +337,10 @@ public class OrderServiceImpl implements OrderService {
             return;
         }
 
+        if (!Objects.equals(order.getStockDeducted(), 1)) {
+            throw new IllegalStateException("订单库存尚未成功扣减");
+        }
+
         if (payment.getStatus() == null || (payment.getStatus() != 0 && payment.getStatus() != 1)) {
             throw new IllegalStateException("支付记录当前状态不允许确认成功");
         }
@@ -392,7 +356,9 @@ public class OrderServiceImpl implements OrderService {
         if (rows == 0) {
             throw new IllegalStateException("订单状态已变化，无法确认支付");
         }
-        couponService.markUsed(order.getUserId(), orderId);
+        if (order.getUserCouponId() != null) {
+            couponService.markUsed(order.getUserId(), orderId);
+        }
         log.info("支付宝回调处理完成 orderId={}, tradeNo={}", orderId, tradeNo);
     }
 
@@ -424,5 +390,13 @@ public class OrderServiceImpl implements OrderService {
                     || order.getStatus() == 4 || order.getStatus() == 6;
         }
         return order.getPayStatus() == 2 && order.getStatus() == 6;
+    }
+
+    private Long requireCurrentUserId() {
+        Long userId = BaseContext.getUserId();
+        if (userId == null) {
+            throw new IllegalStateException("请先登录");
+        }
+        return userId;
     }
 }

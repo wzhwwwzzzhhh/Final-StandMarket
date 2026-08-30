@@ -163,6 +163,11 @@ public class Orders implements Serializable {
     private Long userCouponId;
 
     /**
+     * 普通订单库存是否已成功扣减且尚未回补：0否 1是
+     */
+    private Integer stockDeducted;
+
+    /**
      * 订单明细
      */
     private List<OrderDetail> items;

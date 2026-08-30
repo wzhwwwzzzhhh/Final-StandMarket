@@ -42,6 +42,7 @@ class PaymentServiceImplCreationTest {
         order.setStatus(1);
         order.setPayStatus(0);
         order.setAmount(new BigDecimal("10.00"));
+        order.setStockDeducted(1);
 
         orderMapper = mock(OrderMapper.class);
         paymentMapper = mock(PaymentMapper.class);
@@ -136,6 +137,18 @@ class PaymentServiceImplCreationTest {
         assertSame(conflict, thrown);
         verify(paymentMapper).getActiveByOrderIdAndType(100L, 0);
         verify(paymentMapper).getActiveByOrderIdAndTypeForUpdate(100L, 0);
+    }
+
+    @Test
+    @DisplayName("未成功扣库存的历史订单不能新建或复用支付流水")
+    void rejectsOrderWithoutDeductedInventory() {
+        order.setStockDeducted(0);
+        when(paymentMapper.getActiveByOrderIdAndType(100L, 0)).thenReturn(payment("10.00", 2));
+
+        assertThrows(IllegalStateException.class, () -> service.createAlipayPayment(100L));
+
+        verify(paymentMapper, never()).getActiveByOrderIdAndType(100L, 0);
+        verify(paymentMapper, never()).insert(any());
     }
 
     private Payment payment(String amount, int payMethod) {

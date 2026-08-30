@@ -8,23 +8,22 @@ import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
 
 /**
- * 通用优惠券超时订单定时任务
- * 每 5 分钟扫描：绑定通用券且超时 30 分钟未支付的订单 → 自动取消并释放券
+ * 每 5 分钟分批扫描所有超时待支付普通订单，并逐单进入独立取消事务。
  */
 @Component
-public class CouponTimeoutTask {
+public class OrderTimeoutTask {
 
-    private static final Logger log = LoggerFactory.getLogger(CouponTimeoutTask.class);
+    private static final Logger log = LoggerFactory.getLogger(OrderTimeoutTask.class);
 
     @Autowired
     private OrderService orderService;
 
     @Scheduled(fixedRate = 300_000)
-    public void autoCancelTimeoutCouponOrders() {
+    public void autoCancelTimeoutOrders() {
         try {
-            orderService.autoCancelTimeoutCouponOrders();
+            orderService.autoCancelTimeoutOrders();
         } catch (Exception e) {
-            log.error("超时订单自动取消失败", e);
+            log.error("超时订单批量扫描失败", e);
         }
     }
 }

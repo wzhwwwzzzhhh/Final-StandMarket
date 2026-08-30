@@ -75,6 +75,9 @@ public class PaymentServiceImpl implements PaymentService {
                 || order.getPayStatus() == null || order.getPayStatus() != 0) {
             throw new IllegalStateException("订单状态不是待支付");
         }
+        if (!Objects.equals(order.getStockDeducted(), 1)) {
+            throw new IllegalStateException("订单库存尚未成功扣减");
+        }
         if (order.getAmount() == null) {
             throw new IllegalStateException("订单金额无效");
         }

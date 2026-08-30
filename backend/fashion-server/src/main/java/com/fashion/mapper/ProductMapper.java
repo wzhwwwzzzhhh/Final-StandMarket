@@ -61,6 +61,13 @@ public interface ProductMapper {
      * @return 影响行数
      */
     int update(Product product);
+
+    /**
+     * 条件扣减普通商品库存。
+     *
+     * @return 仅商品启用且库存充足时返回 1
+     */
+    int deductStock(@Param("productId") Long productId, @Param("quantity") Integer quantity);
     
     /**
      * 删除商品
