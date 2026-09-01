@@ -20,13 +20,13 @@ docs/workpack/
 
 | 阶段 | 切片 | 状态 | 需求源 | Plan | Review | Evidence |
 |---|---|---|---|---|---|---|
-| B4 | resource-ownership | 本地已验证，等待远程交付授权 | [阶段 B B4](../plans/阶段B-P0P1交易链路修复.md#b4地址公开路由与资源归属p0) / [Issue #12](https://github.com/wzhwwwzzzhhh/Final-StandMarket/issues/12) | [plan](B4-resource-ownership/plan.md) | [PASS](B4-resource-ownership/review.md) | [evidence](B4-resource-ownership/evidence.md) |
 | B0 | credential-log-safety | AC1-AC5 与 CI 已通过；AC6 阻塞 Issue #4、B11 与生产发布，不阻塞 B1-B10 本地开发 | [阶段 B B0](../plans/阶段B-P0P1交易链路修复.md#b0密码token-与日志安全p0) / [Issue #4](https://github.com/wzhwwwzzzhhh/Final-StandMarket/issues/4) | [plan](B0-credential-log-safety/plan.md) | [PASS](B0-credential-log-safety/review.md) | [evidence](B0-credential-log-safety/evidence.md) |
 
 ## 已归档
 
 | 阶段 | 切片 | 本地交付日期 | Review | Evidence |
 |---|---|---|---|---|
+| B4 | resource-ownership | 2026-09-01 | [PASS](归档/B4-resource-ownership/review.md) | [evidence](归档/B4-resource-ownership/evidence.md) |
 | B3 | refund-state | 2026-08-30 | [PASS](归档/B3-refund-state/review.md) | [evidence](归档/B3-refund-state/evidence.md) |
 | B2 | order-inventory-state | 2026-08-30 | [PASS](归档/B2-order-inventory-state/review.md) | [evidence](归档/B2-order-inventory-state/evidence.md) |
 | B1 | payment-trust-boundary | 2026-08-28 | [PASS](归档/B1-payment-trust-boundary/review.md) | [evidence](归档/B1-payment-trust-boundary/evidence.md) |

@@ -1,6 +1,6 @@
 # B4-resource-ownership · Workpack plan
 
-> Status: 本地已验证（2026-09-01；独立实现复审 PASS，等待远程交付授权）
+> Status: 已归档（2026-09-01；PR #13 首轮 checks 全绿，等待归档证据提交复检后合并）
 > Requirement source: `docs/plans/阶段B-P0P1交易链路修复.md` B4 / GitHub Issue #12
 > Design: 无新增 Design；阶段 B B4 已确认“精确公开路由 + 服务端登录态 + 资源归属条件下沉”的安全边界，本 workpack 不引入新的状态机、迁移或跨服务契约决策
 > Baseline: `master` @ `7819d5460d76f0d4be1a8241687704ff66a09a57`

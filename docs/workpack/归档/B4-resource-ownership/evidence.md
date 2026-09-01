@@ -34,7 +34,16 @@
 
 ## Not run or blocked
 
-- 本地未安装 `gitleaks`，无法执行本地同名二进制；限定 diff 与新增测试/文档已人工检查，远程 Secret Scan 仍需在获授权 push 后由 GitHub CI 执行。
+- 本地未安装 `gitleaks`；GitHub PR #13 首轮 Gitleaks 已通过。
 - 产品提交：`da4eedc`（`fix(auth): 下沉用户资源归属校验`）。
-- 尚未执行 push、PR、合并、生产迁移或部署。
+- 尚未执行合并、生产迁移或部署。
 - B0-AC6 与 B11 继续阻塞生产发布，不阻塞 B4 本地开发。
+
+## Remote delivery
+
+- 产品提交：`da4eedc6402cf83d9c3a9a1fcebff7052a028f74`（`fix(auth): 下沉用户资源归属校验`）。
+- 本地证据提交：`cef491ae3dff85c0eaaa49009509cdb049dc56c7`（`docs(workpack): 记录 B4 本地验证证据`）。
+- 功能分支：`codex/b4-resource-ownership`，非强推推送到 GitHub；远端提交与本地一致。
+- Pull Request：[PR #13](https://github.com/wzhwwwzzzhhh/Final-StandMarket/pull/13)，目标 `master`，关联并计划关闭 Issue #12。
+- 首轮 GitHub checks（目标提交 `cef491a`）5/5 通过：Java backend、Frontend build (fashion-admin)、Frontend build (fashion-client)、Python agent、Gitleaks。
+- 本次提交仅同步归档和远程证据；推送后必须等待最终文档提交的 GitHub checks 再次全绿，方可合并。
