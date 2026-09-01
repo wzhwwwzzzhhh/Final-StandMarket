@@ -19,7 +19,7 @@ public interface ReviewMapper {
 
     List<Review> selectByUserId(@Param("userId") Long userId);
 
-    Review selectByOrderId(@Param("orderId") Long orderId);
+    Review selectByOrderIdAndUserId(@Param("orderId") Long orderId, @Param("userId") Long userId);
 
     List<Review> selectAll(@Param("keyword") String keyword);
 

@@ -37,7 +37,7 @@ public class ReviewController {
         }
         // 校验订单是否已评价
         if (review.getOrderId() != null) {
-            Review existing = reviewService.getByOrderId(review.getOrderId());
+            Review existing = reviewService.getByOrderIdForCurrentUser(review.getOrderId());
             if (existing != null) {
                 return Result.error("该订单已评价");
             }
@@ -74,13 +74,13 @@ public class ReviewController {
         if (userId == null) {
             return Result.error("请先登录");
         }
-        PageResult<Review> result = reviewService.getMyReviews(userId, page, size);
+        PageResult<Review> result = reviewService.getMyReviews(page, size);
         return Result.success(result);
     }
 
     @GetMapping("/check/{orderId}")
     public Result<Map<String, Boolean>> check(@PathVariable Long orderId) {
-        Review existing = reviewService.getByOrderId(orderId);
+        Review existing = reviewService.getByOrderIdForCurrentUser(orderId);
         java.util.Map<String, Boolean> result = new java.util.HashMap<>();
         result.put("reviewed", existing != null);
         return Result.success(result);

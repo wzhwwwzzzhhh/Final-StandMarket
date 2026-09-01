@@ -79,7 +79,7 @@ class RefundServiceImplTest {
         Refund refund = pendingRefund();
         when(refundMapper.getById(10L)).thenReturn(refund);
         Orders order = order(6);
-        when(orderMapper.getById(100L)).thenReturn(order);
+        when(orderMapper.getByIdAndUserId(100L, 7L)).thenReturn(order);
 
         service.reject(10L, "拒绝");
 
@@ -96,7 +96,7 @@ class RefundServiceImplTest {
     void applyUsesOrderStateCas() {
         BaseContext.setUserId(7L);
         Orders order = order(3);
-        when(orderMapper.getById(100L)).thenReturn(order);
+        when(orderMapper.getByIdAndUserId(100L, 7L)).thenReturn(order);
         when(refundMapper.listByOrderIdAndStatus(100L, 0)).thenReturn(Collections.emptyList());
 
         service.apply(100L, "不合适");
@@ -122,7 +122,7 @@ class RefundServiceImplTest {
         BaseContext.setUserId(7L);
         orderMapper = writeResultMock(OrderMapper.class, 0);
         ReflectionTestUtils.setField(service, "orderMapper", orderMapper);
-        when(orderMapper.getById(100L)).thenReturn(order(3));
+        when(orderMapper.getByIdAndUserId(100L, 7L)).thenReturn(order(3));
         when(refundMapper.listByOrderIdAndStatus(100L, 0)).thenReturn(Collections.emptyList());
 
         assertThrows(RuntimeException.class, () -> service.apply(100L, "不合适"));

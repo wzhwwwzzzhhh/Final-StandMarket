@@ -44,6 +44,13 @@
         from seckill_order
         where order_number = #{orderNumber}
     </select>
+
+    <select id="selectByOrderNumberAndUserId" resultType="com.fashion.entity.SeckillOrder">
+        select id, user_id as userId, coupon_id as couponId, order_number as orderNumber,
+               status, create_time as createTime, pay_time as payTime
+        from seckill_order
+        where order_number = #{orderNumber} and user_id = #{userId}
+    </select>
     
     <!-- 根据用户id查询秒杀订单列表 -->
     <select id="selectByUserId" parameterType="java.lang.Long" resultType="com.fashion.entity.SeckillOrder">
@@ -82,6 +89,14 @@
         update seckill_order
         set status = #{status}
         where order_number = #{orderNumber} and status = 1
+    </update>
+
+    <update id="cancelPendingByOrderNumberAndUserId">
+        update seckill_order
+        set status = 3
+        where order_number = #{orderNumber}
+          and user_id = #{userId}
+          and status = 1
     </update>
     
     <!-- 更新支付时间 -->

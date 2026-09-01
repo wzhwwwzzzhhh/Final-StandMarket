@@ -40,6 +40,10 @@
         select * from orders where id = #{id}
     </select>
 
+    <select id="getByIdAndUserId" resultType="com.fashion.entity.Orders">
+        select * from orders where id = #{id} and user_id = #{userId}
+    </select>
+
     <select id="getByIdForUpdate" parameterType="long" resultType="com.fashion.entity.Orders">
         select * from orders where id = #{id} for update
     </select>

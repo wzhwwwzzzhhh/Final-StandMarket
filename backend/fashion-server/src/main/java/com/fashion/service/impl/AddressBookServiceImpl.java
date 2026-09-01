@@ -6,7 +6,8 @@ import com.fashion.mapper.AddressBookMapper;
 import com.fashion.service.AddressBookService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
-import java.time.LocalDateTime;
+import org.springframework.transaction.annotation.Transactional;
+
 import java.util.List;
 
 /**
@@ -21,21 +22,22 @@ public class AddressBookServiceImpl implements AddressBookService {
     /**
      * 添加地址
      */
+    @Transactional
     @Override
     public void add(AddressBook addressBook) {
-        System.out.println("添加地址，接收到的参数：" + addressBook);
-        // 获取当前用户ID
-        Long userId = BaseContext.getUserId() != null ? BaseContext.getUserId() : 1L;
+        if (addressBook == null) {
+            throw new IllegalArgumentException("地址不能为空");
+        }
+        Long userId = requireCurrentUserId();
         addressBook.setUserId(userId);
-        System.out.println("设置userId后的地址：" + addressBook);
 
-        // 如果是默认地址，先将用户的所有地址设置为非默认
         if (addressBook.getIsDefault() != null && addressBook.getIsDefault() == 1) {
             addressBookMapper.resetDefaultByUserId(userId);
         }
 
-        addressBookMapper.insert(addressBook);
-        System.out.println("地址添加成功");
+        if (addressBookMapper.insert(addressBook) != 1) {
+            throw new IllegalStateException("地址添加失败");
+        }
     }
 
     /**
@@ -43,23 +45,31 @@ public class AddressBookServiceImpl implements AddressBookService {
      */
     @Override
     public void delete(Long id) {
-        addressBookMapper.deleteById(id);
+        Long userId = requireCurrentUserId();
+        if (id == null || addressBookMapper.deleteByIdAndUserId(id, userId) != 1) {
+            throw new IllegalStateException("地址不存在");
+        }
     }
 
     /**
      * 更新地址
      */
+    @Transactional
     @Override
     public void update(AddressBook addressBook) {
-        // 获取当前用户ID
-        Long userId = BaseContext.getUserId() != null ? BaseContext.getUserId() : 1L;
+        Long userId = requireCurrentUserId();
+        if (addressBook == null || addressBook.getId() == null
+                || addressBookMapper.getByIdAndUserId(addressBook.getId(), userId) == null) {
+            throw new IllegalStateException("地址不存在");
+        }
 
-        // 如果是默认地址，先将用户的所有地址设置为非默认
         if (addressBook.getIsDefault() != null && addressBook.getIsDefault() == 1) {
             addressBookMapper.resetDefaultByUserId(userId);
         }
 
-        addressBookMapper.update(addressBook);
+        if (addressBookMapper.updateByIdAndUserId(addressBook, userId) != 1) {
+            throw new IllegalStateException("地址不存在");
+        }
     }
 
     /**
@@ -67,7 +77,8 @@ public class AddressBookServiceImpl implements AddressBookService {
      */
     @Override
     public AddressBook getById(Long id) {
-        return addressBookMapper.getById(id);
+        Long userId = requireCurrentUserId();
+        return id == null ? null : addressBookMapper.getByIdAndUserId(id, userId);
     }
 
     /**
@@ -75,9 +86,7 @@ public class AddressBookServiceImpl implements AddressBookService {
      */
     @Override
     public List<AddressBook> list() {
-        // 获取当前用户ID
-        Long userId = BaseContext.getUserId() != null ? BaseContext.getUserId() : 1L;
-        return addressBookMapper.listByUserId(userId);
+        return addressBookMapper.listByUserId(requireCurrentUserId());
     }
 
     /**
@@ -85,26 +94,35 @@ public class AddressBookServiceImpl implements AddressBookService {
      */
     @Override
     public AddressBook getDefault() {
-        // 获取当前用户ID
-        Long userId = BaseContext.getUserId() != null ? BaseContext.getUserId() : 1L;
-        return addressBookMapper.getDefaultByUserId(userId);
+        return addressBookMapper.getDefaultByUserId(requireCurrentUserId());
     }
 
     /**
      * 设置默认地址
      */
+    @Transactional
     @Override
     public void setDefault(Long id) {
-        // 获取当前用户ID
-        Long userId = BaseContext.getUserId() != null ? BaseContext.getUserId() : 1L;
+        Long userId = requireCurrentUserId();
+        if (id == null || addressBookMapper.getByIdAndUserId(id, userId) == null) {
+            throw new IllegalStateException("地址不存在");
+        }
 
-        // 先将用户的所有地址设置为非默认
         addressBookMapper.resetDefaultByUserId(userId);
 
-        // 将指定地址设置为默认
         AddressBook addressBook = new AddressBook();
         addressBook.setId(id);
         addressBook.setIsDefault(1);
-        addressBookMapper.update(addressBook);
+        if (addressBookMapper.updateByIdAndUserId(addressBook, userId) != 1) {
+            throw new IllegalStateException("地址不存在");
+        }
+    }
+
+    private Long requireCurrentUserId() {
+        Long userId = BaseContext.getUserId();
+        if (userId == null) {
+            throw new IllegalStateException("请先登录");
+        }
+        return userId;
     }
 }

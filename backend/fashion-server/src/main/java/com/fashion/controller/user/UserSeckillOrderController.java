@@ -1,6 +1,5 @@
 package com.fashion.controller.user;
 
-import com.fashion.context.BaseContext;
 import com.fashion.dto.OrderAmountCalculateDTO;
 import com.fashion.dto.UserCouponDto;
 import com.fashion.entity.SeckillOrder;
@@ -39,17 +38,12 @@ public class UserSeckillOrderController {
     @GetMapping("/coupons")
     public Result<List<UserCouponDto>> getCoupons(@RequestParam(required = false) Integer status) {
         try {
-            Long userId = BaseContext.getUserId();
-            if (userId == null) {
-                return Result.error("请先登录");
-            }
-            
-            List<UserCouponDto> coupons = seckillOrderService.getUserCoupons(userId, status);
+            List<UserCouponDto> coupons = seckillOrderService.getCurrentUserCoupons(status);
             return Result.success(coupons);
             
         } catch (Exception e) {
             log.error("获取秒杀券列表失败", e);
-            return Result.error("获取秒杀券列表失败：" + e.getMessage());
+            return Result.error("获取秒杀券列表失败");
         }
     }
 
@@ -63,25 +57,16 @@ public class UserSeckillOrderController {
                 return Result.error("订单号不能为空");
             }
             
-            SeckillOrder order = seckillOrderService.getOrderByNumber(orderNumber);
+            SeckillOrder order = seckillOrderService.getCurrentUserOrderByNumber(orderNumber);
             if (order == null) {
                 return Result.error("订单不存在");
-            }
-            
-            // 检查订单是否属于当前用户
-            Long currentUserId = BaseContext.getUserId();
-            if (currentUserId == null) {
-                return Result.error("请先登录");
-            }
-            if (!order.getUserId().equals(currentUserId)) {
-                return Result.error("无权查看此订单");
             }
             
             return Result.success(order);
             
         } catch (Exception e) {
             log.error("获取秒杀订单详情失败，订单号：{}", orderNumber, e);
-            return Result.error("获取订单详情失败：" + e.getMessage());
+            return Result.error("获取订单详情失败");
         }
     }
 
@@ -95,21 +80,7 @@ public class UserSeckillOrderController {
                 return Result.error("订单号不能为空");
             }
             
-            // 检查订单是否属于当前用户
-            Long currentUserId = BaseContext.getUserId();
-            if (currentUserId == null) {
-                return Result.error("请先登录");
-            }
-            SeckillOrder order = seckillOrderService.getOrderByNumber(orderNumber);
-            if (order == null) {
-                return Result.error("订单不存在");
-            }
-            
-            if (!order.getUserId().equals(currentUserId)) {
-                return Result.error("无权取消此订单");
-            }
-            
-            boolean success = seckillOrderService.cancelOrder(orderNumber);
+            boolean success = seckillOrderService.cancelCurrentUserOrder(orderNumber);
             if (success) {
                 return Result.success("取消订单成功");
             } else {
@@ -118,7 +89,7 @@ public class UserSeckillOrderController {
             
         } catch (Exception e) {
             log.error("取消秒杀订单失败，订单号：{}", orderNumber, e);
-            return Result.error("取消订单失败：" + e.getMessage());
+            return Result.error("取消订单失败");
         }
     }
 

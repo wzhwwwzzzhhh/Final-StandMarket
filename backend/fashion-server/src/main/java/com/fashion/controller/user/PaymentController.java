@@ -53,7 +53,7 @@ public class PaymentController {
         try {
             // Service 在订单行锁内校验本人待支付订单，并只使用持久化金额创建/复用流水。
             Payment payment = paymentService.createAlipayPayment(orderId);
-            Orders order = orderService.getById(orderId);
+            Orders order = orderService.getCurrentUserOrderById(orderId);
             if (order == null) {
                 return Result.error("订单不存在");
             }
@@ -97,9 +97,8 @@ public class PaymentController {
      */
     @GetMapping("/status/{orderId}")
     public Result<Map<String, Object>> payStatus(@PathVariable Long orderId) {
-        Long userId = BaseContext.getUserId();
-        Orders order = orderService.getById(orderId);
-        if (userId == null || order == null || !userId.equals(order.getUserId())) {
+        Orders order = orderService.getCurrentUserOrderById(orderId);
+        if (order == null) {
             return Result.error("订单不存在或无权查看");
         }
 
@@ -139,15 +138,9 @@ public class PaymentController {
                 return Result.error("支付流水号缺失");
             }
 
-            Payment payment = paymentService.getPaymentStatus(outTradeNo);
+            Payment payment = paymentService.getPaymentStatusForCurrentUser(outTradeNo);
             if (payment == null || payment.getOrderType() == null || payment.getOrderType() != 0) {
                 return Result.error("支付记录不存在");
-            }
-
-            Long userId = BaseContext.getUserId();
-            Orders order = orderService.getById(payment.getOrderId());
-            if (userId == null || order == null || !userId.equals(order.getUserId())) {
-                return Result.error("订单不存在或无权查看");
             }
 
             // 同步回跳仅用于展示支付状态；订单状态只接受服务器端异步通知更新。

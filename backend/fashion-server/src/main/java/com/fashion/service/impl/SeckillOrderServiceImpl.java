@@ -54,17 +54,17 @@ public class SeckillOrderServiceImpl implements SeckillOrderService {
     }
 
     @Override
-    public List<SeckillOrder> getOrdersByUserId(Long userId) {
-        try {
-            return seckillOrderMapper.selectByUserId(userId);
-        } catch (Exception e) {
-            log.error("查询用户{}的秒杀订单失败", userId, e);
+    public SeckillOrder getCurrentUserOrderByNumber(String orderNumber) {
+        Long userId = requireCurrentUserId();
+        if (orderNumber == null || orderNumber.trim().isEmpty()) {
             return null;
         }
+        return seckillOrderMapper.selectByOrderNumberAndUserId(orderNumber, userId);
     }
 
     @Override
-    public List<UserCouponDto> getUserCoupons(Long userId, Integer status) {
+    public List<UserCouponDto> getCurrentUserCoupons(Integer status) {
+        Long userId = requireCurrentUserId();
         try {
             Map<String, Object> params = new HashMap<>();
             params.put("userId", userId);
@@ -94,6 +94,16 @@ public class SeckillOrderServiceImpl implements SeckillOrderService {
             log.error("查询用户{}的优惠券列表失败", userId, e);
             return new ArrayList<>();
         }
+    }
+
+    @Override
+    @Transactional
+    public boolean cancelCurrentUserOrder(String orderNumber) {
+        Long userId = requireCurrentUserId();
+        if (orderNumber == null || orderNumber.trim().isEmpty()) {
+            return false;
+        }
+        return seckillOrderMapper.cancelPendingByOrderNumberAndUserId(orderNumber, userId) == 1;
     }
 
     @Override
@@ -327,7 +337,7 @@ public class SeckillOrderServiceImpl implements SeckillOrderService {
 
     @Override
     public Result<List<SeckillOrderVo>> listAll() {
-        Long userId = BaseContext.getUserId();
+        Long userId = requireCurrentUserId();
         List<SeckillOrderVo> orders = seckillOrderMapper.selectListByUserId(userId);
         List<SeckillOrderVo> voList = new ArrayList<>();
         User user = userMapper.selectById(userId);
@@ -413,5 +423,13 @@ public class SeckillOrderServiceImpl implements SeckillOrderService {
             log.error("计算订单金额失败", e);
             return Result.error("计算订单金额失败：" + e.getMessage());
         }
+    }
+
+    private Long requireCurrentUserId() {
+        Long userId = BaseContext.getUserId();
+        if (userId == null) {
+            throw new IllegalStateException("请先登录");
+        }
+        return userId;
     }
 }

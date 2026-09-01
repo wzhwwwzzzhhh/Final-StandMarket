@@ -26,6 +26,7 @@ docs/workpack/
 
 | 阶段 | 切片 | 本地交付日期 | Review | Evidence |
 |---|---|---|---|---|
+| B4 | resource-ownership | 2026-09-01 | [PASS](归档/B4-resource-ownership/review.md) | [evidence](归档/B4-resource-ownership/evidence.md) |
 | B3 | refund-state | 2026-08-30 | [PASS](归档/B3-refund-state/review.md) | [evidence](归档/B3-refund-state/evidence.md) |
 | B2 | order-inventory-state | 2026-08-30 | [PASS](归档/B2-order-inventory-state/review.md) | [evidence](归档/B2-order-inventory-state/evidence.md) |
 | B1 | payment-trust-boundary | 2026-08-28 | [PASS](归档/B1-payment-trust-boundary/review.md) | [evidence](归档/B1-payment-trust-boundary/evidence.md) |

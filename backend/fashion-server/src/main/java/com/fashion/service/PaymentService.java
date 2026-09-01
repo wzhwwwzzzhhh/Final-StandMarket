@@ -15,6 +15,11 @@ public interface PaymentService {
     Payment getPaymentStatus(String payNo);
 
     /**
+     * 用户端按当前登录用户查询普通订单支付流水。
+     */
+    Payment getPaymentStatusForCurrentUser(String payNo);
+
+    /**
      * 在当前事务中锁定支付记录，供支付状态迁移使用。
      */
     Payment getByIdForUpdate(Long id);
