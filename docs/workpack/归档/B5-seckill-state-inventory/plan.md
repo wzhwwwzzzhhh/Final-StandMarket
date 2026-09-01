@@ -1,6 +1,6 @@
 # B5-seckill-state-inventory · Workpack plan
 
-> Status: 本地已验证（2026-09-01；等待远程交付授权）
+> Status: 已归档（2026-09-01；PR #15 首轮 checks 全绿，等待归档证据提交复检后合并）
 > Requirement source: `docs/plans/阶段B-P0P1交易链路修复.md` B5 / GitHub Issue #14
 > Design: `docs/design/seckill/B5-seckill-state-inventory-design.md`（已确认，2026-09-01）
 > Baseline: `master` @ `bfa4d77dbedfd539bf41076d19e418e92119f9f6`

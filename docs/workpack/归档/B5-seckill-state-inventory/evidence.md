@@ -49,5 +49,13 @@
 
 ## Not run or blocked
 
-- 生产迁移、RabbitMQ 队列操作、commit、push、PR、CI、merge 与部署均未执行。
+- 生产迁移、RabbitMQ 队列操作、merge 与部署均未执行。
 - B6, B0-AC6, B10 and B11 remain production release gates.
+
+## Remote delivery
+
+- 产品提交：`bcbdae04e2a44382ff63037a968021107c809891`（`fix(seckill): 收敛取消状态与库存回补`）。
+- 功能分支：`codex/b5-seckill-state-inventory`，通过已认证 SSH 通道非强推推送；远端提交与本地一致。
+- Pull Request：[PR #15](https://github.com/wzhwwwzzzhhh/Final-StandMarket/pull/15)，目标 `master`，关联并计划关闭 Issue #14。
+- 首轮 GitHub checks（目标提交 `bcbdae0`）5/5 通过：Java backend、Frontend build (fashion-admin)、Frontend build (fashion-client)、Python agent、Gitleaks。
+- 本次归档提交只同步 workpack、项目状态和远程证据；推送后必须等待第二轮 GitHub checks 再次全绿，方可合并。
