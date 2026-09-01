@@ -39,12 +39,12 @@ public class Webconfig  implements WebMvcConfigurer {
                 .excludePathPatterns(
                         // 登录相关
                         "/user/login",
-                        "/user/send-sms-code",
+                        "/user/register",
+                        "/user/sms-code",
                         // 商品相关 - 不需要登录
                         "/user/product/**",
                         // 分类相关 - 不需要登录
-                        "/user/category/**",
-                        "/upload/**"
+                        "/user/category/**"
                 )
                 .order(2);
     }

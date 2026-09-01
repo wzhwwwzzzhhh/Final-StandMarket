@@ -91,6 +91,17 @@ public class OrderServiceImpl implements OrderService {
     @Override
     public Orders getById(Long id) {
         Orders order = orderMapper.getById(id);
+        return attachOrderDetails(order);
+    }
+
+    @Override
+    public Orders getCurrentUserOrderById(Long id) {
+        Long userId = requireCurrentUserId();
+        Orders order = id == null ? null : orderMapper.getByIdAndUserId(id, userId);
+        return attachOrderDetails(order);
+    }
+
+    private Orders attachOrderDetails(Orders order) {
         if (order != null) {
             List<OrderDetail> orderDetails = orderDetailMapper.listByOrderId(order.getId());
             order.setItems(orderDetails);
@@ -146,14 +157,15 @@ public class OrderServiceImpl implements OrderService {
         orders.setShippingFee(BigDecimal.ZERO);
 
         if (orderCreateDTO.getAddressId() != null) {
-            AddressBook addressBook = addressBookMapper.getById(orderCreateDTO.getAddressId());
-            if (addressBook != null) {
-                orders.setConsignee(addressBook.getConsignee());
-                orders.setPhone(addressBook.getPhone());
-                orders.setAddress(addressBook.getProvinceName() + addressBook.getCityName()
-                        + addressBook.getDistrictName() + addressBook.getDetail());
-                orders.setAddressBookId(addressBook.getId());
+            AddressBook addressBook = addressBookMapper.getByIdAndUserId(orderCreateDTO.getAddressId(), userId);
+            if (addressBook == null) {
+                throw new IllegalStateException("地址不存在");
             }
+            orders.setConsignee(addressBook.getConsignee());
+            orders.setPhone(addressBook.getPhone());
+            orders.setAddress(addressBook.getProvinceName() + addressBook.getCityName()
+                    + addressBook.getDistrictName() + addressBook.getDetail());
+            orders.setAddressBookId(addressBook.getId());
         }
 
         // 服务端重算订单金额：基于购物车项，忽略前端传值，防止金额被篡改

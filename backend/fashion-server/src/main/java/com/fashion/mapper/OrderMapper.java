@@ -33,6 +33,8 @@ public interface OrderMapper {
      */
     Orders getById(Long id);
 
+    Orders getByIdAndUserId(@Param("id") Long id, @Param("userId") Long userId);
+
     Orders getByIdForUpdate(Long id);
     
     /**

@@ -67,8 +67,8 @@ public class AgentController {
         if (userId == null) {
             return Result.error("请先登录");
         }
-        Orders order = orderService.getById(orderId);
-        if (order == null || !order.getUserId().equals(userId)) {
+        Orders order = orderService.getCurrentUserOrderById(orderId);
+        if (order == null) {
             return Result.error("订单不存在");
         }
         if (order.getTrackingNumber() == null || order.getTrackingNumber().isEmpty()) {

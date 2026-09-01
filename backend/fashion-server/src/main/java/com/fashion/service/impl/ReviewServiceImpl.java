@@ -1,5 +1,6 @@
 package com.fashion.service.impl;
 
+import com.fashion.context.BaseContext;
 import com.fashion.entity.PageResult;
 import com.fashion.entity.Review;
 import com.fashion.mapper.ReviewMapper;
@@ -23,6 +24,10 @@ public class ReviewServiceImpl implements ReviewService {
     @Override
     @Transactional
     public Review addReview(Review review) {
+        if (review == null) {
+            throw new IllegalArgumentException("评价不能为空");
+        }
+        review.setUserId(requireCurrentUserId());
         review.setStatus(1);
         review.setCreateTime(LocalDateTime.now());
         review.setUpdateTime(LocalDateTime.now());
@@ -39,7 +44,8 @@ public class ReviewServiceImpl implements ReviewService {
     }
 
     @Override
-    public PageResult<Review> getMyReviews(Long userId, Integer page, Integer size) {
+    public PageResult<Review> getMyReviews(Integer page, Integer size) {
+        Long userId = requireCurrentUserId();
         PageHelper.startPage(page, size);
         List<Review> reviews = reviewMapper.selectByUserId(userId);
         PageInfo<Review> pageInfo = new PageInfo<>(reviews);
@@ -52,8 +58,9 @@ public class ReviewServiceImpl implements ReviewService {
     }
 
     @Override
-    public Review getByOrderId(Long orderId) {
-        return reviewMapper.selectByOrderId(orderId);
+    public Review getByOrderIdForCurrentUser(Long orderId) {
+        Long userId = requireCurrentUserId();
+        return orderId == null ? null : reviewMapper.selectByOrderIdAndUserId(orderId, userId);
     }
 
     @Override
@@ -72,5 +79,13 @@ public class ReviewServiceImpl implements ReviewService {
     @Override
     public void deleteReview(Long id) {
         reviewMapper.deleteById(id);
+    }
+
+    private Long requireCurrentUserId() {
+        Long userId = BaseContext.getUserId();
+        if (userId == null) {
+            throw new IllegalStateException("请先登录");
+        }
+        return userId;
     }
 }

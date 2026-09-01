@@ -12,6 +12,15 @@
         SELECT * FROM payment WHERE pay_no = #{payNo}
     </select>
 
+    <select id="getByPayNoAndUserId" resultType="com.fashion.entity.Payment">
+        SELECT p.*
+        FROM payment p
+        JOIN orders o ON o.id = p.order_id
+        WHERE p.pay_no = #{payNo}
+          AND p.order_type = 0
+          AND o.user_id = #{userId}
+    </select>
+
     <select id="getByIdForUpdate" resultType="com.fashion.entity.Payment">
         SELECT * FROM payment WHERE id = #{id} FOR UPDATE
     </select>

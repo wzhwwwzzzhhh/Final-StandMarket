@@ -24,12 +24,7 @@ public interface SeckillOrderService {
      */
     SeckillOrder getOrderByNumber(String orderNumber);
     
-    /**
-     * 根据用户ID查询秒杀订单列表
-     * @param userId 用户ID
-     * @return 秒杀订单列表
-     */
-    List<SeckillOrder> getOrdersByUserId(Long userId);
+    SeckillOrder getCurrentUserOrderByNumber(String orderNumber);
     
     /**
      * 更新订单状态
@@ -54,13 +49,9 @@ public interface SeckillOrderService {
      */
     boolean cancelOrder(String orderNumber);
     
-    /**
-     * 获取用户拥有的优惠券列表
-     * @param userId 用户ID
-     * @param status 优惠券状态（1:可用 2:已使用 3:已过期，为空表示全部）
-     * @return 用户优惠券列表
-     */
-    List<UserCouponDto> getUserCoupons(Long userId, Integer status);
+    boolean cancelCurrentUserOrder(String orderNumber);
+
+    List<UserCouponDto> getCurrentUserCoupons(Integer status);
     
     /**
      * 管理端：分页查询秒杀订单列表

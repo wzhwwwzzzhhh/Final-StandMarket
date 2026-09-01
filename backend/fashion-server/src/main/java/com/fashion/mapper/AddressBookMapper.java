@@ -2,6 +2,7 @@ package com.fashion.mapper;
 
 import com.fashion.entity.AddressBook;
 import org.apache.ibatis.annotations.Mapper;
+import org.apache.ibatis.annotations.Param;
 import java.util.List;
 
 /**
@@ -14,26 +15,14 @@ public interface AddressBookMapper {
      * 插入地址
      * @param addressBook 地址信息
      */
-    void insert(AddressBook addressBook);
+    int insert(AddressBook addressBook);
 
-    /**
-     * 根据ID删除地址
-     * @param id 地址ID
-     */
-    void deleteById(Long id);
+    int deleteByIdAndUserId(@Param("id") Long id, @Param("userId") Long userId);
 
-    /**
-     * 更新地址
-     * @param addressBook 地址信息
-     */
-    void update(AddressBook addressBook);
+    int updateByIdAndUserId(@Param("addressBook") AddressBook addressBook,
+                            @Param("userId") Long userId);
 
-    /**
-     * 根据ID查询地址
-     * @param id 地址ID
-     * @return 地址信息
-     */
-    AddressBook getById(Long id);
+    AddressBook getByIdAndUserId(@Param("id") Long id, @Param("userId") Long userId);
 
     /**
      * 查询用户的地址列表
@@ -53,5 +42,5 @@ public interface AddressBookMapper {
      * 将用户的所有地址设置为非默认
      * @param userId 用户ID
      */
-    void resetDefaultByUserId(Long userId);
+    int resetDefaultByUserId(Long userId);
 }

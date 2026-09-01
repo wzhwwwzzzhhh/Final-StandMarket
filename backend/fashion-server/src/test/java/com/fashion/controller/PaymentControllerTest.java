@@ -66,7 +66,7 @@ class PaymentControllerTest {
     @Test
     @DisplayName("支付状态只查询本人普通订单的 order_type=0 流水")
     void statusQueryIsOwnerScopedAndUsesNormalOrderType() {
-        when(orderService.getById(100L)).thenReturn(order(100L, 7L));
+        when(orderService.getCurrentUserOrderById(100L)).thenReturn(order(100L, 7L));
         when(paymentService.getByOrderId(100L, 0)).thenReturn(payment(10L, 100L));
 
         Result<Map<String, Object>> result = controller.payStatus(100L);
@@ -79,7 +79,7 @@ class PaymentControllerTest {
     @Test
     @DisplayName("他人订单支付状态不泄露且不查询支付流水")
     void statusQueryRejectsOtherUsersOrder() {
-        when(orderService.getById(100L)).thenReturn(order(100L, 8L));
+        when(orderService.getCurrentUserOrderById(100L)).thenReturn(null);
 
         Result<Map<String, Object>> result = controller.payStatus(100L);
 
@@ -90,14 +90,14 @@ class PaymentControllerTest {
     @Test
     @DisplayName("已验签同步回跳只返回状态，不执行任何支付迁移")
     void verifiedReturnIsReadOnly() throws Exception {
-        when(paymentService.getPaymentStatus("PAY-100")).thenReturn(payment(10L, 100L));
-        when(orderService.getById(100L)).thenReturn(order(100L, 7L));
+        when(paymentService.getPaymentStatusForCurrentUser("PAY-100")).thenReturn(payment(10L, 100L));
 
         Result<Map<String, Object>> result = controller.verifyReturn(signedReturn());
 
         assertEquals(1, result.getCode());
         assertEquals(0, result.getData().get("payStatus"));
         verify(paymentService, never()).updatePaySuccess(anyLong(), any(), any());
+        verify(paymentService, never()).getPaymentStatus("PAY-100");
         verify(orderService, never()).handlePayCallback(anyLong(), anyLong(), any(), any());
     }
 

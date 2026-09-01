@@ -15,34 +15,31 @@
         )
     </insert>
 
-    <!-- 根据ID删除地址 -->
-    <delete id="deleteById" parameterType="long">
-        delete from address_book where id = #{id}
+    <delete id="deleteByIdAndUserId">
+        delete from address_book where id = #{id} and user_id = #{userId}
     </delete>
 
-    <!-- 更新地址 -->
-    <update id="update" parameterType="com.fashion.entity.AddressBook">
+    <update id="updateByIdAndUserId">
         update address_book
         <set>
-            <if test="consignee != null">consignee = #{consignee},</if>
-            <if test="sex != null">sex = #{sex},</if>
-            <if test="phone != null">phone = #{phone},</if>
-            <if test="provinceCode != null">province_code = #{provinceCode},</if>
-            <if test="provinceName != null">province_name = #{provinceName},</if>
-            <if test="cityCode != null">city_code = #{cityCode},</if>
-            <if test="cityName != null">city_name = #{cityName},</if>
-            <if test="districtCode != null">district_code = #{districtCode},</if>
-            <if test="districtName != null">district_name = #{districtName},</if>
-            <if test="detail != null">detail = #{detail},</if>
-            <if test="label != null">label = #{label},</if>
-            <if test="isDefault != null">is_default = #{isDefault},</if>
+            <if test="addressBook.consignee != null">consignee = #{addressBook.consignee},</if>
+            <if test="addressBook.sex != null">sex = #{addressBook.sex},</if>
+            <if test="addressBook.phone != null">phone = #{addressBook.phone},</if>
+            <if test="addressBook.provinceCode != null">province_code = #{addressBook.provinceCode},</if>
+            <if test="addressBook.provinceName != null">province_name = #{addressBook.provinceName},</if>
+            <if test="addressBook.cityCode != null">city_code = #{addressBook.cityCode},</if>
+            <if test="addressBook.cityName != null">city_name = #{addressBook.cityName},</if>
+            <if test="addressBook.districtCode != null">district_code = #{addressBook.districtCode},</if>
+            <if test="addressBook.districtName != null">district_name = #{addressBook.districtName},</if>
+            <if test="addressBook.detail != null">detail = #{addressBook.detail},</if>
+            <if test="addressBook.label != null">label = #{addressBook.label},</if>
+            <if test="addressBook.isDefault != null">is_default = #{addressBook.isDefault},</if>
         </set>
-        where id = #{id}
+        where id = #{addressBook.id} and user_id = #{userId}
     </update>
 
-    <!-- 根据ID查询地址 -->
-    <select id="getById" parameterType="long" resultType="com.fashion.entity.AddressBook">
-        select * from address_book where id = #{id}
+    <select id="getByIdAndUserId" resultType="com.fashion.entity.AddressBook">
+        select * from address_book where id = #{id} and user_id = #{userId}
     </select>
 
     <!-- 查询用户的地址列表 -->

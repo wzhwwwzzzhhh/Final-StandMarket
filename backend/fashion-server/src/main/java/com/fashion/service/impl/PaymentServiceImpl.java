@@ -99,6 +99,18 @@ public class PaymentServiceImpl implements PaymentService {
     }
 
     @Override
+    public Payment getPaymentStatusForCurrentUser(String payNo) {
+        Long userId = BaseContext.getUserId();
+        if (userId == null) {
+            throw new IllegalStateException("请先登录");
+        }
+        if (payNo == null || payNo.trim().isEmpty()) {
+            return null;
+        }
+        return paymentMapper.getByPayNoAndUserId(payNo, userId);
+    }
+
+    @Override
     public Payment getByIdForUpdate(Long id) {
         return paymentMapper.getByIdForUpdate(id);
     }

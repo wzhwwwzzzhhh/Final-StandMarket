@@ -46,6 +46,9 @@ public interface SeckillOrderMapper {
      * @return 秒杀订单信息
      */
     SeckillOrder selectByOrderNumber(String orderNumber);
+
+    SeckillOrder selectByOrderNumberAndUserId(@Param("orderNumber") String orderNumber,
+                                              @Param("userId") Long userId);
     
     /**
      * 根据用户id查询秒杀订单列表
@@ -75,6 +78,9 @@ public interface SeckillOrderMapper {
      * @param status 订单状态
      */
     boolean updateStatus(@Param("orderNumber") String orderNumber, @Param("status") Integer status);
+
+    int cancelPendingByOrderNumberAndUserId(@Param("orderNumber") String orderNumber,
+                                            @Param("userId") Long userId);
     
     /**
      * 更新支付时间

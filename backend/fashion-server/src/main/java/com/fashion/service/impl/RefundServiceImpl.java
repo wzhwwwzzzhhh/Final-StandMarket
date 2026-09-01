@@ -34,8 +34,8 @@ public class RefundServiceImpl implements RefundService {
         }
 
         // 校验订单存在性与归属
-        Orders order = orderMapper.getById(orderId);
-        if (order == null || !order.getUserId().equals(userId)) {
+        Orders order = orderMapper.getByIdAndUserId(orderId, userId);
+        if (order == null) {
             throw new RuntimeException("订单不存在");
         }
 

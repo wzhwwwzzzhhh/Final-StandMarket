@@ -11,6 +11,8 @@ public interface PaymentMapper {
 
     Payment getByPayNo(@Param("payNo") String payNo);
 
+    Payment getByPayNoAndUserId(@Param("payNo") String payNo, @Param("userId") Long userId);
+
     Payment getByIdForUpdate(@Param("id") Long id);
 
     Payment getByOrderIdAndType(@Param("orderId") Long orderId, @Param("orderType") Integer orderType);

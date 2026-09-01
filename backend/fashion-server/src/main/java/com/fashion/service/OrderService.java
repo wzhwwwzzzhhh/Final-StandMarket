@@ -39,6 +39,11 @@ public interface OrderService {
      * @return 订单
      */
     Orders getById(Long id);
+
+    /**
+     * 按服务端当前登录用户查询订单。
+     */
+    Orders getCurrentUserOrderById(Long id);
     
     void updateAdminStatus(Long id, Integer status);
     

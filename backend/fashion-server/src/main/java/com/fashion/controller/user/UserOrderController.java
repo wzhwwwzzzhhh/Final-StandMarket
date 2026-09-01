@@ -1,6 +1,5 @@
 package com.fashion.controller.user;
 
-import com.fashion.context.BaseContext;
 import com.fashion.dto.OrderCreateDTO;
 import com.fashion.entity.Orders;
 import com.fashion.result.Result;
@@ -49,13 +48,9 @@ public class UserOrderController {
      */
     @GetMapping("/detail/{id}")
     public Result<Orders> detail(@PathVariable Long id) {
-        Orders order = orderService.getById(id);
+        Orders order = orderService.getCurrentUserOrderById(id);
         if (order == null) {
             return Result.error("订单不存在");
-        }
-        Long userId = BaseContext.getUserId();
-        if (userId == null || !order.getUserId().equals(userId)) {
-            return Result.error("无权查看该订单");
         }
         return Result.success(order);
     }
@@ -83,9 +78,8 @@ public class UserOrderController {
      */
     @GetMapping("/tracking/{orderId}")
     public Result<Map<String, Object>> tracking(@PathVariable Long orderId) {
-        Long userId = BaseContext.getUserId();
-        Orders order = orderService.getById(orderId);
-        if (order == null || !order.getUserId().equals(userId)) {
+        Orders order = orderService.getCurrentUserOrderById(orderId);
+        if (order == null) {
             return Result.error("订单不存在");
         }
         if (order.getTrackingNumber() == null || order.getTrackingNumber().isEmpty()) {
