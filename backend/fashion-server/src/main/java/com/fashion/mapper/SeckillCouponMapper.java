@@ -69,5 +69,5 @@ public interface SeckillCouponMapper {
     int reduceStock(Long couponId);
 
     @Update("update seckill_coupon set stock = stock + 1 where id = #{couponId}")
-    void addStock(Long couponId);
+    int restoreStock(Long couponId);
 }

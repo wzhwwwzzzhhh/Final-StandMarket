@@ -243,7 +243,7 @@ public void handleSeckillOrder(SeckillMessage message, Channel channel,
 
 ### 项目现状
 
-- `DirectExchangeConfig:54-60` — 延迟队列 `delay.queue` TTL=900s（15min），绑定死信交换机
+- `DirectExchangeConfig` — 延迟队列 `delay.queue` TTL=1800s（30min），绑定死信交换机；旧队列参数需在 B11 停写、排空并重建后才能上线
 - `handleDeadQueue()` (line 254-274) — 消费死信，取消未支付订单
 - **死信消费者异常时，消息丢失**：catch 只 `e.printStackTrace()`，自动 ack 确认
 
@@ -252,7 +252,7 @@ public void handleSeckillOrder(SeckillMessage message, Channel channel,
 **复现步骤：**
 
 1. 创建秒杀订单，不支付
-2. 等待 15 分钟
+2. 等待 30 分钟
 3. 在 RabbitMQ 管理界面观察消息流转：`market.mq` → `delay.queue` → `dead.queue`
 4. 订单被自动取消，库存回补
 
@@ -295,7 +295,7 @@ public void handleDeadQueue(Long orderId, Channel channel,
 
 ### 面试话术
 
-> **"延迟 15 分钟关单通过 TTL + DLX 实现。但死信消费者异常处理有 bug：catch 空导致消息丢失。改 manual ack 后，失败的重试 3 次仍不行就告警。分析 TTL 实现时还发现一个坑：RabbitMQ 只在队列头部检查 TTL 过期，如果一条短 TTL 消息在长 TTL 消息后面，会被阻塞到长 TTL 消息也过期。所以项目用固定延迟（15min）没问题，如果需要动态延迟就得用延迟插件了。"**
+> **"延迟 30 分钟关单通过 TTL + DLX 实现。但死信消费者异常时仍需要 B6 的有限重试、业务死信和补偿记录保证不丢。分析 TTL 实现时还发现一个坑：RabbitMQ 只在队列头部检查 TTL 过期，如果一条短 TTL 消息在长 TTL 消息后面，会被阻塞到长 TTL 消息也过期。所以项目用固定延迟（30min）没问题，如果需要动态延迟就得用延迟插件了。旧 15 分钟队列不能原地改参，需由 B11 停写、排空并重建。"**
 
 ### 扩展思考
 

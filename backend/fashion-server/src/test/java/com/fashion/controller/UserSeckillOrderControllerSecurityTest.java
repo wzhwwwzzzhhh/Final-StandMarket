@@ -1,6 +1,7 @@
 package com.fashion.controller;
 
 import com.fashion.controller.user.UserSeckillOrderController;
+import com.fashion.dto.SeckillCancelResponse;
 import com.fashion.result.Result;
 import com.fashion.service.SeckillOrderService;
 import org.junit.jupiter.api.BeforeEach;

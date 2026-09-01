@@ -155,7 +155,7 @@
               </el-button>
               
               <el-button 
-                v-if="scope.row.status === 0 || scope.row.status === 1" 
+                v-if="scope.row.status === 1"
                 type="warning" 
                 size="small" 
                 class="cancel-button" 
@@ -365,7 +365,7 @@ export default {
         })
         
         const response = await seckillApi.confirmSeckillOrderPayment(order.orderNumber)
-        if (response.data.code === 0) {
+        if (response.data.code === 1) {
           this.$message.success('确认支付成功')
           this.loadSeckillOrders()
           this.loadStatistics()
@@ -389,8 +389,12 @@ export default {
         })
         
         const response = await seckillApi.cancelSeckillOrder(order.orderNumber)
-        if (response.data.code === 0) {
-          this.$message.success('取消订单成功')
+        if (response.data.code === 1) {
+          if (response.data.data?.outcome === 'REDIS_RECONCILIATION_PENDING') {
+            this.$message.warning(response.data.data.message || '订单已取消，库存恢复待处理')
+          } else {
+            this.$message.success(response.data.data?.message || '取消订单成功')
+          }
           this.loadSeckillOrders()
           this.loadStatistics()
         } else {

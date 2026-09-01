@@ -1,6 +1,7 @@
 package com.fashion.service.impl;
 
 import com.fashion.context.BaseContext;
+import com.fashion.dto.SeckillCancelResponse;
 import com.fashion.entity.OrderDetail;
 import com.fashion.entity.Orders;
 import com.fashion.entity.Payment;
@@ -25,6 +26,7 @@ import java.util.Collections;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertSame;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
@@ -147,19 +149,21 @@ class UserResourceOwnershipContractTest {
         owned.setOrderNumber("SK-100");
         owned.setUserId(7L);
         when(mapper.selectByOrderNumberAndUserId("SK-100", 7L)).thenReturn(owned);
-        when(mapper.cancelPendingByOrderNumberAndUserId("SK-100", 7L)).thenReturn(1);
+        SeckillCancellationTransaction cancellation = mock(SeckillCancellationTransaction.class);
+        when(cancellation.cancelForUser("SK-100", 7L)).thenReturn(null);
         SeckillOrderServiceImpl service = new SeckillOrderServiceImpl();
         ReflectionTestUtils.setField(service, "seckillOrderMapper", mapper);
+        ReflectionTestUtils.setField(service, "seckillCancellationTransaction", cancellation);
 
         SeckillOrder result = invoke(service, "getCurrentUserOrderByNumber",
                 new Class<?>[]{String.class}, "SK-100");
-        Boolean canceled = invoke(service, "cancelCurrentUserOrder",
+        SeckillCancelResponse canceled = invoke(service, "cancelCurrentUserOrder",
                 new Class<?>[]{String.class}, "SK-100");
 
         assertSame(owned, result);
-        assertTrue(canceled);
+        assertNull(canceled);
         verify(mapper).selectByOrderNumberAndUserId("SK-100", 7L);
-        verify(mapper).cancelPendingByOrderNumberAndUserId("SK-100", 7L);
+        verify(cancellation).cancelForUser("SK-100", 7L);
         verify(mapper, never()).selectByOrderNumber("SK-100");
     }
 

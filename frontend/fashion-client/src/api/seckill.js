@@ -90,6 +90,11 @@ export const seckillApi = {
   getSeckillOrderByNumber: (orderNumber) => {
     return api.get(`/user/seckill/order/${orderNumber}`)
   },
+
+  // 取消当前用户的待支付秒杀订单
+  cancelSeckillOrder: (orderNumber) => {
+    return api.post(`/user/seckill/order/cancel/${orderNumber}`)
+  },
   
   // 获取用户的秒杀券列表
   getUserCoupons: (status) => {

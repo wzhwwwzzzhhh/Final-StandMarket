@@ -14,6 +14,7 @@ import java.util.Map;
 
 @Configuration
 public class DirectExchangeConfig {
+    public static final int SECKILL_ORDER_TIMEOUT_MILLIS = 30 * 60 * 1000;
     public static  final String SeckillQueue = "market.mq";
     public static  final String SeckillExchange = "market.direct";
     public static  final String SeckillRoutingKey = "seckillOrder";
@@ -53,7 +54,7 @@ public class DirectExchangeConfig {
     @Bean
     public Queue delayQueue(){
         Map<String, Object> args = new HashMap<>();
-        args.put("x-message-ttl", 900000);
+        args.put("x-message-ttl", SECKILL_ORDER_TIMEOUT_MILLIS);
         args.put("x-dead-letter-exchange", deadExchange);
         args.put("x-dead-letter-routing-key", deadRoutingKey);
         args.put("x-queue-mode", "lazy");

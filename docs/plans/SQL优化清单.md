@@ -129,7 +129,7 @@ ALTER TABLE orders ADD INDEX idx_orders_order_time (order_time DESC);
 -- 主键、订单号、用户ID 都已有索引 ✅
 selectByUserId       → idx_seckill_order_user(user_id, create_time DESC) ✅
 selectByOrderNumber   → idx_seckill_order_number(唯一索引) ✅
-selectByUserIdAndCouponId → idx_user_coupon(唯一索引) ✅
+selectByUserIdAndCouponId 已移除；B5 以 uk_seckill_order_active_user_coupon 约束活动订单唯一性 ✅
 ```
 
 ### ⚠️ 需要优化的 SQL

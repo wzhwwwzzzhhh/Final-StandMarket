@@ -2,6 +2,7 @@ package com.fashion.controller.user;
 
 import com.fashion.dto.OrderAmountCalculateDTO;
 import com.fashion.dto.UserCouponDto;
+import com.fashion.dto.SeckillCancelResponse;
 import com.fashion.entity.SeckillOrder;
 import com.fashion.result.Result;
 import com.fashion.service.SeckillOrderService;
@@ -74,18 +75,17 @@ public class UserSeckillOrderController {
      * 取消秒杀订单
      */
     @PostMapping("/cancel/{orderNumber}")
-    public Result<String> cancelOrder(@PathVariable String orderNumber) {
+    public Result<?> cancelOrder(@PathVariable String orderNumber) {
         try {
             if (orderNumber == null || orderNumber.trim().isEmpty()) {
                 return Result.error("订单号不能为空");
             }
             
-            boolean success = seckillOrderService.cancelCurrentUserOrder(orderNumber);
-            if (success) {
-                return Result.success("取消订单成功");
-            } else {
-                return Result.error("取消订单失败");
+            SeckillCancelResponse response = seckillOrderService.cancelCurrentUserOrder(orderNumber);
+            if (response == null) {
+                return Result.error("订单不存在或状态已变化，无法取消");
             }
+            return Result.success(response);
             
         } catch (Exception e) {
             log.error("取消秒杀订单失败，订单号：{}", orderNumber, e);
