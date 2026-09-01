@@ -58,26 +58,16 @@ public interface SeckillOrderMapper {
     List<SeckillOrder> selectByUserId(Long userId);
     
     /**
-     * 根据用户id和秒杀券id查询秒杀订单
-     * @param userId 用户id
-     * @param couponId 秒杀券id
-     * @return 秒杀订单信息
-     */
-    SeckillOrder selectByUserIdAndCouponId(@Param("userId") Long userId, @Param("couponId") Long couponId);
-    
-    /**
      * 查询用户拥有的优惠券列表（多表查询）
      * @param params 查询参数
      * @return 用户优惠券列表
      */
     List<UserCouponDto> selectUserCoupons(java.util.Map<String, Object> params);
     
-    /**
-     * 更新订单状态
-     * @param orderNumber 订单号
-     * @param status 订单状态
-     */
-    boolean updateStatus(@Param("orderNumber") String orderNumber, @Param("status") Integer status);
+    int markPaid(@Param("orderNumber") String orderNumber,
+                 @Param("payTime") java.time.LocalDateTime payTime);
+
+    int cancelPending(@Param("orderNumber") String orderNumber);
 
     int cancelPendingByOrderNumberAndUserId(@Param("orderNumber") String orderNumber,
                                             @Param("userId") Long userId);
@@ -87,7 +77,7 @@ public interface SeckillOrderMapper {
      * @param orderNumber 订单号
      * @param payTime 支付时间
      */
-    void updatePayTime(@Param("orderNumber") String orderNumber, @Param("payTime") java.time.LocalDateTime payTime);
+    int updatePayTime(@Param("orderNumber") String orderNumber, @Param("payTime") java.time.LocalDateTime payTime);
     
     /**
      * 管理端：分页查询秒杀订单列表

@@ -1,6 +1,7 @@
 package com.fashion.service;
 
 import com.fashion.dto.OrderAmountCalculateDTO;
+import com.fashion.dto.SeckillCancelResponse;
 import com.fashion.dto.UserCouponDto;
 import com.fashion.entity.PageResult;
 import com.fashion.entity.SeckillOrder;
@@ -32,8 +33,6 @@ public interface SeckillOrderService {
      * @param status 订单状态
      * @return 是否成功
      */
-    boolean updateOrderStatus(String orderNumber, Integer status);
-    
     /**
      * 更新支付时间
      * @param orderNumber 订单号
@@ -47,9 +46,11 @@ public interface SeckillOrderService {
      * @param orderNumber 订单号
      * @return 是否成功
      */
-    boolean cancelOrder(String orderNumber);
+    SeckillCancelResponse cancelOrder(String orderNumber);
     
-    boolean cancelCurrentUserOrder(String orderNumber);
+    SeckillCancelResponse cancelCurrentUserOrder(String orderNumber);
+
+    SeckillCancelResponse cancelTimeoutOrder(Long orderId);
 
     List<UserCouponDto> getCurrentUserCoupons(Integer status);
     

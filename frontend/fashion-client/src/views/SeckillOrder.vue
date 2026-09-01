@@ -231,9 +231,19 @@ const handleCancel = async (order) => {
       type: 'warning'
     })
     
-    // 这里调用取消订单接口
-    ElMessage.success('取消成功')
-    await loadSeckillOrders() // 重新加载列表
+    const response = await seckillApi.cancelSeckillOrder(order.orderNumber)
+    if (response.data.code !== 1) {
+      ElMessage.error(response.data.msg || '取消失败')
+      await loadSeckillOrders()
+      return
+    }
+
+    if (response.data.data?.outcome === 'REDIS_RECONCILIATION_PENDING') {
+      ElMessage.warning(response.data.data.message || '订单已取消，库存恢复待处理')
+    } else {
+      ElMessage.success(response.data.data?.message || '取消订单成功')
+    }
+    await loadSeckillOrders()
   } catch (error) {
     if (error !== 'cancel') {
       ElMessage.error('取消失败')

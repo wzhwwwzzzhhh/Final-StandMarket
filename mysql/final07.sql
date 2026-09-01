@@ -418,14 +418,16 @@ CREATE TABLE `seckill_order` (
   `user_id` bigint NOT NULL COMMENT '用户id',
   `coupon_id` bigint NOT NULL COMMENT '秒杀券id',
   `order_number` varchar(50) CHARACTER SET utf8mb3 COLLATE utf8mb3_bin DEFAULT NULL COMMENT '订单号',
-  `status` int DEFAULT '1' COMMENT '状态 1:待支付 2:已支付 3:已取消',
+  `status` int NOT NULL DEFAULT '1' COMMENT '状态 1:待支付 2:已支付 3:已取消',
   `create_time` datetime DEFAULT NULL COMMENT '创建时间',
   `pay_time` datetime DEFAULT NULL COMMENT '支付时间',
+  `active_marker` tinyint GENERATED ALWAYS AS ((case when (`status` = 3) then NULL else 1 end)) STORED,
   PRIMARY KEY (`id`),
-  UNIQUE KEY `idx_user_coupon` (`user_id`,`coupon_id`),
+  UNIQUE KEY `uk_seckill_order_active_user_coupon` (`user_id`,`coupon_id`,`active_marker`),
   UNIQUE KEY `idx_seckill_order_number` (`order_number`),
   KEY `idx_seckill_order_user` (`user_id`,`create_time` DESC),
-  KEY `idx_sorder_status` (`status`)
+  KEY `idx_sorder_status` (`status`),
+  CONSTRAINT `chk_seckill_order_status_b5` CHECK ((`status` in (1,2,3)))
 ) ENGINE=InnoDB AUTO_INCREMENT=44475 DEFAULT CHARSET=utf8mb3 COLLATE=utf8mb3_bin COMMENT='秒杀订单';
 /*!40101 SET character_set_client = @saved_cs_client */;
 
@@ -435,7 +437,7 @@ CREATE TABLE `seckill_order` (
 
 LOCK TABLES `seckill_order` WRITE;
 /*!40000 ALTER TABLE `seckill_order` DISABLE KEYS */;
-INSERT INTO `seckill_order` VALUES (44474,20,3,'583120253714694148',2,'2026-04-21 17:24:25','2026-04-21 18:18:37');
+INSERT INTO `seckill_order` (`id`,`user_id`,`coupon_id`,`order_number`,`status`,`create_time`,`pay_time`) VALUES (44474,20,3,'583120253714694148',2,'2026-04-21 17:24:25','2026-04-21 18:18:37');
 /*!40000 ALTER TABLE `seckill_order` ENABLE KEYS */;
 UNLOCK TABLES;
 

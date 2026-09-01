@@ -10,6 +10,7 @@ import com.fashion.mapper.SeckillCouponMapper;
 import com.fashion.mapper.SeckillOrderMapper;
 import com.fashion.result.Result;
 import com.fashion.service.SeckillCouponService;
+import com.fashion.service.SeckillOrderService;
 import com.fashion.utils.UniqueID;
 import lombok.extern.slf4j.Slf4j;
 import org.redisson.api.RLock;
@@ -55,6 +56,8 @@ public class SeckillCouponServiceImpl implements SeckillCouponService {
     private RabbitTemplate rabbitTemplate;
     @Autowired
     private SeckillOrderMapper seckillOrderMapper;
+    @Autowired
+    private SeckillOrderService seckillOrderService;
     @Autowired
     private DirectExchangeConfig directExchangeConfig;
 
@@ -269,24 +272,7 @@ public class SeckillCouponServiceImpl implements SeckillCouponService {
 
     @RabbitListener(queues = DirectExchangeConfig.deadQueue)
     public void handleDeadQueue(Long orderId) {
-        //获取秒杀订单id
-        SeckillOrder seckillOrder = seckillOrderMapper.selectById(orderId);
-        if (seckillOrder == null) {
-            return;
-        }
-        //先根据秒杀订单id检查支付状态
-        if (seckillOrder.getStatus() != 1) {
-            return;
-        }
-        //如果未支付，则取消订单（CAS实现数据库乐观锁）
-        boolean success = seckillOrderMapper.updateStatus(seckillOrder.getOrderNumber(), 3);
-        if (!success) {
-            return ;
-        }
-        //还原库存
-        seckillCouponMapper.addStock(seckillOrder.getCouponId());
-        //取消订单后应补回Redis库存，而不是扣减
-        stringRedisTemplate.opsForValue().increment("seckill:coupon:stock:" + seckillOrder.getCouponId());
+        seckillOrderService.cancelTimeoutOrder(orderId);
     }
 
     @Override

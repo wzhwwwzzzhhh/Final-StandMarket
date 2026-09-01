@@ -3,6 +3,7 @@ package com.fashion.controller.admin;
 import com.fashion.common.annotation.OperationLog;
 import com.fashion.entity.PageResult;
 import com.fashion.entity.SeckillOrder;
+import com.fashion.dto.SeckillCancelResponse;
 import com.fashion.result.Result;
 import com.fashion.service.SeckillOrderService;
 import com.fashion.vo.SeckillOrderStatisticsVO;
@@ -100,12 +101,11 @@ public class SeckillOrderController {
         log.info("取消秒杀订单，订单号：{}", orderNumber);
         
         try {
-            boolean success = seckillOrderService.cancelOrder(orderNumber);
-            if (success) {
-                return Result.success("取消订单成功");
-            } else {
-                return Result.error("取消订单失败");
+            SeckillCancelResponse response = seckillOrderService.cancelOrder(orderNumber);
+            if (response == null) {
+                return Result.error("订单不存在或状态已变化，无法取消");
             }
+            return Result.success(response);
         } catch (Exception e) {
             log.error("取消秒杀订单失败，订单号：{}", orderNumber, e);
             return Result.error("取消订单失败");

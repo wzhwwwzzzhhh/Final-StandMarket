@@ -2,6 +2,8 @@ package com.fashion.service.impl;
 
 import com.fashion.context.BaseContext;
 import com.fashion.dto.OrderAmountCalculateDTO;
+import com.fashion.dto.SeckillCancelCommand;
+import com.fashion.dto.SeckillCancelResponse;
 import com.fashion.dto.UserCouponDto;
 import com.fashion.entity.PageResult;
 import com.fashion.entity.SeckillActivity;
@@ -20,12 +22,18 @@ import com.fashion.vo.SeckillOrderVo;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.BeanUtils;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.core.io.ClassPathResource;
+import org.springframework.data.redis.core.StringRedisTemplate;
+import org.springframework.data.redis.core.script.DefaultRedisScript;
+import org.springframework.scripting.support.ResourceScriptSource;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import javax.annotation.PostConstruct;
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -42,6 +50,20 @@ public class SeckillOrderServiceImpl implements SeckillOrderService {
     private SeckillCouponMapper seckillCouponMapper;
     @Autowired
     private SeckillActivityMapper seckillActivityMapper;
+    @Autowired
+    private SeckillCancellationTransaction seckillCancellationTransaction;
+    @Autowired
+    private StringRedisTemplate stringRedisTemplate;
+
+    private DefaultRedisScript<Long> seckillRollbackScript;
+
+    @PostConstruct
+    public void initSeckillRollbackScript() {
+        seckillRollbackScript = new DefaultRedisScript<>();
+        seckillRollbackScript.setScriptSource(
+                new ResourceScriptSource(new ClassPathResource("lua/seckill_rollback.lua")));
+        seckillRollbackScript.setResultType(Long.class);
+    }
 
     @Override
     public SeckillOrder getOrderByNumber(String orderNumber) {
@@ -97,48 +119,27 @@ public class SeckillOrderServiceImpl implements SeckillOrderService {
     }
 
     @Override
-    @Transactional
-    public boolean cancelCurrentUserOrder(String orderNumber) {
+    public SeckillCancelResponse cancelCurrentUserOrder(String orderNumber) {
         Long userId = requireCurrentUserId();
         if (orderNumber == null || orderNumber.trim().isEmpty()) {
-            return false;
+            return null;
         }
-        return seckillOrderMapper.cancelPendingByOrderNumberAndUserId(orderNumber, userId) == 1;
-    }
-
-    @Override
-    @Transactional
-    public boolean updateOrderStatus(String orderNumber, Integer status) {
-        try {
-            SeckillOrder order = seckillOrderMapper.selectByOrderNumber(orderNumber);
-            if (order == null) {
-                log.warn("订单不存在，订单号：{}", orderNumber);
-                return false;
-            }
-
-            seckillOrderMapper.updateStatus(orderNumber, status);
-            log.info("更新订单状态成功，订单号：{}，新状态：{}", orderNumber, status);
-            return true;
-
-        } catch (Exception e) {
-            log.error("更新订单状态失败，订单号：{}", orderNumber, e);
-            return false;
-        }
+        return completeCancellation(seckillCancellationTransaction.cancelForUser(orderNumber, userId));
     }
 
     @Override
     @Transactional
     public boolean updatePayTime(String orderNumber, LocalDateTime payTime) {
         try {
-            SeckillOrder order = seckillOrderMapper.selectByOrderNumber(orderNumber);
-            if (order == null) {
-                log.warn("订单不存在，订单号：{}", orderNumber);
+            if (orderNumber == null || orderNumber.trim().isEmpty() || payTime == null) {
                 return false;
             }
 
-            seckillOrderMapper.updatePayTime(orderNumber, payTime);
-            log.info("更新支付时间成功，订单号：{}，支付时间：{}", orderNumber, payTime);
-            return true;
+            boolean updated = seckillOrderMapper.updatePayTime(orderNumber, payTime) == 1;
+            if (updated) {
+                log.info("更新支付时间成功，订单号：{}，支付时间：{}", orderNumber, payTime);
+            }
+            return updated;
 
         } catch (Exception e) {
             log.error("更新支付时间失败，订单号：{}", orderNumber, e);
@@ -147,28 +148,19 @@ public class SeckillOrderServiceImpl implements SeckillOrderService {
     }
 
     @Override
-    @Transactional
-    public boolean cancelOrder(String orderNumber) {
-        try {
-            SeckillOrder order = seckillOrderMapper.selectByOrderNumber(orderNumber);
-            if (order == null) {
-                log.warn("订单不存在，订单号：{}", orderNumber);
-                return false;
-            }
-
-            if (order.getStatus() != 1) {
-                log.warn("订单{}状态不是待支付，不能取消", orderNumber);
-                return false;
-            }
-
-            seckillOrderMapper.updateStatus(orderNumber, 3);
-            log.info("取消订单成功，订单号：{}", orderNumber);
-            return true;
-
-        } catch (Exception e) {
-            log.error("取消订单失败，订单号：{}", orderNumber, e);
-            return false;
+    public SeckillCancelResponse cancelOrder(String orderNumber) {
+        if (orderNumber == null || orderNumber.trim().isEmpty()) {
+            return null;
         }
+        return completeCancellation(seckillCancellationTransaction.cancelTrusted(orderNumber));
+    }
+
+    @Override
+    public SeckillCancelResponse cancelTimeoutOrder(Long orderId) {
+        if (orderId == null) {
+            return null;
+        }
+        return completeCancellation(seckillCancellationTransaction.cancelTimeout(orderId));
     }
 
     @Override
@@ -205,22 +197,17 @@ public class SeckillOrderServiceImpl implements SeckillOrderService {
     @Transactional
     public boolean confirmPayment(String orderNumber) {
         try {
-            SeckillOrder order = seckillOrderMapper.selectByOrderNumber(orderNumber);
-            if (order == null) {
-                log.warn("订单不存在，订单号：{}", orderNumber);
+            if (orderNumber == null || orderNumber.trim().isEmpty()) {
                 return false;
             }
 
-            if (order.getStatus() != 1) {
-                log.warn("订单{}状态不是待支付，不能确认支付", orderNumber);
-                return false;
+            boolean paid = seckillOrderMapper.markPaid(orderNumber, LocalDateTime.now()) == 1;
+            if (paid) {
+                log.info("确认订单支付成功，订单号：{}", orderNumber);
+            } else {
+                log.warn("秒杀订单支付 CAS 失败，订单不存在或状态已变化，订单号：{}", orderNumber);
             }
-
-            seckillOrderMapper.updateStatus(orderNumber, 2);
-            seckillOrderMapper.updatePayTime(orderNumber, LocalDateTime.now());
-
-            log.info("确认订单支付成功，订单号：{}", orderNumber);
-            return true;
+            return paid;
 
         } catch (Exception e) {
             log.error("确认订单支付失败，订单号：{}", orderNumber, e);
@@ -431,5 +418,30 @@ public class SeckillOrderServiceImpl implements SeckillOrderService {
             throw new IllegalStateException("请先登录");
         }
         return userId;
+    }
+
+    private SeckillCancelResponse completeCancellation(SeckillCancelCommand command) {
+        if (command == null) {
+            return null;
+        }
+
+        try {
+            String stockKey = "seckill:coupon:stock:" + command.getCouponId();
+            String usersKey = "seckill:coupon:users:" + command.getCouponId();
+            Long result = stringRedisTemplate.execute(
+                    seckillRollbackScript,
+                    Arrays.asList(stockKey, usersKey),
+                    "1",
+                    command.getUserId().toString());
+            if (result != null && result == 1L) {
+                return SeckillCancelResponse.cancelled(command.getOrderNumber());
+            }
+            log.error("秒杀订单已取消但 Redis 回补未完成，orderNumber={}, userId={}, couponId={}, result={}",
+                    command.getOrderNumber(), command.getUserId(), command.getCouponId(), result);
+        } catch (RuntimeException e) {
+            log.error("秒杀订单已取消但 Redis 回补异常，orderNumber={}, userId={}, couponId={}",
+                    command.getOrderNumber(), command.getUserId(), command.getCouponId(), e);
+        }
+        return SeckillCancelResponse.redisReconciliationPending(command.getOrderNumber());
     }
 }
