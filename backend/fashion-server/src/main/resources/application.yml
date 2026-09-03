@@ -41,6 +41,11 @@ spring:
     username: ${fashion.rabbitmq.username}
     password: ${fashion.rabbitmq.password}
     virtual-host: ${fashion.rabbitmq.virtual-host}
+    connection-timeout: ${fashion.rabbitmq.connection-timeout:2s}
+    publisher-confirm-type: correlated
+    publisher-returns: true
+    template:
+      mandatory: true
     listener:
       simple:
         prefetch: 10

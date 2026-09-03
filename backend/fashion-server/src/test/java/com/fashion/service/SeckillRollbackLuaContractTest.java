@@ -10,7 +10,7 @@ import java.nio.file.Paths;
 
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
-@DisplayName("B5 Redis 秒杀取消回补 Lua 合约")
+@DisplayName("B6 Redis 秒杀取消回补 Lua 合约")
 class SeckillRollbackLuaContractTest {
 
     @Test
@@ -30,16 +30,17 @@ class SeckillRollbackLuaContractTest {
     }
 
     @Test
-    @DisplayName("Lua 为缺 key 错类型非法值未执行和成功返回稳定结果码")
+    @DisplayName("Lua 为幂等、令牌冲突、账本损坏和成功返回稳定结果码")
     void exposesStableResultCodes() throws Exception {
         Path scriptPath = Paths.get("src/main/resources/lua/seckill_rollback.lua");
         assertTrue(Files.isRegularFile(scriptPath), "missing seckill_rollback.lua");
         String script = new String(Files.readAllBytes(scriptPath), StandardCharsets.UTF_8);
 
-        assertTrue(script.contains("RETURN_SUCCESS"));
-        assertTrue(script.contains("RETURN_NOT_APPLIED"));
-        assertTrue(script.contains("RETURN_STOCK_MISSING"));
-        assertTrue(script.contains("RETURN_WRONG_TYPE"));
+        assertTrue(script.contains("RETURN_APPLIED"));
+        assertTrue(script.contains("RETURN_APPLIED_LEDGER_INCONSISTENT"));
+        assertTrue(script.contains("RETURN_ALREADY_APPLIED"));
+        assertTrue(script.contains("RETURN_TOKEN_MISMATCH"));
+        assertTrue(script.contains("RETURN_LEDGER_CORRUPT"));
         assertTrue(script.contains("RETURN_INVALID_VALUE"));
     }
 }

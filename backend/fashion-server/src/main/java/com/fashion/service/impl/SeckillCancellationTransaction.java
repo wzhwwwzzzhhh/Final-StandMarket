@@ -4,6 +4,7 @@ import com.fashion.dto.SeckillCancelCommand;
 import com.fashion.entity.SeckillOrder;
 import com.fashion.mapper.SeckillCouponMapper;
 import com.fashion.mapper.SeckillOrderMapper;
+import com.fashion.seckill.SeckillCompensationService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Propagation;
@@ -17,6 +18,8 @@ public class SeckillCancellationTransaction {
 
     @Autowired
     private SeckillCouponMapper seckillCouponMapper;
+    @Autowired
+    private SeckillCompensationService seckillCompensationService;
 
     @Transactional(propagation = Propagation.REQUIRES_NEW)
     public SeckillCancelCommand cancelForUser(String orderNumber, Long userId) {
@@ -26,6 +29,7 @@ public class SeckillCancellationTransaction {
             return null;
         }
         restoreStockOrThrow(order.getCouponId());
+        persistCancellationEvidence(order);
         return command(order);
     }
 
@@ -36,6 +40,7 @@ public class SeckillCancellationTransaction {
             return null;
         }
         restoreStockOrThrow(order.getCouponId());
+        persistCancellationEvidence(order);
         return command(order);
     }
 
@@ -46,6 +51,7 @@ public class SeckillCancellationTransaction {
             return null;
         }
         restoreStockOrThrow(order.getCouponId());
+        persistCancellationEvidence(order);
         return command(order);
     }
 
@@ -57,5 +63,10 @@ public class SeckillCancellationTransaction {
 
     private SeckillCancelCommand command(SeckillOrder order) {
         return new SeckillCancelCommand(order.getOrderNumber(), order.getUserId(), order.getCouponId());
+    }
+
+    private void persistCancellationEvidence(SeckillOrder order) {
+        seckillCompensationService.requestRelease(order.getOrderNumber(), order.getUserId(), order.getCouponId(),
+                "CANCEL_COMMITTED", SeckillCompensationService.EVIDENCE_CANCEL_COMMITTED);
     }
 }

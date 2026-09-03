@@ -29,6 +29,13 @@ public class DirectExchangeConfig {
     public static  final String deadExchange = "dead.exchange";
     public static  final String deadRoutingKey = "dead.routingKey";
 
+    // 消费失败业务死信；与 30 分钟超时队列完全分离。
+    public static final String SECKILL_FAILURE_QUEUE = "seckill.failure.queue";
+    public static final String SECKILL_FAILURE_EXCHANGE = "seckill.failure.exchange";
+    public static final String SECKILL_ORDER_FAILURE_ROUTING_KEY = "seckill.order.failed";
+    public static final String SECKILL_TIMEOUT_FAILURE_ROUTING_KEY = "seckill.timeout.failed";
+    public static final String SECKILL_INVALID_FAILURE_ROUTING_KEY = "seckill.invalid.failed";
+
 
     @Bean
     public DirectExchange SeckillExchange(){
@@ -78,6 +85,36 @@ public class DirectExchangeConfig {
     @Bean
     public Binding bindingDeadQueue(){
         return BindingBuilder.bind(deadQueue()).to(deadExchange()).with(deadRoutingKey);
+    }
+
+    @Bean
+    public DirectExchange seckillFailureExchange() {
+        return new DirectExchange(SECKILL_FAILURE_EXCHANGE, true, false);
+    }
+
+    @Bean
+    public Queue seckillFailureQueue() {
+        Map<String, Object> args = new HashMap<>();
+        args.put("x-queue-mode", "lazy");
+        return new Queue(SECKILL_FAILURE_QUEUE, true, false, false, args);
+    }
+
+    @Bean
+    public Binding seckillOrderFailureBinding() {
+        return BindingBuilder.bind(seckillFailureQueue())
+                .to(seckillFailureExchange()).with(SECKILL_ORDER_FAILURE_ROUTING_KEY);
+    }
+
+    @Bean
+    public Binding seckillTimeoutFailureBinding() {
+        return BindingBuilder.bind(seckillFailureQueue())
+                .to(seckillFailureExchange()).with(SECKILL_TIMEOUT_FAILURE_ROUTING_KEY);
+    }
+
+    @Bean
+    public Binding seckillInvalidFailureBinding() {
+        return BindingBuilder.bind(seckillFailureQueue())
+                .to(seckillFailureExchange()).with(SECKILL_INVALID_FAILURE_ROUTING_KEY);
     }
 
 

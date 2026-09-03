@@ -20,6 +20,7 @@ docs/workpack/
 
 | 阶段 | 切片 | 状态 | 需求源 | Plan | Review | Evidence |
 |---|---|---|---|---|---|---|
+| B6 | rabbitmq-reliability | 本地已验证 | [阶段 B B6](../plans/阶段B-P0P1交易链路修复.md#b6rabbitmq-可靠投递与消费失败治理p1) / [Issue #16](https://github.com/wzhwwwzzzhhh/Final-StandMarket/issues/16) | [plan](B6-rabbitmq-reliability/plan.md) | [PASS（P0/P1/P2=0）](B6-rabbitmq-reliability/review.md) | [evidence](B6-rabbitmq-reliability/evidence.md) |
 | B0 | credential-log-safety | AC1-AC5 与 CI 已通过；AC6 阻塞 Issue #4、B11 与生产发布，不阻塞 B1-B10 本地开发 | [阶段 B B0](../plans/阶段B-P0P1交易链路修复.md#b0密码token-与日志安全p0) / [Issue #4](https://github.com/wzhwwwzzzhhh/Final-StandMarket/issues/4) | [plan](B0-credential-log-safety/plan.md) | [PASS](B0-credential-log-safety/review.md) | [evidence](B0-credential-log-safety/evidence.md) |
 
 ## 已归档

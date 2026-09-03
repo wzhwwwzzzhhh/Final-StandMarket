@@ -1,68 +1,63 @@
--- seckill.lua
--- KEYS[1]: 库存key (seckill:coupon:stock:{couponId})
--- KEYS[2]: 开始时间key (seckill:coupon:startTime:{couponId})
--- KEYS[3]: 结束时间key (seckill:coupon:endTime:{couponId})
--- KEYS[4]: 已购买用户集合 (seckill:coupon:users:{couponId})
--- ARGV[1]: 扣减数量 (通常为1)
--- ARGV[2]: 当前时间戳（秒）
--- ARGV[3]: 用户ID
-
+-- B6 atomic reservation: stock + user ZSET + order token HASH + active coupon registry.
 local stock_key = KEYS[1]
-local start_time_key = KEYS[2]
-local end_time_key = KEYS[3]
+local start_key = KEYS[2]
+local end_key = KEYS[3]
 local users_key = KEYS[4]
-local decrease_num = tonumber(ARGV[1]) or 1
-local current_time = tonumber(ARGV[2])
+local reservations_key = KEYS[5]
+local registry_key = KEYS[6]
+local quantity_raw = ARGV[1]
+local now_raw = ARGV[2]
 local user_id = ARGV[3]
+local order_number = ARGV[4]
 
--- 获取开始时间
-local start_time = tonumber(redis.call('GET', start_time_key))
+local function type_name(key)
+    local value = redis.call('TYPE', key)
+    if type(value) == 'table' then return value['ok'] end
+    return value
+end
 
--- 判断开始时间数据是否正常
-if start_time == nil then
+local function nonnegative_integer(value)
+    return value and string.match(value, '^%d+$')
+end
+
+local function positive_integer(value)
+    return value and string.match(value, '^%d+$') and tonumber(value) > 0
+end
+
+if #KEYS ~= 6 or #ARGV ~= 4 or not positive_integer(quantity_raw)
+        or not positive_integer(now_raw) or not positive_integer(user_id)
+        or not order_number or #order_number > 50 or not positive_integer(order_number) then
     return -5
 end
--- 判断是否未开始
-if current_time < start_time then
-    return -3
-end
-
--- 获取结束时间
-local end_time = tonumber(redis.call('GET', end_time_key))
-
--- 判断结束时间数据是否正常
-if end_time == nil then
+if type_name(stock_key) ~= 'string' or type_name(start_key) ~= 'string'
+        or type_name(end_key) ~= 'string'
+        or (type_name(users_key) ~= 'none' and type_name(users_key) ~= 'zset')
+        or (type_name(reservations_key) ~= 'none' and type_name(reservations_key) ~= 'hash')
+        or (type_name(registry_key) ~= 'none' and type_name(registry_key) ~= 'set') then
     return -5
 end
--- 判断是否已过期
-if current_time > end_time then
-    return -2
-end
 
--- 判断用户是否已购买
-if redis.call('ZSCORE', users_key, user_id) then
+local stock_raw = redis.call('GET', stock_key)
+local start_raw = redis.call('GET', start_key)
+local end_raw = redis.call('GET', end_key)
+if not nonnegative_integer(stock_raw) or not positive_integer(start_raw) or not positive_integer(end_raw) then
+    return -5
+end
+local quantity = tonumber(quantity_raw)
+local now = tonumber(now_raw)
+if now < tonumber(start_raw) then return -3 end
+if now > tonumber(end_raw) then return -2 end
+
+local score = redis.call('ZSCORE', users_key, user_id)
+local token = redis.call('HGET', reservations_key, user_id)
+if score ~= false or token ~= false then
+    if score == false or token == false then return -6 end
     return -4
 end
+if tonumber(stock_raw) < quantity then return -1 end
 
--- 获取当前库存
-local stock = tonumber(redis.call('GET', stock_key))
-
--- 库存不足
-if not stock or stock <= 0 then
-    return -1
-end
-
--- 扣减库存
-local new_stock = redis.call('DECRBY', stock_key, decrease_num)
-
--- 如果扣减后库存小于0，恢复库存并返回失败
-if new_stock < 0 then
-    redis.call('INCRBY', stock_key, decrease_num)
-    return -1
-end
-
--- 记录用户购买信息（score为购买时间戳）
-redis.call('ZADD', users_key, current_time, user_id)
-
--- 返回剩余库存
-return new_stock
+redis.call('DECRBY', stock_key, quantity)
+redis.call('ZADD', users_key, now, user_id)
+redis.call('HSET', reservations_key, user_id, order_number)
+redis.call('SADD', registry_key, string.sub(stock_key, string.len('seckill:coupon:stock:') + 1))
+return 0

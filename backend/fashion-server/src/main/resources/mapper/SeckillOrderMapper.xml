@@ -45,6 +45,14 @@
         where order_number = #{orderNumber}
     </select>
 
+    <select id="selectByOrderNumberForUpdate" parameterType="java.lang.String" resultType="com.fashion.entity.SeckillOrder">
+        select id, user_id as userId, coupon_id as couponId, order_number as orderNumber,
+               status, create_time as createTime, pay_time as payTime
+        from seckill_order
+        where order_number = #{orderNumber}
+        for update
+    </select>
+
     <select id="selectByOrderNumberAndUserId" resultType="com.fashion.entity.SeckillOrder">
         select id, user_id as userId, coupon_id as couponId, order_number as orderNumber,
                status, create_time as createTime, pay_time as payTime

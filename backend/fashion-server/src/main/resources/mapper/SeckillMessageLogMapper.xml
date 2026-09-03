@@ -1,0 +1,390 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.fashion.mapper.SeckillMessageLogMapper">
+    <insert id="insert" parameterType="com.fashion.entity.SeckillMessageLog" useGeneratedKeys="true" keyProperty="id">
+        INSERT INTO seckill_message_log
+        (message_id,message_type,publish_purpose,business_key,source_message_id,source_message_id_hash,
+         source_message_id_prefix,body_sha256,body_size,user_id,coupon_id,payload,payload_schema_version,
+         exchange_name,routing_key,status,dead_letter_status,confirm_status,returned,current_correlation_id,
+         publish_attempt,consume_attempt,fallback_attempt,due_at,next_retry_at,version,created_at,updated_at)
+        VALUES
+        (#{messageId},#{messageType},#{publishPurpose},#{businessKey},#{sourceMessageId},#{sourceMessageIdHash},
+         #{sourceMessageIdPrefix},#{bodySha256},#{bodySize},#{userId},#{couponId},#{payload},#{payloadSchemaVersion},
+         #{exchangeName},#{routingKey},#{status},#{deadLetterStatus},#{confirmStatus},#{returned},#{currentCorrelationId},
+         #{publishAttempt},#{consumeAttempt},0,#{dueAt},#{nextRetryAt},#{version},#{createdAt},#{updatedAt})
+    </insert>
+
+    <insert id="insertIfAbsent" parameterType="com.fashion.entity.SeckillMessageLog">
+        INSERT INTO seckill_message_log
+        (message_id,message_type,publish_purpose,business_key,user_id,coupon_id,payload,
+         payload_schema_version,exchange_name,routing_key,status,dead_letter_status,confirm_status,
+         returned,publish_attempt,consume_attempt,fallback_attempt,version,last_error,created_at,updated_at)
+        VALUES
+        (#{messageId},#{messageType},#{publishPurpose},#{businessKey},#{userId},#{couponId},#{payload},
+         #{payloadSchemaVersion},#{exchangeName},#{routingKey},#{status},#{deadLetterStatus},#{confirmStatus},
+         #{returned},#{publishAttempt},#{consumeAttempt},0,#{version},#{lastError},#{createdAt},#{updatedAt})
+        ON DUPLICATE KEY UPDATE id=id
+    </insert>
+
+    <select id="selectByMessageId" resultType="com.fashion.entity.SeckillMessageLog">
+        SELECT message_log.*,
+               message_id AS messageId,message_type AS messageType,publish_purpose AS publishPurpose,
+               business_key AS businessKey,user_id AS userId,coupon_id AS couponId,
+               current_correlation_id AS currentCorrelationId,publish_attempt AS publishAttempt,
+               consume_attempt AS consumeAttempt,dead_letter_status AS deadLetterStatus,
+               confirm_status AS confirmStatus,due_at AS dueAt,next_retry_at AS nextRetryAt,
+               source_message_id AS sourceMessageId
+        FROM seckill_message_log message_log WHERE message_id=#{messageId}
+    </select>
+
+    <select id="selectByMessageIdForUpdate" resultType="com.fashion.entity.SeckillMessageLog">
+        SELECT * FROM seckill_message_log WHERE message_id=#{messageId} FOR UPDATE
+    </select>
+
+    <update id="claimNextPublishAttempt">
+        UPDATE seckill_message_log
+        SET publish_attempt=publish_attempt+1,
+            current_correlation_id=CONCAT(message_id, ':P', publish_attempt+1),
+            publish_purpose=#{publishPurpose}, status='SENT', confirm_status='PENDING',
+            returned=0, version=version+1, updated_at=NOW(3)
+        WHERE message_id=#{messageId}
+          AND status IN ('PREPARED','RETRY_PUBLISH_PENDING','TIMEOUT_PUBLISH_PENDING',
+                         'DEAD_LETTER_PUBLISH_PENDING')
+          AND publish_attempt&lt;5
+          AND (next_retry_at IS NULL OR next_retry_at&lt;=NOW(3))
+    </update>
+
+    <update id="markSynchronousFailure">
+        UPDATE seckill_message_log
+        SET status=CASE
+              WHEN message_type='ORDER_CREATE' AND publish_purpose='INITIAL' THEN 'COMPENSATION_PENDING'
+              WHEN message_type='ORDER_TIMEOUT' THEN 'TIMEOUT_PUBLISH_PENDING'
+              WHEN message_type IN ('BUSINESS_DEAD_LETTER','INVALID_MESSAGE') THEN 'DEAD_LETTER_PUBLISH_PENDING'
+              ELSE 'RETRY_PUBLISH_PENDING' END,
+            confirm_status='NACK', last_error=#{lastError},
+            next_retry_at=CASE WHEN message_type='ORDER_CREATE' AND publish_purpose='INITIAL'
+                               THEN NULL ELSE DATE_ADD(NOW(3),INTERVAL 5 SECOND) END,
+            version=version+1, updated_at=NOW(3)
+        WHERE message_id=#{messageId} AND current_correlation_id=#{correlationId}
+          AND status NOT IN ('PROCESSING','CONSUMED','CONSUME_EXHAUSTED','COMPENSATION_PENDING',
+                             'COMPENSATED','MANUAL_REQUIRED')
+          AND status='SENT'
+    </update>
+
+    <update id="recordReturn">
+        UPDATE seckill_message_log
+        SET returned=1, return_reply_code=#{replyCode}, return_reply_text=LEFT(#{replyText},255),
+            confirm_status='PENDING',
+            last_error=CONCAT('return ',#{exchange},'/',#{routingKey}),
+            version=version+1, updated_at=NOW(3)
+        WHERE message_id=#{messageId} AND current_correlation_id=#{correlationId}
+          AND returned=0 AND confirm_status IN ('PENDING','ACK')
+          AND status IN ('SENT','BROKER_ACKED')
+    </update>
+
+    <update id="applyCallbackAction">
+        UPDATE seckill_message_log
+        SET status=CASE #{action}
+              WHEN 'MARK_ACKED' THEN CASE WHEN returned=1 THEN status ELSE 'BROKER_ACKED' END
+              WHEN 'COMPENSATE_RESERVATION' THEN 'COMPENSATION_PENDING'
+              WHEN 'RETRY_ORDER' THEN 'RETRY_PUBLISH_PENDING'
+              WHEN 'RETRY_TIMEOUT' THEN 'TIMEOUT_PUBLISH_PENDING'
+              WHEN 'RETRY_DEAD_LETTER' THEN 'DEAD_LETTER_PUBLISH_PENDING'
+              ELSE status END,
+            confirm_status=CASE WHEN #{action}='MARK_ACKED' AND returned=0 THEN 'ACK' ELSE 'NACK' END,
+            confirmed_at=CASE WHEN #{action}='MARK_ACKED' AND returned=0 THEN NOW(3) ELSE confirmed_at END,
+            next_retry_at=CASE WHEN #{action} IN ('RETRY_ORDER','RETRY_TIMEOUT','RETRY_DEAD_LETTER')
+                               THEN DATE_ADD(NOW(3),INTERVAL 5 SECOND) ELSE next_retry_at END,
+            last_error=COALESCE(#{lastError},last_error), version=version+1, updated_at=NOW(3)
+        WHERE message_id=#{messageId} AND current_correlation_id=#{correlationId}
+          AND ((#{action}='MARK_ACKED' AND status='SENT' AND confirm_status='PENDING' AND returned=0)
+            OR (#{action}&lt;&gt;'MARK_ACKED' AND status IN ('SENT','BROKER_ACKED')
+                AND confirm_status='PENDING'))
+    </update>
+
+    <update id="appendCallbackAudit">
+        UPDATE seckill_message_log
+        SET last_error=RIGHT(CONCAT_WS(' | ',NULLIF(last_error,''),
+            LEFT(CONCAT('stale ',#{correlationId},' ',COALESCE(#{summary},'')),240)),500),
+            updated_at=NOW(3)
+        WHERE message_id=#{messageId}
+    </update>
+
+    <update id="claimConsumeAttempt">
+        UPDATE seckill_message_log
+        SET status='PROCESSING',consume_attempt=#{incomingAttempt},processing_attempt=#{incomingAttempt},
+            locked_by=#{worker},locked_until=DATE_ADD(NOW(3),INTERVAL 30 SECOND),
+            version=version+1,updated_at=NOW(3)
+        WHERE message_id=#{messageId} AND message_type='ORDER_CREATE'
+          AND business_key=#{businessKey} AND user_id=#{userId} AND coupon_id=#{couponId}
+          AND consume_attempt=#{incomingAttempt}-1
+          AND status IN ('SENT','BROKER_ACKED','RETRY_PUBLISH_PENDING')
+    </update>
+
+    <update id="markConsumedAttempt">
+        UPDATE seckill_message_log
+        SET status='CONSUMED',consumed_at=COALESCE(consumed_at,NOW(3)),
+            processing_attempt=NULL,locked_by=NULL,locked_until=NULL,
+            version=version+1,updated_at=NOW(3)
+        WHERE message_id=#{messageId} AND message_type='ORDER_CREATE'
+          AND status='PROCESSING' AND consume_attempt=#{incomingAttempt}
+          AND processing_attempt=#{incomingAttempt} AND locked_by=#{worker}
+    </update>
+
+    <update id="claimTimeoutConsumeAttempt">
+        UPDATE seckill_message_log
+        SET status='PROCESSING',consume_attempt=#{incomingAttempt},processing_attempt=#{incomingAttempt},
+            locked_by=#{worker},locked_until=DATE_ADD(NOW(3),INTERVAL 30 SECOND),
+            version=version+1,updated_at=NOW(3)
+        WHERE message_id=#{messageId} AND message_type='ORDER_TIMEOUT'
+          AND business_key=#{businessKey} AND payload=#{payload}
+          AND ((consume_attempt=#{incomingAttempt}-1
+                AND status IN ('SENT','BROKER_ACKED','TIMEOUT_PUBLISH_PENDING'))
+               OR (consume_attempt=#{incomingAttempt} AND status='PROCESSING'
+                   AND locked_until&lt;NOW(3)))
+    </update>
+
+    <update id="markTimeoutConsumedAttempt">
+        UPDATE seckill_message_log
+        SET status='CONSUMED',consumed_at=COALESCE(consumed_at,NOW(3)),
+            processing_attempt=NULL,locked_by=NULL,locked_until=NULL,
+            version=version+1,updated_at=NOW(3)
+        WHERE message_id=#{messageId} AND message_type='ORDER_TIMEOUT'
+          AND status='PROCESSING' AND consume_attempt=#{incomingAttempt}
+          AND processing_attempt=#{incomingAttempt} AND locked_by=#{worker}
+    </update>
+
+    <update id="markTimeoutFallbackConsumed">
+        UPDATE seckill_message_log
+        SET status='CONSUMED', publish_purpose='TIMEOUT_FALLBACK',
+            consumed_at=COALESCE(consumed_at,NOW(3)), last_error=NULL,
+            processing_attempt=NULL,locked_by=NULL,locked_until=NULL,
+            version=version+1, updated_at=NOW(3)
+        WHERE message_id=#{messageId} AND message_type='ORDER_TIMEOUT'
+          AND status NOT IN ('CONSUMED','COMPENSATED')
+    </update>
+
+    <update id="recordTimeoutFallbackFailure">
+        UPDATE seckill_message_log
+        SET publish_purpose='TIMEOUT_FALLBACK',
+            status=CASE WHEN fallback_attempt&gt;=#{maxAttempts}-1 THEN 'MANUAL_REQUIRED'
+                        ELSE 'TIMEOUT_FALLBACK_PENDING' END,
+            next_retry_at=CASE WHEN fallback_attempt&gt;=#{maxAttempts}-1 THEN NULL
+                               ELSE DATE_ADD(NOW(3),INTERVAL LEAST(300,POW(2,fallback_attempt)) SECOND) END,
+            fallback_attempt=LEAST(#{maxAttempts},fallback_attempt+1),
+            processing_attempt=NULL,locked_by=NULL,locked_until=NULL,
+            last_error=LEFT(#{lastError},500),version=version+1,updated_at=NOW(3)
+        WHERE message_id=#{messageId} AND message_type='ORDER_TIMEOUT'
+          AND status IN ('PREPARED','BROKER_ACKED','TIMEOUT_PUBLISH_PENDING','TIMEOUT_FALLBACK_PENDING',
+                         'CONSUME_EXHAUSTED')
+    </update>
+
+    <update id="markInitialCompensated">
+        UPDATE seckill_message_log
+        SET status='COMPENSATED',version=version+1,updated_at=NOW(3)
+        WHERE message_id=CONCAT('SECKILL_ORDER_CREATE:',#{orderNumber})
+          AND message_type='ORDER_CREATE' AND publish_purpose='INITIAL'
+          AND status='COMPENSATION_PENDING'
+    </update>
+
+    <update id="recordConsumeFailure">
+        UPDATE seckill_message_log
+        SET consume_attempt=#{incomingAttempt},
+            publish_purpose=CASE WHEN message_type='ORDER_TIMEOUT' THEN 'TIMEOUT_RECOVERY'
+                                 ELSE 'CONSUME_RETRY' END,
+            status=CASE WHEN #{incomingAttempt}&gt;=3 THEN 'CONSUME_EXHAUSTED'
+                        WHEN message_type='ORDER_TIMEOUT' THEN 'TIMEOUT_PUBLISH_PENDING'
+                        ELSE 'RETRY_PUBLISH_PENDING' END,
+            dead_letter_status=CASE WHEN #{incomingAttempt}&gt;=3 THEN 'PENDING'
+                                    ELSE dead_letter_status END,
+            next_retry_at=CASE WHEN #{incomingAttempt}&lt;3
+                               THEN DATE_ADD(NOW(3),INTERVAL POW(2,#{incomingAttempt}-1) SECOND)
+                               ELSE NULL END,
+            last_error=#{lastError}, version=version+1, updated_at=NOW(3)
+            ,processing_attempt=NULL,locked_by=NULL,locked_until=NULL
+        WHERE message_id=#{messageId} AND message_type IN ('ORDER_CREATE','ORDER_TIMEOUT')
+          AND ((consume_attempt=#{incomingAttempt}-1 AND status&lt;&gt;'PROCESSING')
+               OR (consume_attempt=#{incomingAttempt} AND status='PROCESSING'
+                   AND processing_attempt=#{incomingAttempt}))
+          AND status NOT IN ('CONSUMED','COMPENSATED','MANUAL_REQUIRED','CONSUME_EXHAUSTED')
+    </update>
+
+    <update id="recordTimeoutConsumeFailure">
+        UPDATE seckill_message_log
+        SET publish_purpose='TIMEOUT_RECOVERY',
+            status=CASE WHEN #{incomingAttempt}&gt;=3 THEN 'CONSUME_EXHAUSTED'
+                        ELSE 'TIMEOUT_PUBLISH_PENDING' END,
+            dead_letter_status=CASE WHEN #{incomingAttempt}&gt;=3 THEN 'PENDING'
+                                    ELSE dead_letter_status END,
+            next_retry_at=CASE WHEN #{incomingAttempt}&lt;3
+                               THEN DATE_ADD(NOW(3),INTERVAL POW(2,#{incomingAttempt}-1) SECOND)
+                               ELSE NULL END,
+            last_error=#{lastError},version=version+1,updated_at=NOW(3),
+            processing_attempt=NULL,locked_by=NULL,locked_until=NULL
+        WHERE message_id=#{messageId} AND message_type='ORDER_TIMEOUT'
+          AND status='PROCESSING' AND consume_attempt=#{incomingAttempt}
+          AND processing_attempt=#{incomingAttempt} AND locked_by=#{claimToken}
+    </update>
+
+    <update id="markConsumeAttemptGap">
+        UPDATE seckill_message_log
+        SET status='MANUAL_REQUIRED', last_error=CONCAT('consume attempt gap: ',#{incomingAttempt},' ',#{lastError}),
+            processing_attempt=NULL,locked_by=NULL,locked_until=NULL,
+            version=version+1, updated_at=NOW(3)
+        WHERE message_id=#{messageId} AND status NOT IN ('CONSUMED','COMPENSATED','CONSUME_EXHAUSTED')
+          AND consume_attempt&lt;#{incomingAttempt}-1
+    </update>
+
+    <update id="updateSourceDeadLetterStatus">
+        UPDATE seckill_message_log
+        SET dead_letter_status=#{deadLetterStatus}, version=version+1, updated_at=NOW(3)
+        WHERE message_id=#{messageId}
+          AND (status='CONSUME_EXHAUSTED'
+               OR (message_type='ORDER_TIMEOUT' AND status='CONSUMED'
+                   AND publish_purpose='TIMEOUT_FALLBACK'))
+    </update>
+
+    <update id="markConfirmTimeouts">
+        UPDATE seckill_message_log
+        SET status=CASE
+              WHEN message_type='ORDER_CREATE' AND publish_purpose='INITIAL' THEN 'COMPENSATION_PENDING'
+              WHEN message_type='ORDER_TIMEOUT' THEN 'TIMEOUT_PUBLISH_PENDING'
+              WHEN message_type IN ('BUSINESS_DEAD_LETTER','INVALID_MESSAGE')
+                THEN 'DEAD_LETTER_PUBLISH_PENDING'
+              ELSE 'RETRY_PUBLISH_PENDING' END,
+            publish_purpose=CASE
+              WHEN message_type='ORDER_CREATE' AND publish_purpose='INITIAL' THEN 'INITIAL'
+              WHEN message_type='ORDER_TIMEOUT' THEN 'TIMEOUT_RECOVERY'
+              WHEN message_type IN ('BUSINESS_DEAD_LETTER','INVALID_MESSAGE') THEN 'DEAD_LETTER'
+              ELSE 'CONSUME_RETRY' END,
+            next_retry_at=CASE WHEN message_type='ORDER_CREATE' AND publish_purpose='INITIAL'
+                               THEN NULL ELSE NOW(3) END,
+            last_error=CASE WHEN returned=1 THEN 'mandatory return recovery'
+                            ELSE 'publisher confirm timeout' END,
+            version=version+1,updated_at=NOW(3)
+        WHERE status='SENT' AND confirm_status='PENDING'
+          AND updated_at&lt;DATE_SUB(NOW(3),INTERVAL 30 SECOND)
+        ORDER BY id LIMIT 100
+    </update>
+
+    <update id="releaseExpiredTimeoutClaims">
+        UPDATE seckill_message_log
+        SET status='TIMEOUT_PUBLISH_PENDING',publish_purpose='TIMEOUT_RECOVERY',
+            next_retry_at=NOW(3),processing_attempt=NULL,locked_by=NULL,locked_until=NULL,
+            last_error='timeout consume lease expired',version=version+1,updated_at=NOW(3)
+        WHERE message_type='ORDER_TIMEOUT' AND status='PROCESSING'
+          AND locked_until IS NOT NULL AND locked_until&lt;NOW(3)
+        ORDER BY id LIMIT 100
+    </update>
+
+    <update id="markPublishAttemptsExhausted">
+        UPDATE seckill_message_log
+        SET status=CASE
+              WHEN message_type='ORDER_CREATE' AND publish_purpose='INITIAL' THEN 'COMPENSATION_PENDING'
+              WHEN message_type='ORDER_CREATE' THEN 'CONSUME_EXHAUSTED'
+              WHEN message_type='ORDER_TIMEOUT' THEN 'TIMEOUT_FALLBACK_PENDING'
+              ELSE 'MANUAL_REQUIRED' END,
+            publish_purpose=CASE WHEN message_type='ORDER_TIMEOUT' THEN 'TIMEOUT_FALLBACK'
+                                 ELSE publish_purpose END,
+            dead_letter_status=CASE WHEN message_type='ORDER_CREATE' AND publish_purpose&lt;&gt;'INITIAL'
+                                    THEN 'PENDING' ELSE dead_letter_status END,
+            confirm_status=CASE WHEN confirm_status='PENDING' THEN 'TIMEOUT' ELSE confirm_status END,
+            next_retry_at=CASE WHEN message_type='ORDER_TIMEOUT'
+                               THEN GREATEST(COALESCE(next_retry_at,due_at),due_at)
+                               ELSE NULL END,
+            last_error='publish attempts exhausted',
+            version=version+1, updated_at=NOW(3)
+        WHERE publish_attempt&gt;=#{maxAttempts}
+          AND status IN ('PREPARED','RETRY_PUBLISH_PENDING','TIMEOUT_PUBLISH_PENDING',
+                         'DEAD_LETTER_PUBLISH_PENDING')
+        ORDER BY id LIMIT 100
+    </update>
+
+    <update id="markSourcesWithExhaustedDeadLetters">
+        UPDATE seckill_message_log source
+        INNER JOIN (
+          SELECT id FROM (
+            SELECT candidate.id
+            FROM seckill_message_log candidate
+            INNER JOIN seckill_message_log dead
+              ON dead.source_message_id=candidate.message_id
+             AND dead.message_type='BUSINESS_DEAD_LETTER'
+             AND dead.status='MANUAL_REQUIRED'
+            WHERE (candidate.status='CONSUME_EXHAUSTED'
+              OR (candidate.message_type='ORDER_TIMEOUT' AND candidate.status='CONSUMED'
+                  AND candidate.publish_purpose='TIMEOUT_FALLBACK'))
+              AND candidate.dead_letter_status&lt;&gt;'MANUAL_REQUIRED'
+            ORDER BY candidate.id LIMIT 100
+          ) bounded_source_ids
+        ) target ON target.id=source.id
+        INNER JOIN seckill_message_log dead_letter
+          ON dead_letter.source_message_id=source.message_id
+         AND dead_letter.message_type='BUSINESS_DEAD_LETTER'
+         AND dead_letter.status='MANUAL_REQUIRED'
+        SET source.dead_letter_status='MANUAL_REQUIRED',
+            source.version=source.version+1, source.updated_at=NOW(3)
+        WHERE (source.status='CONSUME_EXHAUSTED'
+          OR (source.message_type='ORDER_TIMEOUT' AND source.status='CONSUMED'
+              AND source.publish_purpose='TIMEOUT_FALLBACK'))
+          AND source.dead_letter_status&lt;&gt;'MANUAL_REQUIRED'
+    </update>
+
+    <update id="scheduleReconciliationRedelivery">
+        UPDATE seckill_message_log
+        SET status=CASE WHEN publish_attempt&gt;=#{maxAttempts} THEN 'MANUAL_REQUIRED'
+                        ELSE 'RETRY_PUBLISH_PENDING' END,
+            publish_purpose='CONSUME_RETRY',
+            next_retry_at=CASE WHEN publish_attempt&gt;=#{maxAttempts} THEN NULL ELSE NOW(3) END,
+            last_error=CASE WHEN publish_attempt&gt;=#{maxAttempts}
+                            THEN 'reconciliation delivery attempts exhausted'
+                            ELSE 'reconciliation detected stale broker ack' END,
+            version=version+1,updated_at=NOW(3)
+        WHERE message_id=#{messageId} AND message_type='ORDER_CREATE'
+          AND status IN ('BROKER_ACKED','SENT')
+    </update>
+
+    <select id="selectInitialCompensationPending" resultType="com.fashion.entity.SeckillMessageLog">
+        SELECT message_log.*
+        FROM seckill_message_log message_log
+        LEFT JOIN seckill_compensation_record compensation
+          ON compensation.compensation_action='RELEASE_RESERVATION'
+         AND compensation.order_number=message_log.business_key
+        WHERE message_log.message_type='ORDER_CREATE'
+          AND message_log.publish_purpose='INITIAL'
+          AND message_log.status='COMPENSATION_PENDING'
+          AND compensation.id IS NULL
+        ORDER BY message_log.id
+        LIMIT #{limit}
+    </select>
+
+    <select id="selectConsumeExhaustedWithoutDeadLetter" resultType="com.fashion.entity.SeckillMessageLog">
+        SELECT source.*,
+               source.message_id AS messageId,source.message_type AS messageType,
+               source.business_key AS businessKey,source.user_id AS userId,source.coupon_id AS couponId,
+               source.consume_attempt AS consumeAttempt
+        FROM seckill_message_log source
+        LEFT JOIN seckill_message_log dead_letter
+          ON dead_letter.message_id=CONCAT('SECKILL_DEAD:',source.message_id)
+        WHERE source.message_type='ORDER_CREATE' AND source.status='CONSUME_EXHAUSTED'
+          AND source.dead_letter_status='PENDING' AND dead_letter.id IS NULL
+        ORDER BY source.id
+        LIMIT #{limit}
+    </select>
+
+    <select id="selectRecoverable" resultType="com.fashion.entity.SeckillMessageLog">
+        SELECT * FROM seckill_message_log
+        WHERE (status IN ('PREPARED','RETRY_PUBLISH_PENDING','TIMEOUT_PUBLISH_PENDING',
+                          'DEAD_LETTER_PUBLISH_PENDING')
+               AND (next_retry_at IS NULL OR next_retry_at&lt;=NOW(3)))
+           OR (message_type='ORDER_TIMEOUT' AND status='BROKER_ACKED'
+               AND due_at IS NOT NULL AND due_at&lt;=NOW(3))
+           OR (message_type='ORDER_TIMEOUT' AND status='CONSUME_EXHAUSTED'
+               AND due_at IS NOT NULL AND due_at&lt;=NOW(3))
+           OR (message_type='ORDER_TIMEOUT' AND status='TIMEOUT_FALLBACK_PENDING'
+               AND publish_purpose='TIMEOUT_FALLBACK' AND fallback_attempt&lt;3
+               AND due_at IS NOT NULL AND due_at&lt;=NOW(3)
+               AND (next_retry_at IS NULL OR next_retry_at&lt;=NOW(3)))
+        ORDER BY COALESCE(next_retry_at,created_at),id
+        LIMIT #{limit}
+    </select>
+</mapper>
