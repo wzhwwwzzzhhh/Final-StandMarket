@@ -1,6 +1,6 @@
 # B6-rabbitmq-reliability · Evidence
 
-> Workpack status: CI 验证中；本地真实 MySQL 8、Redis 7.0.15、RabbitMQ 3.12.14、三存储联合与 broker restart 均通过
+> Workpack status: 已归档；本地真实 MySQL 8、Redis 7.0.15、RabbitMQ 3.12.14、三存储联合与 broker restart 均通过，PR #17 合并前 checks 全绿
 > Baseline: `master` @ `b07f9ed1a21d09c0c8eefae93a84ae10407d00d0`
 > Branch/worktree: `codex/b6-rabbitmq-reliability` / `D:\market-handsome\Final-StandMarket-worktrees\b6-rabbitmq-reliability`
 
@@ -78,6 +78,8 @@
 | 2026-09-03 | `f9345b6 feat(seckill): 完善 RabbitMQ 可靠性闭环` | PASS | 仅暂存 102 个 B6 文件；禁止配置 0；staged `diff --check` 通过；无 force 推送到专用分支 |
 | 2026-09-03 | GitHub PR #17 | OPEN；CI 验证中 | `codex/b6-rabbitmq-reliability` → `master`；Closes #16，Related to #3；未执行 merge |
 | 2026-09-03 | PR #17 @ `d9fad1e` GitHub checks | 5/5 PASS | Java backend、fashion-client build、fashion-admin build、Python agent、Gitleaks 全绿；该结果来自 GitHub，不以本地命令冒充 |
+| 2026-09-03 | PR #17 @ `6b4dcb1` GitHub checks | 5/5 PASS；MERGEABLE/CLEAN | Java backend、fashion-client build、fashion-admin build、Python agent、Gitleaks 对最新提交再次全绿 |
+| 2026-09-03 | 用户合并授权 | confirmed | 进入合并前状态同步与 workpack 归档；归档提交仍须再次通过 GitHub checks 才能合并 |
 | 2026-09-02 17:01 | `git diff --check` + tracked diff/untracked text scan | PASS | tracked diff 无 whitespace error；untracked trailing/conflict count 0；CRLF conversion warnings非 diff error |
 | 2026-09-02 17:01 | 限定范围复核 | 101 changed/untracked files；均映射 B6 AC1–AC12、Design/workpack 或隔离测试基础设施 | 无前端、新 API、支付/退款新能力、部署或生产操作 |
 | 2026-09-02 17:01 | 高置信敏感信息扫描 | 0 findings | 扫描 private-key、AWS key、GitHub token 标记；未输出配置凭据 |
@@ -87,9 +89,9 @@
 
 - B11 的 zero-inflight 上线切换没有运行；它属于独立发布门禁，不影响 B6 本地行为验证结论。
 - 未运行生产数据库迁移、生产 RabbitMQ 队列操作或部署。
-- 已按授权执行 commit、push 和创建 PR #17；merge、远程仓库设置修改仍未获授权。
+- 已按授权执行 commit、push、创建 PR #17，并获得 merge 授权；远程仓库设置修改仍未获授权。
 
 ## Local delivery summary
 
 - 产品实现、单元/合约测试、真实 MySQL 8、Redis 7.0.15、RabbitMQ 3.12.14、三存储联合故障注入及 broker restart 均已验证；独立 Review 为 P0/P1/P2=0，状态为“本地已验证”。
-- B0-AC6、B10、B11 以及 B6 的远程交付状态继续阻止生产发布；本地验证或后续 PR 合并都不代表可以部署。
+- B6 验收、独立 Review 与远程 checks 已通过；B0-AC6、B10、B11 继续阻止生产发布，PR 合并不代表可以部署。
