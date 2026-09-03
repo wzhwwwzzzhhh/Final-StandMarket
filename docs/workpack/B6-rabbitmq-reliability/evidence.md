@@ -1,6 +1,6 @@
 # B6-rabbitmq-reliability · Evidence
 
-> Workpack status: 本地已验证；真实 MySQL 8、Redis 7.0.15、RabbitMQ 3.12.14、三存储联合与 broker restart 均通过
+> Workpack status: CI 验证中；本地真实 MySQL 8、Redis 7.0.15、RabbitMQ 3.12.14、三存储联合与 broker restart 均通过
 > Baseline: `master` @ `b07f9ed1a21d09c0c8eefae93a84ae10407d00d0`
 > Branch/worktree: `codex/b6-rabbitmq-reliability` / `D:\market-handsome\Final-StandMarket-worktrees\b6-rabbitmq-reliability`
 
@@ -74,6 +74,9 @@
 | 2026-09-03 16:15 | `mvn -pl fashion-server '-Dtest=B6*Test' test` | 161 tests；0 failures；0 errors；34 skipped；BUILD SUCCESS | B6 最终聚焦回归；34 个条件集成测试已在上一行单独显式运行并全绿 |
 | 2026-09-03 16:16 | `mvn test` from `backend/` | 395 tests；0 failures；0 errors；93 skipped；BUILD SUCCESS | 最终完整后端回归；四模块 reactor 全绿 |
 | 2026-09-03 16:18 | 最终 Git/资源/主工作区检查 | PASS | `git diff --check` exit 0；17 tracked + 85 untracked（102 total）；85 个未跟踪文本文件 trailing/conflict 均为 0；102 个改动/新增文件高置信敏感 finding 0；staged 0；临时配置目录不存在；分支/基线正确；主工作区三项受保护修改及用户 `docs/prototypes/` 原样保留 |
+| 2026-09-03 | 远程基线与授权核验 | PASS | `Final-StandMarket/master` 仍为 `b07f9ed1...`，与 B6 merge-base 一致；用户明确授权 commit、push 和创建 PR，未授权 merge |
+| 2026-09-03 | `f9345b6 feat(seckill): 完善 RabbitMQ 可靠性闭环` | PASS | 仅暂存 102 个 B6 文件；禁止配置 0；staged `diff --check` 通过；无 force 推送到专用分支 |
+| 2026-09-03 | GitHub PR #17 | OPEN；CI 验证中 | `codex/b6-rabbitmq-reliability` → `master`；Closes #16，Related to #3；未执行 merge |
 | 2026-09-02 17:01 | `git diff --check` + tracked diff/untracked text scan | PASS | tracked diff 无 whitespace error；untracked trailing/conflict count 0；CRLF conversion warnings非 diff error |
 | 2026-09-02 17:01 | 限定范围复核 | 101 changed/untracked files；均映射 B6 AC1–AC12、Design/workpack 或隔离测试基础设施 | 无前端、新 API、支付/退款新能力、部署或生产操作 |
 | 2026-09-02 17:01 | 高置信敏感信息扫描 | 0 findings | 扫描 private-key、AWS key、GitHub token 标记；未输出配置凭据 |
@@ -83,7 +86,7 @@
 
 - B11 的 zero-inflight 上线切换没有运行；它属于独立发布门禁，不影响 B6 本地行为验证结论。
 - 未运行生产数据库迁移、生产 RabbitMQ 队列操作或部署。
-- 用户已授权 commit、push 和创建 PR；merge、远程仓库设置修改仍未获授权。
+- 已按授权执行 commit、push 和创建 PR #17；merge、远程仓库设置修改仍未获授权。
 
 ## Local delivery summary
 
