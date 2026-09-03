@@ -77,6 +77,7 @@
 | 2026-09-03 | 远程基线与授权核验 | PASS | `Final-StandMarket/master` 仍为 `b07f9ed1...`，与 B6 merge-base 一致；用户明确授权 commit、push 和创建 PR，未授权 merge |
 | 2026-09-03 | `f9345b6 feat(seckill): 完善 RabbitMQ 可靠性闭环` | PASS | 仅暂存 102 个 B6 文件；禁止配置 0；staged `diff --check` 通过；无 force 推送到专用分支 |
 | 2026-09-03 | GitHub PR #17 | OPEN；CI 验证中 | `codex/b6-rabbitmq-reliability` → `master`；Closes #16，Related to #3；未执行 merge |
+| 2026-09-03 | PR #17 @ `d9fad1e` GitHub checks | 5/5 PASS | Java backend、fashion-client build、fashion-admin build、Python agent、Gitleaks 全绿；该结果来自 GitHub，不以本地命令冒充 |
 | 2026-09-02 17:01 | `git diff --check` + tracked diff/untracked text scan | PASS | tracked diff 无 whitespace error；untracked trailing/conflict count 0；CRLF conversion warnings非 diff error |
 | 2026-09-02 17:01 | 限定范围复核 | 101 changed/untracked files；均映射 B6 AC1–AC12、Design/workpack 或隔离测试基础设施 | 无前端、新 API、支付/退款新能力、部署或生产操作 |
 | 2026-09-02 17:01 | 高置信敏感信息扫描 | 0 findings | 扫描 private-key、AWS key、GitHub token 标记；未输出配置凭据 |
