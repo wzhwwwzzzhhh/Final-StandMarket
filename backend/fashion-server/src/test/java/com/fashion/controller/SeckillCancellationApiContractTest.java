@@ -11,7 +11,7 @@ import java.nio.file.Paths;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
-@DisplayName("B5 秒杀取消 API 与编排合约")
+@DisplayName("B6 秒杀取消 API 与编排合约")
 class SeckillCancellationApiContractTest {
 
     @Test
@@ -32,16 +32,17 @@ class SeckillCancellationApiContractTest {
     @DisplayName("外层取消编排不持有事务且超时监听复用同一服务")
     void orchestrationCommitsMysqlBeforeRedisAndIsSharedByTimeout() throws Exception {
         String service = normalized("src/main/java/com/fashion/service/impl/SeckillOrderServiceImpl.java");
-        String couponService = normalized("src/main/java/com/fashion/service/impl/SeckillCouponServiceImpl.java");
+        String timeoutConsumer = normalized("src/main/java/com/fashion/seckill/SeckillTimeoutConsumer.java");
         String userCancel = method(service, "public seckillcancelresponse cancelcurrentuserorder", "@override");
         String adminCancel = method(service, "public seckillcancelresponse cancelorder", "@override");
 
         assertTrue(service.contains("seckillcancellationtransaction"));
-        assertTrue(service.contains("seckill_rollback.lua"));
+        assertTrue(service.contains("seckillreservationservice"));
+        assertTrue(service.contains("seckillreservationservice.rollback"));
         assertFalse(userCancel.contains("@transactional"));
         assertFalse(adminCancel.contains("@transactional"));
-        assertTrue(couponService.contains("seckillorderservice.canceltimeoutorder"));
-        assertFalse(couponService.contains("stringredistemplate.opsforvalue().increment"));
+        assertTrue(timeoutConsumer.contains("orderservice.canceltimeoutorder"));
+        assertTrue(timeoutConsumer.contains("seckillmanualackcontainerfactory"));
     }
 
     @Test

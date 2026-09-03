@@ -1,0 +1,103 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.fashion.mapper.SeckillCompensationRecordMapper">
+    <insert id="upsertReleaseReservation">
+        INSERT INTO seckill_compensation_record
+        (compensation_action,order_number,user_id,coupon_id,first_reason,last_reason,evidence_mask,
+         status,attempt_count,next_retry_at,version,created_at,updated_at)
+        VALUES
+        ('RELEASE_RESERVATION',#{orderNumber},#{userId},#{couponId},LEFT(#{reason},32),LEFT(#{reason},32),
+         #{evidenceMask},'PENDING',0,NOW(3),0,NOW(3),NOW(3))
+        ON DUPLICATE KEY UPDATE
+          evidence_mask=IF(user_id=VALUES(user_id) AND coupon_id=VALUES(coupon_id),
+                           (evidence_mask | VALUES(evidence_mask)),evidence_mask),
+          last_reason=IF(user_id=VALUES(user_id) AND coupon_id=VALUES(coupon_id),
+                         VALUES(last_reason),last_reason),
+          status=IF(user_id=VALUES(user_id) AND coupon_id=VALUES(coupon_id),status,'MANUAL_REQUIRED'),
+          last_error=IF(user_id=VALUES(user_id) AND coupon_id=VALUES(coupon_id),last_error,
+                        'compensation identity conflict'),
+          updated_at=NOW(3)
+    </insert>
+
+    <update id="markRollbackResultOwned">
+        UPDATE seckill_compensation_record
+        SET status=#{status},last_result=#{status},last_error=#{lastError},
+            redis_applied_at=CASE WHEN #{status}='SUCCEEDED' THEN NOW(3) ELSE redis_applied_at END,
+            completed_at=CASE WHEN #{status}='SUCCEEDED' THEN NOW(3) ELSE completed_at END,
+            next_retry_at=CASE WHEN #{status}='RETRY_PENDING' THEN DATE_ADD(NOW(3),INTERVAL 5 SECOND)
+                               ELSE NULL END,
+            locked_by=NULL,locked_until=NULL,version=version+1,updated_at=NOW(3)
+        WHERE id=#{id} AND status='IN_PROGRESS' AND locked_by=#{worker}
+    </update>
+
+    <select id="selectByOrderNumber" resultType="com.fashion.entity.SeckillCompensationRecord">
+        SELECT * FROM seckill_compensation_record
+        WHERE compensation_action='RELEASE_RESERVATION' AND order_number=#{orderNumber}
+    </select>
+
+    <update id="markIdentityConflict">
+        UPDATE seckill_compensation_record
+        SET status='MANUAL_REQUIRED',last_result='MANUAL_REQUIRED',
+            last_error='compensation identity conflict',next_retry_at=NULL,
+            locked_by=NULL,locked_until=NULL,version=version+1,updated_at=NOW(3)
+        WHERE compensation_action='RELEASE_RESERVATION' AND order_number=#{orderNumber}
+          AND (user_id&lt;&gt;#{userId} OR coupon_id&lt;&gt;#{couponId})
+    </update>
+
+    <update id="markManualRequiredOwned">
+        UPDATE seckill_compensation_record
+        SET status='MANUAL_REQUIRED',last_result='MANUAL_REQUIRED',last_error=#{lastError},
+            next_retry_at=NULL,locked_by=NULL,locked_until=NULL,
+            version=version+1,updated_at=NOW(3)
+        WHERE id=#{id} AND status='IN_PROGRESS' AND locked_by=#{worker}
+    </update>
+
+    <select id="selectRecoverable" resultType="com.fashion.entity.SeckillCompensationRecord">
+        SELECT * FROM seckill_compensation_record
+        WHERE attempt_count&lt;10
+          AND ((status IN ('PENDING','RETRY_PENDING')
+                AND (next_retry_at IS NULL OR next_retry_at&lt;=NOW(3)))
+               OR (status='IN_PROGRESS' AND locked_until&lt;NOW(3)))
+        ORDER BY COALESCE(next_retry_at,created_at),id
+        LIMIT #{limit}
+    </select>
+
+    <update id="claim">
+        UPDATE seckill_compensation_record
+        SET status='IN_PROGRESS',attempt_count=attempt_count+1,locked_by=#{worker},
+            locked_until=DATE_ADD(NOW(3),INTERVAL 30 SECOND),version=version+1,updated_at=NOW(3)
+        WHERE id=#{id} AND attempt_count&lt;10
+          AND ((status IN ('PENDING','RETRY_PENDING')
+                AND (next_retry_at IS NULL OR next_retry_at&lt;=NOW(3)))
+               OR (status='IN_PROGRESS' AND locked_until&lt;NOW(3)))
+    </update>
+
+    <update id="claimByOrder">
+        UPDATE seckill_compensation_record
+        SET status='IN_PROGRESS',attempt_count=attempt_count+1,locked_by=#{worker},
+            locked_until=DATE_ADD(NOW(3),INTERVAL 30 SECOND),version=version+1,updated_at=NOW(3)
+        WHERE compensation_action='RELEASE_RESERVATION' AND order_number=#{orderNumber}
+          AND attempt_count&lt;10
+          AND ((status IN ('PENDING','RETRY_PENDING')
+                AND (next_retry_at IS NULL OR next_retry_at&lt;=NOW(3)))
+               OR (status='IN_PROGRESS' AND locked_until&lt;NOW(3)))
+    </update>
+
+    <update id="markExhausted">
+        UPDATE seckill_compensation_record
+        SET status='MANUAL_REQUIRED',next_retry_at=NULL,locked_by=NULL,locked_until=NULL,
+            last_result='MANUAL_REQUIRED',last_error='compensation attempts exhausted',
+            version=version+1,updated_at=NOW(3)
+        WHERE attempt_count&gt;=#{maxAttempts}
+          AND (status IN ('PENDING','RETRY_PENDING')
+               OR (status='IN_PROGRESS' AND locked_until&lt;NOW(3)))
+        ORDER BY id LIMIT 100
+    </update>
+
+    <select id="hasCompletedCancellationEvidence" resultType="int">
+        SELECT COUNT(*) FROM seckill_compensation_record
+        WHERE compensation_action='RELEASE_RESERVATION'
+          AND order_number=#{orderNumber}
+          AND (evidence_mask &amp; 4)=4
+    </select>
+</mapper>

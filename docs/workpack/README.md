@@ -26,6 +26,7 @@ docs/workpack/
 
 | 阶段 | 切片 | 本地交付日期 | Review | Evidence |
 |---|---|---|---|---|
+| B6 | rabbitmq-reliability | 2026-09-03 | [PASS（P0/P1/P2=0）](归档/B6-rabbitmq-reliability/review.md) | [evidence](归档/B6-rabbitmq-reliability/evidence.md) |
 | B5 | seckill-state-inventory | 2026-09-01 | [PASS](归档/B5-seckill-state-inventory/review.md) | [evidence](归档/B5-seckill-state-inventory/evidence.md) |
 | B4 | resource-ownership | 2026-09-01 | [PASS](归档/B4-resource-ownership/review.md) | [evidence](归档/B4-resource-ownership/evidence.md) |
 | B3 | refund-state | 2026-08-30 | [PASS](归档/B3-refund-state/review.md) | [evidence](归档/B3-refund-state/evidence.md) |

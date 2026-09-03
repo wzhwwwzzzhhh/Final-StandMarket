@@ -417,7 +417,7 @@ CREATE TABLE `seckill_order` (
   `id` bigint NOT NULL AUTO_INCREMENT COMMENT '主键',
   `user_id` bigint NOT NULL COMMENT '用户id',
   `coupon_id` bigint NOT NULL COMMENT '秒杀券id',
-  `order_number` varchar(50) CHARACTER SET utf8mb3 COLLATE utf8mb3_bin DEFAULT NULL COMMENT '订单号',
+  `order_number` varchar(50) CHARACTER SET utf8mb3 COLLATE utf8mb3_bin NOT NULL COMMENT '订单号',
   `status` int NOT NULL DEFAULT '1' COMMENT '状态 1:待支付 2:已支付 3:已取消',
   `create_time` datetime DEFAULT NULL COMMENT '创建时间',
   `pay_time` datetime DEFAULT NULL COMMENT '支付时间',
@@ -539,6 +539,105 @@ LOCK TABLES `user` WRITE;
 INSERT INTO `user` VALUES (10,NULL,'李三','13800138001','男','110101199001011234','https://trae-api-cn.mchost.guru/api/ide/v1/text_to_image?prompt=user%20avatar%20male&image_size=square','2026-04-14 12:43:45','$2a$10$EvAjgtfAZXBAEvbIGpyvL.Phd/1p1rF1HgFNIVCtoZWGSjRWXVfiW'),(11,NULL,'李四','13800138002','女','110101199001011235','https://trae-api-cn.mchost.guru/api/ide/v1/text_to_image?prompt=user%20avatar%20female&image_size=square','2026-04-14 12:43:45','$2a$10$EvAjgtfAZXBAEvbIGpyvL.Phd/1p1rF1HgFNIVCtoZWGSjRWXVfiW'),(12,NULL,'王五','13800138003','男','110101199001011236','https://trae-api-cn.mchost.guru/api/ide/v1/text_to_image?prompt=user%20avatar%20male&image_size=square','2026-04-14 12:43:45','$2a$10$EvAjgtfAZXBAEvbIGpyvL.Phd/1p1rF1HgFNIVCtoZWGSjRWXVfiW'),(13,NULL,'赵六','13800138004','女','110101199001011237','https://trae-api-cn.mchost.guru/api/ide/v1/text_to_image?prompt=user%20avatar%20female&image_size=square','2026-04-14 12:43:45','$2a$10$EvAjgtfAZXBAEvbIGpyvL.Phd/1p1rF1HgFNIVCtoZWGSjRWXVfiW'),(14,NULL,'钱七','13800138005','男','110101199001011238','https://trae-api-cn.mchost.guru/api/ide/v1/text_to_image?prompt=user%20avatar%20male&image_size=square','2026-04-14 12:43:45','$2a$10$EvAjgtfAZXBAEvbIGpyvL.Phd/1p1rF1HgFNIVCtoZWGSjRWXVfiW'),(15,NULL,'大王来了','18956235623','男',NULL,'https://picsum.photos/200/300','2026-04-15 12:27:37','$2a$10$tJhij.ddxSukBu2.Y4MkMOBEcnlylT5WwbOzBt5h.do1OTk13n0Vi'),(19,NULL,'用户SUIG8','15623452345',NULL,NULL,'https://picsum.photos/200/300','2026-04-15 14:45:49',NULL),(20,NULL,'飒飒法','15623562356','男',NULL,'https://picsum.photos/200/300','2026-04-15 22:03:53','$2a$10$EvAjgtfAZXBAEvbIGpyvL.Phd/1p1rF1HgFNIVCtoZWGSjRWXVfiW'),(21,NULL,'测试用户1','13800000001','男',NULL,NULL,'2026-05-05 10:37:50','$2a$10$EvAjgtfAZXBAEvbIGpyvL.Phd/1p1rF1HgFNIVCtoZWGSjRWXVfiW'),(22,NULL,'测试用户2','13800000002','男',NULL,NULL,'2026-05-05 10:37:50','$2a$10$EvAjgtfAZXBAEvbIGpyvL.Phd/1p1rF1HgFNIVCtoZWGSjRWXVfiW'),(23,NULL,'测试用户3','13800000003','男',NULL,NULL,'2026-05-05 10:37:50','$2a$10$EvAjgtfAZXBAEvbIGpyvL.Phd/1p1rF1HgFNIVCtoZWGSjRWXVfiW'),(24,NULL,'测试用户4','13800000004','男',NULL,NULL,'2026-05-05 10:37:50','$2a$10$EvAjgtfAZXBAEvbIGpyvL.Phd/1p1rF1HgFNIVCtoZWGSjRWXVfiW'),(25,NULL,'测试用户5','13800000005','男',NULL,NULL,'2026-05-05 10:37:50','$2a$10$EvAjgtfAZXBAEvbIGpyvL.Phd/1p1rF1HgFNIVCtoZWGSjRWXVfiW'),(26,NULL,'测试用户6','13800000006','男',NULL,NULL,'2026-05-05 10:37:50','$2a$10$EvAjgtfAZXBAEvbIGpyvL.Phd/1p1rF1HgFNIVCtoZWGSjRWXVfiW'),(27,NULL,'测试用户7','13800000007','男',NULL,NULL,'2026-05-05 10:37:50','$2a$10$EvAjgtfAZXBAEvbIGpyvL.Phd/1p1rF1HgFNIVCtoZWGSjRWXVfiW'),(28,NULL,'测试用户8','13800000008','男',NULL,NULL,'2026-05-05 10:37:50','$2a$10$EvAjgtfAZXBAEvbIGpyvL.Phd/1p1rF1HgFNIVCtoZWGSjRWXVfiW'),(29,NULL,'测试用户9','13800000009','男',NULL,NULL,'2026-05-05 10:37:50','$2a$10$EvAjgtfAZXBAEvbIGpyvL.Phd/1p1rF1HgFNIVCtoZWGSjRWXVfiW'),(30,NULL,'测试用户10','13800000010','男',NULL,NULL,'2026-05-05 10:37:50','$2a$10$EvAjgtfAZXBAEvbIGpyvL.Phd/1p1rF1HgFNIVCtoZWGSjRWXVfiW'),(31,NULL,'测试用户11','13800000011','男',NULL,NULL,'2026-05-05 10:37:50','$2a$10$EvAjgtfAZXBAEvbIGpyvL.Phd/1p1rF1HgFNIVCtoZWGSjRWXVfiW'),(32,NULL,'测试用户12','13800000012','男',NULL,NULL,'2026-05-05 10:37:50','$2a$10$EvAjgtfAZXBAEvbIGpyvL.Phd/1p1rF1HgFNIVCtoZWGSjRWXVfiW'),(33,NULL,'测试用户13','13800000013','男',NULL,NULL,'2026-05-05 10:37:50','$2a$10$EvAjgtfAZXBAEvbIGpyvL.Phd/1p1rF1HgFNIVCtoZWGSjRWXVfiW'),(34,NULL,'测试用户14','13800000014','男',NULL,NULL,'2026-05-05 10:37:50','$2a$10$EvAjgtfAZXBAEvbIGpyvL.Phd/1p1rF1HgFNIVCtoZWGSjRWXVfiW'),(35,NULL,'测试用户15','13800000015','男',NULL,NULL,'2026-05-05 10:37:50','$2a$10$EvAjgtfAZXBAEvbIGpyvL.Phd/1p1rF1HgFNIVCtoZWGSjRWXVfiW'),(36,NULL,'测试用户16','13800000016','男',NULL,NULL,'2026-05-05 10:37:50','$2a$10$EvAjgtfAZXBAEvbIGpyvL.Phd/1p1rF1HgFNIVCtoZWGSjRWXVfiW'),(37,NULL,'测试用户17','13800000017','男',NULL,NULL,'2026-05-05 10:37:50','$2a$10$EvAjgtfAZXBAEvbIGpyvL.Phd/1p1rF1HgFNIVCtoZWGSjRWXVfiW'),(38,NULL,'测试用户18','13800000018','男',NULL,NULL,'2026-05-05 10:37:50','$2a$10$EvAjgtfAZXBAEvbIGpyvL.Phd/1p1rF1HgFNIVCtoZWGSjRWXVfiW'),(39,NULL,'测试用户19','13800000019','男',NULL,NULL,'2026-05-05 10:37:50','$2a$10$EvAjgtfAZXBAEvbIGpyvL.Phd/1p1rF1HgFNIVCtoZWGSjRWXVfiW'),(40,NULL,'测试用户20','13800000020','男',NULL,NULL,'2026-05-05 10:37:50','$2a$10$EvAjgtfAZXBAEvbIGpyvL.Phd/1p1rF1HgFNIVCtoZWGSjRWXVfiW'),(41,NULL,'测试用户21','13800000021','男',NULL,NULL,'2026-05-05 10:37:50','$2a$10$EvAjgtfAZXBAEvbIGpyvL.Phd/1p1rF1HgFNIVCtoZWGSjRWXVfiW'),(42,NULL,'测试用户22','13800000022','男',NULL,NULL,'2026-05-05 10:37:50','$2a$10$EvAjgtfAZXBAEvbIGpyvL.Phd/1p1rF1HgFNIVCtoZWGSjRWXVfiW'),(43,NULL,'测试用户23','13800000023','男',NULL,NULL,'2026-05-05 10:37:50','$2a$10$EvAjgtfAZXBAEvbIGpyvL.Phd/1p1rF1HgFNIVCtoZWGSjRWXVfiW'),(44,NULL,'测试用户24','13800000024','男',NULL,NULL,'2026-05-05 10:37:50','$2a$10$EvAjgtfAZXBAEvbIGpyvL.Phd/1p1rF1HgFNIVCtoZWGSjRWXVfiW'),(45,NULL,'测试用户25','13800000025','男',NULL,NULL,'2026-05-05 10:37:50','$2a$10$EvAjgtfAZXBAEvbIGpyvL.Phd/1p1rF1HgFNIVCtoZWGSjRWXVfiW'),(46,NULL,'测试用户26','13800000026','男',NULL,NULL,'2026-05-05 10:37:50','$2a$10$EvAjgtfAZXBAEvbIGpyvL.Phd/1p1rF1HgFNIVCtoZWGSjRWXVfiW'),(47,NULL,'测试用户27','13800000027','男',NULL,NULL,'2026-05-05 10:37:50','$2a$10$EvAjgtfAZXBAEvbIGpyvL.Phd/1p1rF1HgFNIVCtoZWGSjRWXVfiW'),(48,NULL,'测试用户28','13800000028','男',NULL,NULL,'2026-05-05 10:37:50','$2a$10$EvAjgtfAZXBAEvbIGpyvL.Phd/1p1rF1HgFNIVCtoZWGSjRWXVfiW'),(49,NULL,'测试用户29','13800000029','男',NULL,NULL,'2026-05-05 10:37:50','$2a$10$EvAjgtfAZXBAEvbIGpyvL.Phd/1p1rF1HgFNIVCtoZWGSjRWXVfiW'),(50,NULL,'测试用户30','13800000030','男',NULL,NULL,'2026-05-05 10:37:50','$2a$10$EvAjgtfAZXBAEvbIGpyvL.Phd/1p1rF1HgFNIVCtoZWGSjRWXVfiW'),(51,NULL,'测试用户31','13800000031','男',NULL,NULL,'2026-05-05 10:37:50','$2a$10$EvAjgtfAZXBAEvbIGpyvL.Phd/1p1rF1HgFNIVCtoZWGSjRWXVfiW'),(52,NULL,'测试用户32','13800000032','男',NULL,NULL,'2026-05-05 10:37:50','$2a$10$EvAjgtfAZXBAEvbIGpyvL.Phd/1p1rF1HgFNIVCtoZWGSjRWXVfiW'),(53,NULL,'测试用户33','13800000033','男',NULL,NULL,'2026-05-05 10:37:50','$2a$10$EvAjgtfAZXBAEvbIGpyvL.Phd/1p1rF1HgFNIVCtoZWGSjRWXVfiW'),(54,NULL,'测试用户34','13800000034','男',NULL,NULL,'2026-05-05 10:37:50','$2a$10$EvAjgtfAZXBAEvbIGpyvL.Phd/1p1rF1HgFNIVCtoZWGSjRWXVfiW'),(55,NULL,'测试用户35','13800000035','男',NULL,NULL,'2026-05-05 10:37:50','$2a$10$EvAjgtfAZXBAEvbIGpyvL.Phd/1p1rF1HgFNIVCtoZWGSjRWXVfiW'),(56,NULL,'测试用户36','13800000036','男',NULL,NULL,'2026-05-05 10:37:50','$2a$10$EvAjgtfAZXBAEvbIGpyvL.Phd/1p1rF1HgFNIVCtoZWGSjRWXVfiW'),(57,NULL,'测试用户37','13800000037','男',NULL,NULL,'2026-05-05 10:37:50','$2a$10$EvAjgtfAZXBAEvbIGpyvL.Phd/1p1rF1HgFNIVCtoZWGSjRWXVfiW'),(58,NULL,'测试用户38','13800000038','男',NULL,NULL,'2026-05-05 10:37:50','$2a$10$EvAjgtfAZXBAEvbIGpyvL.Phd/1p1rF1HgFNIVCtoZWGSjRWXVfiW'),(59,NULL,'测试用户39','13800000039','男',NULL,NULL,'2026-05-05 10:37:50','$2a$10$EvAjgtfAZXBAEvbIGpyvL.Phd/1p1rF1HgFNIVCtoZWGSjRWXVfiW'),(60,NULL,'测试用户40','13800000040','男',NULL,NULL,'2026-05-05 10:37:50','$2a$10$EvAjgtfAZXBAEvbIGpyvL.Phd/1p1rF1HgFNIVCtoZWGSjRWXVfiW'),(61,NULL,'测试用户41','13800000041','男',NULL,NULL,'2026-05-05 10:37:50','$2a$10$EvAjgtfAZXBAEvbIGpyvL.Phd/1p1rF1HgFNIVCtoZWGSjRWXVfiW'),(62,NULL,'测试用户42','13800000042','男',NULL,NULL,'2026-05-05 10:37:50','$2a$10$EvAjgtfAZXBAEvbIGpyvL.Phd/1p1rF1HgFNIVCtoZWGSjRWXVfiW'),(63,NULL,'测试用户43','13800000043','男',NULL,NULL,'2026-05-05 10:37:50','$2a$10$EvAjgtfAZXBAEvbIGpyvL.Phd/1p1rF1HgFNIVCtoZWGSjRWXVfiW'),(64,NULL,'测试用户44','13800000044','男',NULL,NULL,'2026-05-05 10:37:50','$2a$10$EvAjgtfAZXBAEvbIGpyvL.Phd/1p1rF1HgFNIVCtoZWGSjRWXVfiW'),(65,NULL,'测试用户45','13800000045','男',NULL,NULL,'2026-05-05 10:37:50','$2a$10$EvAjgtfAZXBAEvbIGpyvL.Phd/1p1rF1HgFNIVCtoZWGSjRWXVfiW'),(66,NULL,'测试用户46','13800000046','男',NULL,NULL,'2026-05-05 10:37:50','$2a$10$EvAjgtfAZXBAEvbIGpyvL.Phd/1p1rF1HgFNIVCtoZWGSjRWXVfiW'),(67,NULL,'测试用户47','13800000047','男',NULL,NULL,'2026-05-05 10:37:50','$2a$10$EvAjgtfAZXBAEvbIGpyvL.Phd/1p1rF1HgFNIVCtoZWGSjRWXVfiW'),(68,NULL,'测试用户48','13800000048','男',NULL,NULL,'2026-05-05 10:37:50','$2a$10$EvAjgtfAZXBAEvbIGpyvL.Phd/1p1rF1HgFNIVCtoZWGSjRWXVfiW'),(69,NULL,'测试用户49','13800000049','男',NULL,NULL,'2026-05-05 10:37:50','$2a$10$EvAjgtfAZXBAEvbIGpyvL.Phd/1p1rF1HgFNIVCtoZWGSjRWXVfiW'),(70,NULL,'测试用户50','13800000050','男',NULL,NULL,'2026-05-05 10:37:50','$2a$10$EvAjgtfAZXBAEvbIGpyvL.Phd/1p1rF1HgFNIVCtoZWGSjRWXVfiW'),(71,NULL,'测试用户51','13800000051','男',NULL,NULL,'2026-05-05 10:37:50','$2a$10$EvAjgtfAZXBAEvbIGpyvL.Phd/1p1rF1HgFNIVCtoZWGSjRWXVfiW'),(72,NULL,'测试用户52','13800000052','男',NULL,NULL,'2026-05-05 10:37:50','$2a$10$EvAjgtfAZXBAEvbIGpyvL.Phd/1p1rF1HgFNIVCtoZWGSjRWXVfiW'),(73,NULL,'测试用户53','13800000053','男',NULL,NULL,'2026-05-05 10:37:50','$2a$10$EvAjgtfAZXBAEvbIGpyvL.Phd/1p1rF1HgFNIVCtoZWGSjRWXVfiW'),(74,NULL,'测试用户54','13800000054','男',NULL,NULL,'2026-05-05 10:37:50','$2a$10$EvAjgtfAZXBAEvbIGpyvL.Phd/1p1rF1HgFNIVCtoZWGSjRWXVfiW'),(75,NULL,'测试用户55','13800000055','男',NULL,NULL,'2026-05-05 10:37:50','$2a$10$EvAjgtfAZXBAEvbIGpyvL.Phd/1p1rF1HgFNIVCtoZWGSjRWXVfiW'),(76,NULL,'测试用户56','13800000056','男',NULL,NULL,'2026-05-05 10:37:50','$2a$10$EvAjgtfAZXBAEvbIGpyvL.Phd/1p1rF1HgFNIVCtoZWGSjRWXVfiW'),(77,NULL,'测试用户57','13800000057','男',NULL,NULL,'2026-05-05 10:37:50','$2a$10$EvAjgtfAZXBAEvbIGpyvL.Phd/1p1rF1HgFNIVCtoZWGSjRWXVfiW'),(78,NULL,'测试用户58','13800000058','男',NULL,NULL,'2026-05-05 10:37:50','$2a$10$EvAjgtfAZXBAEvbIGpyvL.Phd/1p1rF1HgFNIVCtoZWGSjRWXVfiW'),(79,NULL,'测试用户59','13800000059','男',NULL,NULL,'2026-05-05 10:37:50','$2a$10$EvAjgtfAZXBAEvbIGpyvL.Phd/1p1rF1HgFNIVCtoZWGSjRWXVfiW'),(80,NULL,'测试用户60','13800000060','男',NULL,NULL,'2026-05-05 10:37:50','$2a$10$EvAjgtfAZXBAEvbIGpyvL.Phd/1p1rF1HgFNIVCtoZWGSjRWXVfiW'),(81,NULL,'测试用户61','13800000061','男',NULL,NULL,'2026-05-05 10:37:50','$2a$10$EvAjgtfAZXBAEvbIGpyvL.Phd/1p1rF1HgFNIVCtoZWGSjRWXVfiW'),(82,NULL,'测试用户62','13800000062','男',NULL,NULL,'2026-05-05 10:37:50','$2a$10$EvAjgtfAZXBAEvbIGpyvL.Phd/1p1rF1HgFNIVCtoZWGSjRWXVfiW'),(83,NULL,'测试用户63','13800000063','男',NULL,NULL,'2026-05-05 10:37:50','$2a$10$EvAjgtfAZXBAEvbIGpyvL.Phd/1p1rF1HgFNIVCtoZWGSjRWXVfiW'),(84,NULL,'测试用户64','13800000064','男',NULL,NULL,'2026-05-05 10:37:50','$2a$10$EvAjgtfAZXBAEvbIGpyvL.Phd/1p1rF1HgFNIVCtoZWGSjRWXVfiW'),(85,NULL,'测试用户65','13800000065','男',NULL,NULL,'2026-05-05 10:37:50','$2a$10$EvAjgtfAZXBAEvbIGpyvL.Phd/1p1rF1HgFNIVCtoZWGSjRWXVfiW'),(86,NULL,'测试用户66','13800000066','男',NULL,NULL,'2026-05-05 10:37:50','$2a$10$EvAjgtfAZXBAEvbIGpyvL.Phd/1p1rF1HgFNIVCtoZWGSjRWXVfiW'),(87,NULL,'测试用户67','13800000067','男',NULL,NULL,'2026-05-05 10:37:50','$2a$10$EvAjgtfAZXBAEvbIGpyvL.Phd/1p1rF1HgFNIVCtoZWGSjRWXVfiW'),(88,NULL,'测试用户68','13800000068','男',NULL,NULL,'2026-05-05 10:37:50','$2a$10$EvAjgtfAZXBAEvbIGpyvL.Phd/1p1rF1HgFNIVCtoZWGSjRWXVfiW'),(89,NULL,'测试用户69','13800000069','男',NULL,NULL,'2026-05-05 10:37:50','$2a$10$EvAjgtfAZXBAEvbIGpyvL.Phd/1p1rF1HgFNIVCtoZWGSjRWXVfiW'),(90,NULL,'测试用户70','13800000070','男',NULL,NULL,'2026-05-05 10:37:50','$2a$10$EvAjgtfAZXBAEvbIGpyvL.Phd/1p1rF1HgFNIVCtoZWGSjRWXVfiW'),(91,NULL,'测试用户71','13800000071','男',NULL,NULL,'2026-05-05 10:37:50','$2a$10$EvAjgtfAZXBAEvbIGpyvL.Phd/1p1rF1HgFNIVCtoZWGSjRWXVfiW'),(92,NULL,'测试用户72','13800000072','男',NULL,NULL,'2026-05-05 10:37:50','$2a$10$EvAjgtfAZXBAEvbIGpyvL.Phd/1p1rF1HgFNIVCtoZWGSjRWXVfiW'),(93,NULL,'测试用户73','13800000073','男',NULL,NULL,'2026-05-05 10:37:50','$2a$10$EvAjgtfAZXBAEvbIGpyvL.Phd/1p1rF1HgFNIVCtoZWGSjRWXVfiW'),(94,NULL,'测试用户74','13800000074','男',NULL,NULL,'2026-05-05 10:37:50','$2a$10$EvAjgtfAZXBAEvbIGpyvL.Phd/1p1rF1HgFNIVCtoZWGSjRWXVfiW'),(95,NULL,'测试用户75','13800000075','男',NULL,NULL,'2026-05-05 10:37:50','$2a$10$EvAjgtfAZXBAEvbIGpyvL.Phd/1p1rF1HgFNIVCtoZWGSjRWXVfiW'),(96,NULL,'测试用户76','13800000076','男',NULL,NULL,'2026-05-05 10:37:50','$2a$10$EvAjgtfAZXBAEvbIGpyvL.Phd/1p1rF1HgFNIVCtoZWGSjRWXVfiW'),(97,NULL,'测试用户77','13800000077','男',NULL,NULL,'2026-05-05 10:37:50','$2a$10$EvAjgtfAZXBAEvbIGpyvL.Phd/1p1rF1HgFNIVCtoZWGSjRWXVfiW'),(98,NULL,'测试用户78','13800000078','男',NULL,NULL,'2026-05-05 10:37:50','$2a$10$EvAjgtfAZXBAEvbIGpyvL.Phd/1p1rF1HgFNIVCtoZWGSjRWXVfiW'),(99,NULL,'测试用户79','13800000079','男',NULL,NULL,'2026-05-05 10:37:50','$2a$10$EvAjgtfAZXBAEvbIGpyvL.Phd/1p1rF1HgFNIVCtoZWGSjRWXVfiW'),(100,NULL,'测试用户80','13800000080','男',NULL,NULL,'2026-05-05 10:37:50','$2a$10$EvAjgtfAZXBAEvbIGpyvL.Phd/1p1rF1HgFNIVCtoZWGSjRWXVfiW'),(101,NULL,'测试用户81','13800000081','男',NULL,NULL,'2026-05-05 10:37:50','$2a$10$EvAjgtfAZXBAEvbIGpyvL.Phd/1p1rF1HgFNIVCtoZWGSjRWXVfiW'),(102,NULL,'测试用户82','13800000082','男',NULL,NULL,'2026-05-05 10:37:50','$2a$10$EvAjgtfAZXBAEvbIGpyvL.Phd/1p1rF1HgFNIVCtoZWGSjRWXVfiW'),(103,NULL,'测试用户83','13800000083','男',NULL,NULL,'2026-05-05 10:37:50','$2a$10$EvAjgtfAZXBAEvbIGpyvL.Phd/1p1rF1HgFNIVCtoZWGSjRWXVfiW'),(104,NULL,'测试用户84','13800000084','男',NULL,NULL,'2026-05-05 10:37:50','$2a$10$EvAjgtfAZXBAEvbIGpyvL.Phd/1p1rF1HgFNIVCtoZWGSjRWXVfiW'),(105,NULL,'测试用户85','13800000085','男',NULL,NULL,'2026-05-05 10:37:50','$2a$10$EvAjgtfAZXBAEvbIGpyvL.Phd/1p1rF1HgFNIVCtoZWGSjRWXVfiW'),(106,NULL,'测试用户86','13800000086','男',NULL,NULL,'2026-05-05 10:37:50','$2a$10$EvAjgtfAZXBAEvbIGpyvL.Phd/1p1rF1HgFNIVCtoZWGSjRWXVfiW'),(107,NULL,'测试用户87','13800000087','男',NULL,NULL,'2026-05-05 10:37:50','$2a$10$EvAjgtfAZXBAEvbIGpyvL.Phd/1p1rF1HgFNIVCtoZWGSjRWXVfiW'),(108,NULL,'测试用户88','13800000088','男',NULL,NULL,'2026-05-05 10:37:50','$2a$10$EvAjgtfAZXBAEvbIGpyvL.Phd/1p1rF1HgFNIVCtoZWGSjRWXVfiW'),(109,NULL,'测试用户89','13800000089','男',NULL,NULL,'2026-05-05 10:37:50','$2a$10$EvAjgtfAZXBAEvbIGpyvL.Phd/1p1rF1HgFNIVCtoZWGSjRWXVfiW'),(110,NULL,'测试用户90','13800000090','男',NULL,NULL,'2026-05-05 10:37:50','$2a$10$EvAjgtfAZXBAEvbIGpyvL.Phd/1p1rF1HgFNIVCtoZWGSjRWXVfiW'),(111,NULL,'测试用户91','13800000091','男',NULL,NULL,'2026-05-05 10:37:50','$2a$10$EvAjgtfAZXBAEvbIGpyvL.Phd/1p1rF1HgFNIVCtoZWGSjRWXVfiW'),(112,NULL,'测试用户92','13800000092','男',NULL,NULL,'2026-05-05 10:37:50','$2a$10$EvAjgtfAZXBAEvbIGpyvL.Phd/1p1rF1HgFNIVCtoZWGSjRWXVfiW'),(113,NULL,'测试用户93','13800000093','男',NULL,NULL,'2026-05-05 10:37:50','$2a$10$EvAjgtfAZXBAEvbIGpyvL.Phd/1p1rF1HgFNIVCtoZWGSjRWXVfiW'),(114,NULL,'测试用户94','13800000094','男',NULL,NULL,'2026-05-05 10:37:50','$2a$10$EvAjgtfAZXBAEvbIGpyvL.Phd/1p1rF1HgFNIVCtoZWGSjRWXVfiW'),(115,NULL,'测试用户95','13800000095','男',NULL,NULL,'2026-05-05 10:37:50','$2a$10$EvAjgtfAZXBAEvbIGpyvL.Phd/1p1rF1HgFNIVCtoZWGSjRWXVfiW'),(116,NULL,'测试用户96','13800000096','男',NULL,NULL,'2026-05-05 10:37:50','$2a$10$EvAjgtfAZXBAEvbIGpyvL.Phd/1p1rF1HgFNIVCtoZWGSjRWXVfiW'),(117,NULL,'测试用户97','13800000097','男',NULL,NULL,'2026-05-05 10:37:50','$2a$10$EvAjgtfAZXBAEvbIGpyvL.Phd/1p1rF1HgFNIVCtoZWGSjRWXVfiW'),(118,NULL,'测试用户98','13800000098','男',NULL,NULL,'2026-05-05 10:37:50','$2a$10$EvAjgtfAZXBAEvbIGpyvL.Phd/1p1rF1HgFNIVCtoZWGSjRWXVfiW'),(119,NULL,'测试用户99','13800000099','男',NULL,NULL,'2026-05-05 10:37:50','$2a$10$EvAjgtfAZXBAEvbIGpyvL.Phd/1p1rF1HgFNIVCtoZWGSjRWXVfiW'),(120,NULL,'测试用户100','13800000100','男',NULL,NULL,'2026-05-05 10:37:50','$2a$10$EvAjgtfAZXBAEvbIGpyvL.Phd/1p1rF1HgFNIVCtoZWGSjRWXVfiW');
 /*!40000 ALTER TABLE `user` ENABLE KEYS */;
 UNLOCK TABLES;
+-- B6 durable RabbitMQ reliability state.
+DROP TABLE IF EXISTS `seckill_message_log`;
+CREATE TABLE `seckill_message_log` (
+  `id` bigint NOT NULL AUTO_INCREMENT,
+  `message_id` varchar(128) NOT NULL,
+  `message_type` varchar(32) NOT NULL,
+  `publish_purpose` varchar(32) NOT NULL,
+  `business_key` varchar(128) NOT NULL,
+  `source_message_id` varchar(128) DEFAULT NULL,
+  `source_message_id_hash` char(64) DEFAULT NULL,
+  `source_message_id_prefix` varchar(64) DEFAULT NULL,
+  `body_sha256` char(64) DEFAULT NULL,
+  `body_size` bigint DEFAULT NULL,
+  `user_id` bigint DEFAULT NULL,
+  `coupon_id` bigint DEFAULT NULL,
+  `payload` text NOT NULL,
+  `payload_schema_version` int NOT NULL DEFAULT 1,
+  `exchange_name` varchar(128) NOT NULL,
+  `routing_key` varchar(128) NOT NULL,
+  `status` varchar(32) NOT NULL,
+  `dead_letter_status` varchar(16) NOT NULL DEFAULT 'NONE',
+  `confirm_status` varchar(16) NOT NULL DEFAULT 'PENDING',
+  `returned` tinyint(1) NOT NULL DEFAULT 0,
+  `return_reply_code` int DEFAULT NULL,
+  `return_reply_text` varchar(255) DEFAULT NULL,
+  `current_correlation_id` varchar(160) DEFAULT NULL,
+  `publish_attempt` int NOT NULL DEFAULT 0,
+  `consume_attempt` int NOT NULL DEFAULT 0,
+  `processing_attempt` int DEFAULT NULL,
+  `fallback_attempt` int NOT NULL DEFAULT 0,
+  `due_at` datetime(3) DEFAULT NULL,
+  `next_retry_at` datetime(3) DEFAULT NULL,
+  `locked_by` varchar(128) DEFAULT NULL,
+  `locked_until` datetime(3) DEFAULT NULL,
+  `version` bigint NOT NULL DEFAULT 0,
+  `last_error` varchar(500) DEFAULT NULL,
+  `created_at` datetime(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
+  `updated_at` datetime(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3) ON UPDATE CURRENT_TIMESTAMP(3),
+  `confirmed_at` datetime(3) DEFAULT NULL,
+  `consumed_at` datetime(3) DEFAULT NULL,
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `uk_seckill_message_id` (`message_id`),
+  UNIQUE KEY `uk_seckill_message_business` (`message_type`,`business_key`),
+  KEY `idx_seckill_message_recovery` (`status`,`next_retry_at`,`id`),
+  KEY `idx_seckill_message_reconcile` (`coupon_id`,`user_id`,`status`,`id`),
+  CONSTRAINT `chk_seckill_message_attempts` CHECK ((`publish_attempt` >= 0) AND (`publish_attempt` <= 5) AND (`consume_attempt` >= 0) AND (`consume_attempt` <= 3) AND (`fallback_attempt` >= 0) AND (`fallback_attempt` <= 3) AND ((`processing_attempt` IS NULL) OR ((`processing_attempt` >= 1) AND (`processing_attempt` <= 3))) AND (((BINARY `status`='PROCESSING') AND (`processing_attempt`=`consume_attempt`)) OR ((BINARY `status`<>'PROCESSING') AND (`processing_attempt` IS NULL))) AND (((BINARY `status`='PROCESSING') AND (`locked_by` IS NOT NULL) AND (`locked_until` IS NOT NULL)) OR ((BINARY `status`<>'PROCESSING') AND (`locked_by` IS NULL) AND (`locked_until` IS NULL))) AND (`payload_schema_version` > 0)),
+  CONSTRAINT `chk_seckill_message_domains` CHECK ((BINARY `message_type` IN ('ORDER_CREATE','ORDER_TIMEOUT','BUSINESS_DEAD_LETTER','INVALID_MESSAGE')) AND (BINARY `publish_purpose` IN ('INITIAL','CONSUME_RETRY','TIMEOUT_RECOVERY','TIMEOUT_FALLBACK','DEAD_LETTER')) AND (BINARY `status` IN ('PREPARED','SENT','BROKER_ACKED','PROCESSING','CONSUMED','RETRY_PUBLISH_PENDING','TIMEOUT_PUBLISH_PENDING','TIMEOUT_FALLBACK_PENDING','DEAD_LETTER_PUBLISH_PENDING','CONSUME_EXHAUSTED','COMPENSATION_PENDING','COMPENSATED','MANUAL_REQUIRED')) AND (BINARY `dead_letter_status` IN ('NONE','PENDING','ACKED','MANUAL_REQUIRED')) AND (BINARY `confirm_status` IN ('PENDING','ACK','NACK','TIMEOUT')) AND (((BINARY `message_type`='ORDER_CREATE') AND (((BINARY `publish_purpose`='INITIAL') AND (BINARY `status` IN ('PREPARED','SENT','BROKER_ACKED','PROCESSING','CONSUMED','COMPENSATION_PENDING','COMPENSATED','MANUAL_REQUIRED'))) OR ((BINARY `publish_purpose`='CONSUME_RETRY') AND (BINARY `status` IN ('SENT','BROKER_ACKED','PROCESSING','CONSUMED','RETRY_PUBLISH_PENDING','CONSUME_EXHAUSTED','MANUAL_REQUIRED'))))) OR ((BINARY `message_type`='ORDER_TIMEOUT') AND (BINARY `publish_purpose` IN ('TIMEOUT_RECOVERY','TIMEOUT_FALLBACK')) AND (BINARY `status` IN ('PREPARED','SENT','BROKER_ACKED','PROCESSING','CONSUMED','TIMEOUT_PUBLISH_PENDING','TIMEOUT_FALLBACK_PENDING','CONSUME_EXHAUSTED','MANUAL_REQUIRED'))) OR ((BINARY `message_type`='BUSINESS_DEAD_LETTER') AND (BINARY `publish_purpose`='DEAD_LETTER') AND (BINARY `status` IN ('PREPARED','SENT','BROKER_ACKED','DEAD_LETTER_PUBLISH_PENDING','MANUAL_REQUIRED'))) OR ((BINARY `message_type`='INVALID_MESSAGE') AND (BINARY `publish_purpose`='DEAD_LETTER') AND (BINARY `status`='CONSUME_EXHAUSTED'))))
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+
+DROP TABLE IF EXISTS `seckill_compensation_record`;
+CREATE TABLE `seckill_compensation_record` (
+  `id` bigint NOT NULL AUTO_INCREMENT,
+  `compensation_action` varchar(32) NOT NULL,
+  `order_number` varchar(50) NOT NULL,
+  `user_id` bigint NOT NULL,
+  `coupon_id` bigint NOT NULL,
+  `first_reason` varchar(32) NOT NULL,
+  `last_reason` varchar(32) NOT NULL,
+  `evidence_mask` bigint NOT NULL DEFAULT 0,
+  `status` varchar(32) NOT NULL DEFAULT 'PENDING',
+  `attempt_count` int NOT NULL DEFAULT 0,
+  `next_retry_at` datetime(3) DEFAULT NULL,
+  `locked_by` varchar(128) DEFAULT NULL,
+  `locked_until` datetime(3) DEFAULT NULL,
+  `last_result` varchar(64) DEFAULT NULL,
+  `last_error` varchar(500) DEFAULT NULL,
+  `version` bigint NOT NULL DEFAULT 0,
+  `redis_applied_at` datetime(3) DEFAULT NULL,
+  `created_at` datetime(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
+  `updated_at` datetime(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3) ON UPDATE CURRENT_TIMESTAMP(3),
+  `completed_at` datetime(3) DEFAULT NULL,
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `uk_seckill_compensation_action_order` (`compensation_action`,`order_number`),
+  KEY `idx_seckill_compensation_recovery` (`status`,`next_retry_at`,`id`),
+  KEY `idx_seckill_compensation_coupon` (`coupon_id`,`id`),
+  CONSTRAINT `chk_seckill_compensation_attempt` CHECK (`attempt_count` >= 0)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+
+DROP TABLE IF EXISTS `seckill_reconciliation_anomaly`;
+CREATE TABLE `seckill_reconciliation_anomaly` (
+  `id` bigint NOT NULL AUTO_INCREMENT,
+  `anomaly_type` varchar(32) NOT NULL,
+  `coupon_id` bigint NOT NULL,
+  `status` varchar(16) NOT NULL DEFAULT 'OPEN',
+  `occurrence_count` int NOT NULL DEFAULT 1,
+  `clean_scan_count` int NOT NULL DEFAULT 0,
+  `sample_user_id` bigint DEFAULT NULL,
+  `sample_order_number` varchar(50) DEFAULT NULL,
+  `details_hash` char(64) NOT NULL,
+  `version` bigint NOT NULL DEFAULT 0,
+  `first_seen_at` datetime(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
+  `last_seen_at` datetime(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
+  `resolved_at` datetime(3) DEFAULT NULL,
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `uk_seckill_anomaly_type_coupon` (`anomaly_type`,`coupon_id`),
+  KEY `idx_seckill_anomaly_status` (`status`,`last_seen_at`,`id`),
+  CONSTRAINT `chk_seckill_anomaly_counts` CHECK ((`occurrence_count` > 0) AND (`clean_scan_count` >= 0) AND (`coupon_id` >= 0) AND (((`coupon_id` = 0) AND (BINARY `anomaly_type` = 'INVALID_REGISTRY_MEMBER')) OR ((`coupon_id` > 0) AND (BINARY `anomaly_type` <> 'INVALID_REGISTRY_MEMBER'))))
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+
 /*!40103 SET TIME_ZONE=@OLD_TIME_ZONE */;
 
 /*!40101 SET SQL_MODE=@OLD_SQL_MODE */;

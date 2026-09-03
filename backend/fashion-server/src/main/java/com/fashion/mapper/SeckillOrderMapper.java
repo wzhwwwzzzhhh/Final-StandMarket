@@ -47,6 +47,8 @@ public interface SeckillOrderMapper {
      */
     SeckillOrder selectByOrderNumber(String orderNumber);
 
+    SeckillOrder selectByOrderNumberForUpdate(String orderNumber);
+
     SeckillOrder selectByOrderNumberAndUserId(@Param("orderNumber") String orderNumber,
                                               @Param("userId") Long userId);
     

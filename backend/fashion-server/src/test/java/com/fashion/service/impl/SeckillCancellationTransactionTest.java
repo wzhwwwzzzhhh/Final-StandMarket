@@ -4,6 +4,7 @@ import com.fashion.dto.SeckillCancelCommand;
 import com.fashion.entity.SeckillOrder;
 import com.fashion.mapper.SeckillCouponMapper;
 import com.fashion.mapper.SeckillOrderMapper;
+import com.fashion.seckill.SeckillCompensationService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -24,14 +25,17 @@ class SeckillCancellationTransactionTest {
     private SeckillCancellationTransaction transaction;
     private SeckillOrderMapper orderMapper;
     private SeckillCouponMapper couponMapper;
+    private SeckillCompensationService compensationService;
 
     @BeforeEach
     void setUp() {
         transaction = new SeckillCancellationTransaction();
         orderMapper = mock(SeckillOrderMapper.class);
         couponMapper = mock(SeckillCouponMapper.class);
+        compensationService = mock(SeckillCompensationService.class);
         ReflectionTestUtils.setField(transaction, "seckillOrderMapper", orderMapper);
         ReflectionTestUtils.setField(transaction, "seckillCouponMapper", couponMapper);
+        ReflectionTestUtils.setField(transaction, "seckillCompensationService", compensationService);
     }
 
     @Test
@@ -49,6 +53,8 @@ class SeckillCancellationTransactionTest {
         assertEquals(7L, command.getUserId());
         assertEquals(19L, command.getCouponId());
         verify(couponMapper).restoreStock(19L);
+        verify(compensationService).requestRelease("SEC-1", 7L, 19L, "CANCEL_COMMITTED",
+                SeckillCompensationService.EVIDENCE_CANCEL_COMMITTED);
     }
 
     @Test

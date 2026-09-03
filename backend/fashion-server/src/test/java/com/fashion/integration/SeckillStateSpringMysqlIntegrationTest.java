@@ -7,6 +7,9 @@ import com.fashion.mapper.SeckillOrderMapper;
 import com.fashion.service.SeckillOrderService;
 import com.fashion.service.impl.SeckillCancellationTransaction;
 import com.fashion.service.impl.SeckillOrderServiceImpl;
+import com.fashion.seckill.SeckillCompensationService;
+import com.fashion.seckill.SeckillCompensationExecutor;
+import com.fashion.seckill.SeckillReservationService;
 import org.apache.ibatis.session.SqlSessionFactory;
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.BeforeAll;
@@ -338,6 +341,23 @@ class SeckillStateSpringMysqlIntegrationTest {
         @Bean
         SeckillCancellationTransaction cancellationTransaction() {
             return new SeckillCancellationTransaction();
+        }
+
+        @Bean
+        SeckillCompensationService seckillCompensationService() {
+            return mock(SeckillCompensationService.class);
+        }
+
+        @Bean
+        SeckillCompensationExecutor seckillCompensationExecutor(StringRedisTemplate redisTemplate) {
+            SeckillCompensationExecutor executor = mock(SeckillCompensationExecutor.class);
+            when(executor.execute(any(String.class))).thenAnswer(invocation -> {
+                redisTemplate.execute(RedisScript.of("return 1", Long.class),
+                        Arrays.asList("b5:stock", "b5:users", "b5:reservations", "b5:index"),
+                        "1", "7");
+                return SeckillReservationService.RollbackResult.APPLIED;
+            });
+            return executor;
         }
 
         @Bean

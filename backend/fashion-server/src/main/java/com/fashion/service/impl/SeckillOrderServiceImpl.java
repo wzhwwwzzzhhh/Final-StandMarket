@@ -11,29 +11,26 @@ import com.fashion.entity.SeckillCoupon;
 import com.fashion.entity.SeckillOrder;
 import com.fashion.entity.User;
 import com.fashion.mapper.SeckillActivityMapper;
+import com.fashion.mapper.SeckillCompensationRecordMapper;
 import com.fashion.mapper.SeckillCouponMapper;
 import com.fashion.mapper.SeckillOrderMapper;
 import com.fashion.mapper.UserMapper;
 import com.fashion.result.Result;
 import com.fashion.service.SeckillOrderService;
+import com.fashion.seckill.SeckillCompensationExecutor;
+import com.fashion.seckill.SeckillReservationService;
 import com.fashion.vo.OrderAmountVO;
 import com.fashion.vo.SeckillOrderStatisticsVO;
 import com.fashion.vo.SeckillOrderVo;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.BeanUtils;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.core.io.ClassPathResource;
-import org.springframework.data.redis.core.StringRedisTemplate;
-import org.springframework.data.redis.core.script.DefaultRedisScript;
-import org.springframework.scripting.support.ResourceScriptSource;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import javax.annotation.PostConstruct;
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -53,17 +50,9 @@ public class SeckillOrderServiceImpl implements SeckillOrderService {
     @Autowired
     private SeckillCancellationTransaction seckillCancellationTransaction;
     @Autowired
-    private StringRedisTemplate stringRedisTemplate;
-
-    private DefaultRedisScript<Long> seckillRollbackScript;
-
-    @PostConstruct
-    public void initSeckillRollbackScript() {
-        seckillRollbackScript = new DefaultRedisScript<>();
-        seckillRollbackScript.setScriptSource(
-                new ResourceScriptSource(new ClassPathResource("lua/seckill_rollback.lua")));
-        seckillRollbackScript.setResultType(Long.class);
-    }
+    private SeckillCompensationExecutor seckillCompensationExecutor;
+    @Autowired
+    private SeckillCompensationRecordMapper seckillCompensationRecordMapper;
 
     @Override
     public SeckillOrder getOrderByNumber(String orderNumber) {
@@ -227,6 +216,12 @@ public class SeckillOrderServiceImpl implements SeckillOrderService {
 
             if (order.getStatus() != 3) {
                 log.warn("订单{}状态不是已取消，不能删除", id);
+                return false;
+            }
+
+            if (seckillCompensationRecordMapper
+                    .hasCompletedCancellationEvidence(order.getOrderNumber()) != 1) {
+                log.warn("订单{}缺少已完成的取消回补证据，不能删除", id);
                 return false;
             }
 
@@ -426,14 +421,11 @@ public class SeckillOrderServiceImpl implements SeckillOrderService {
         }
 
         try {
-            String stockKey = "seckill:coupon:stock:" + command.getCouponId();
-            String usersKey = "seckill:coupon:users:" + command.getCouponId();
-            Long result = stringRedisTemplate.execute(
-                    seckillRollbackScript,
-                    Arrays.asList(stockKey, usersKey),
-                    "1",
-                    command.getUserId().toString());
-            if (result != null && result == 1L) {
+            SeckillReservationService.RollbackResult result =
+                    seckillCompensationExecutor.execute(command.getOrderNumber());
+            if (result == SeckillReservationService.RollbackResult.APPLIED
+                    || result == SeckillReservationService.RollbackResult.ALREADY_APPLIED
+                    || result == SeckillReservationService.RollbackResult.APPLIED_LEDGER_INCONSISTENT) {
                 return SeckillCancelResponse.cancelled(command.getOrderNumber());
             }
             log.error("秒杀订单已取消但 Redis 回补未完成，orderNumber={}, userId={}, couponId={}, result={}",

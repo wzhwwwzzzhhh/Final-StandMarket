@@ -1,40 +1,24 @@
 package com.fashion.service.impl;
 
-import com.fashion.config.DirectExchangeConfig;
 import com.alibaba.csp.sentinel.annotation.SentinelResource;
 import com.alibaba.csp.sentinel.slots.block.BlockException;
 import com.fashion.context.BaseContext;
 import com.fashion.dto.SeckillSubmitResult;
 import com.fashion.entity.*;
 import com.fashion.mapper.SeckillCouponMapper;
-import com.fashion.mapper.SeckillOrderMapper;
 import com.fashion.result.Result;
 import com.fashion.service.SeckillCouponService;
-import com.fashion.service.SeckillOrderService;
-import com.fashion.utils.UniqueID;
+import com.fashion.seckill.SeckillSubmitOrchestrator;
 import lombok.extern.slf4j.Slf4j;
 import org.redisson.api.RLock;
 import org.redisson.api.RedissonClient;
-import org.springframework.amqp.AmqpException;
-import org.springframework.amqp.core.Binding;
-import org.springframework.amqp.core.DirectExchange;
-import org.springframework.amqp.core.Queue;
-import org.springframework.amqp.rabbit.annotation.RabbitListener;
-import org.springframework.amqp.rabbit.connection.ConnectionFactory;
-import org.springframework.amqp.rabbit.core.RabbitTemplate;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.core.io.ClassPathResource;
 import org.springframework.data.redis.core.RedisCallback;
 import org.springframework.data.redis.core.StringRedisTemplate;
-import org.springframework.data.redis.core.script.DefaultRedisScript;
-import org.springframework.scripting.support.ResourceScriptSource;
 import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
 
-import javax.annotation.PostConstruct;
 import java.time.LocalDateTime;
 import java.time.ZoneId;
-import java.util.Arrays;
 import java.util.List;
 import java.util.stream.Collectors;
 
@@ -50,31 +34,10 @@ public class SeckillCouponServiceImpl implements SeckillCouponService {
     @Autowired
     private RedissonClient redissonClient;
     @Autowired
-    private UniqueID uniqueID;
+    private SeckillSubmitOrchestrator seckillSubmitOrchestrator;
 
-    @Autowired
-    private RabbitTemplate rabbitTemplate;
-    @Autowired
-    private SeckillOrderMapper seckillOrderMapper;
-    @Autowired
-    private SeckillOrderService seckillOrderService;
-    @Autowired
-    private DirectExchangeConfig directExchangeConfig;
-
-
-
-    private DefaultRedisScript<Long> seckillScript;
     @Autowired
     private StringRedisTemplate stringRedisTemplate;
-    @Autowired
-    private ConnectionFactory connectionFactory;
-
-    @PostConstruct
-    public void init() {
-        seckillScript = new DefaultRedisScript<>();
-        seckillScript.setScriptSource(new ResourceScriptSource(new ClassPathResource("lua/seckill.lua")));
-        seckillScript.setResultType(Long.class);
-    }
 
     /**
      * 新增秒杀券
@@ -169,63 +132,30 @@ public class SeckillCouponServiceImpl implements SeckillCouponService {
         if(!lock.tryLock()){
             return Result.error("请勿重复抢购");
         }
-        SeckillSubmitResult resultDto = null;
-
-
         try {
-            //通过Lua脚本操作redis，即查看库存是否充足，是否过期，是否存在
-            String stockKey = "seckill:coupon:stock:" + couponId;
-            String startTimeKey = "seckill:coupon:startTime:" + couponId;
-            String endTimeKey = "seckill:coupon:endTime:" + couponId;
-            String usersKey = "seckill:coupon:users:" + couponId;
             long currentTime = System.currentTimeMillis() / 1000;
-            Long result = stringRedisTemplate.execute(
-                    seckillScript,
-                    Arrays.asList(stockKey, startTimeKey, endTimeKey, usersKey),
-                    "1",String.valueOf(currentTime),userId.toString()
-            );
-
-
-            //判断是否开始秒杀
-            if(result != null && result == -3){
-                return Result.error("秒杀未开始");
+            SeckillSubmitOrchestrator.Submission submission =
+                    seckillSubmitOrchestrator.submit(userId, couponId, currentTime);
+            switch (submission.getOutcome()) {
+                case PROCESSING:
+                    return Result.success(new SeckillSubmitResult(submission.getOrderNumber(), 0,
+                            "抢购请求已提交，请等待处理", couponId));
+                case NOT_STARTED:
+                    return Result.error("秒杀未开始");
+                case ENDED:
+                    return Result.error("秒杀已结束");
+                case DUPLICATE:
+                    return Result.error("请勿重复抢购");
+                case SOLD_OUT:
+                    return Result.error("秒杀券已售罄");
+                case DELIVERY_FAILED:
+                    return Result.error("消息投递失败，请稍后重试");
+                default:
+                    return Result.error("系统繁忙，请稍后再试");
             }
-            //判断是否结束秒杀
-            if(result != null && result == -2){
-                return Result.error("秒杀已结束");
-            }
-            //判断是否重复购买
-            if(result != null && result == -4){
-                return Result.error("请勿重复抢购");
-            }
-            //判断库存
-            if(result != null && result < 0){
-                return Result.error("秒杀券已售罄");
-            }
-
-            //生成订单号
-            Long orderNumber = uniqueID.nextId("seckill:order");
-
-            //生产者发送消息
-            SeckillMessage message = new SeckillMessage();
-            message.setUserId(userId);
-            message.setCouponId(couponId);
-            message.setOrderNumber(orderNumber.toString());
-
-            rabbitTemplate.convertAndSend(DirectExchangeConfig.SeckillExchange, DirectExchangeConfig.SeckillRoutingKey, message);
-
-            // 创建简化响应对象
-            resultDto = new SeckillSubmitResult();
-            resultDto.setOrderNumber(orderNumber.toString());
-            resultDto.setStatus(0); // 处理中
-            resultDto.setMessage("抢购请求已提交，请等待处理");
-            resultDto.setCouponId(couponId);
-        } catch (AmqpException e) {
-            throw new RuntimeException(e);
         }finally {
             lock.unlock();
         }
-        return Result.success(resultDto);
     }
 
     public Result<SeckillSubmitResult> seckillBlockHandler(Long couponId, BlockException exception) {
@@ -236,43 +166,6 @@ public class SeckillCouponServiceImpl implements SeckillCouponService {
     public Result<SeckillSubmitResult> seckillFallback(Long couponId, Throwable exception) {
         log.error("秒杀接口降级，couponId={}", couponId, exception);
         return Result.error("系统异常，请稍后重试");
-    }
-
-    @RabbitListener(queues = DirectExchangeConfig.SeckillQueue)
-    @Transactional
-    public void handleSeckillOrder(SeckillMessage message) {
-        //先判断消息是否为空
-        if (message == null) {
-            return;
-        }
-
-        //二次检验，避免重复
-        SeckillOrder existOrder = seckillOrderMapper.selectByOrderNumber(message.getOrderNumber());
-        if (existOrder != null) {
-            return;
-        }
-        //生成秒杀订单（用户与券的关系记录）
-        SeckillOrder seckillOrder = new SeckillOrder();
-        seckillOrder.setUserId(message.getUserId());
-        seckillOrder.setCouponId(message.getCouponId());
-        seckillOrder.setOrderNumber(message.getOrderNumber());
-        seckillOrder.setStatus(1);
-        seckillOrder.setCreateTime(LocalDateTime.now());
-        seckillOrderMapper.insert(seckillOrder);
-        //发送订单消息到延迟队列
-        rabbitTemplate.convertAndSend(DirectExchangeConfig.delayExchange, DirectExchangeConfig.delayRoutingKey, seckillOrder.getId());
-
-        //秒杀卷库存减1，用数据库锁解决；影响行数为0说明库存不足，抛出异常回滚事务并触发消息重试，避免静默丢单
-        int rows = seckillCouponMapper.reduceStock(message.getCouponId());
-        if (rows == 0) {
-            log.error("秒杀券库存扣减失败，库存不足，couponId={}, orderNumber={}", message.getCouponId(), message.getOrderNumber());
-            throw new RuntimeException("秒杀券库存不足，扣减失败，couponId=" + message.getCouponId());
-        }
-    }
-
-    @RabbitListener(queues = DirectExchangeConfig.deadQueue)
-    public void handleDeadQueue(Long orderId) {
-        seckillOrderService.cancelTimeoutOrder(orderId);
     }
 
     @Override

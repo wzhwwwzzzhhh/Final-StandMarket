@@ -1,0 +1,118 @@
+services:
+  mysql:
+    image: mysql:8.0.36
+    environment:
+      MYSQL_ROOT_PASSWORD: ${B6_MYSQL_ROOT_PASSWORD:?set B6_MYSQL_ROOT_PASSWORD}
+    ports:
+      - "127.0.0.1:${B6_MYSQL_PORT:-33060}:3306"
+    healthcheck:
+      test: ["CMD-SHELL", "mysqladmin ping -h 127.0.0.1 -uroot -p$$MYSQL_ROOT_PASSWORD --silent"]
+      interval: 2s
+      timeout: 3s
+      retries: 30
+
+  redis:
+    image: redis:7.0.15-alpine
+    command: ["redis-server", "--appendonly", "yes", "--requirepass", "${B6_REDIS_PASSWORD:?set B6_REDIS_PASSWORD}"]
+    ports:
+      - "127.0.0.1:${B6_REDIS_PORT:-36379}:6379"
+    healthcheck:
+      test: ["CMD-SHELL", "redis-cli -a $$B6_REDIS_PASSWORD --no-auth-warning ping | grep PONG"]
+      interval: 2s
+      timeout: 3s
+      retries: 30
+    environment:
+      B6_REDIS_PASSWORD: ${B6_REDIS_PASSWORD:?set B6_REDIS_PASSWORD}
+
+  rabbitmq:
+    image: rabbitmq:3.12.14-management-alpine
+    environment:
+      RABBITMQ_DEFAULT_USER: ${B6_RABBITMQ_PROVISIONER_USER:?set B6_RABBITMQ_PROVISIONER_USER}
+      RABBITMQ_DEFAULT_PASS: ${B6_RABBITMQ_PROVISIONER_PASSWORD:?set B6_RABBITMQ_PROVISIONER_PASSWORD}
+      RABBITMQ_DEFAULT_VHOST: ${B6_RABBITMQ_VHOST:?set a unique fsm_b6_it_<32hex> vhost per run}
+    ports:
+      - "127.0.0.1:${B6_RABBITMQ_PORT:-35672}:5672"
+      - "127.0.0.1:${B6_RABBITMQ_MANAGEMENT_PORT:-35673}:15672"
+    healthcheck:
+      test: ["CMD", "rabbitmq-diagnostics", "-q", "ping"]
+      interval: 2s
+      timeout: 5s
+      retries: 30
+
+  rabbitmq-provisioner:
+    image: python:3.11-alpine
+    depends_on:
+      rabbitmq:
+        condition: service_healthy
+    environment:
+      B6_RABBITMQ_PROVISIONER_USER: ${B6_RABBITMQ_PROVISIONER_USER:?set B6_RABBITMQ_PROVISIONER_USER}
+      B6_RABBITMQ_PROVISIONER_PASSWORD: ${B6_RABBITMQ_PROVISIONER_PASSWORD:?set B6_RABBITMQ_PROVISIONER_PASSWORD}
+      B6_RABBITMQ_APP_USER: ${B6_RABBITMQ_USER:?set B6_RABBITMQ_USER}
+      B6_RABBITMQ_APP_PASSWORD: ${B6_RABBITMQ_PASSWORD:?set B6_RABBITMQ_PASSWORD}
+      B6_RABBITMQ_VHOST: ${B6_RABBITMQ_VHOST:?set a unique fsm_b6_it_<32hex> vhost per run}
+    entrypoint: ["/bin/sh", "-ec"]
+    command:
+      - |
+        test "$$B6_RABBITMQ_PROVISIONER_USER" != "$$B6_RABBITMQ_APP_USER"
+        echo "$$B6_RABBITMQ_VHOST" | grep -Eq '^fsm_b6_it_[0-9a-f]{32}$$'
+        python3 - <<'PY'
+        import base64, json, os, urllib.parse, urllib.request
+        base = 'http://rabbitmq:15672/api'
+        admin = os.environ['B6_RABBITMQ_PROVISIONER_USER']
+        secret = os.environ['B6_RABBITMQ_PROVISIONER_PASSWORD']
+        app = os.environ['B6_RABBITMQ_APP_USER']
+        app_secret = os.environ['B6_RABBITMQ_APP_PASSWORD']
+        vhost = os.environ['B6_RABBITMQ_VHOST']
+        auth = 'Basic ' + base64.b64encode((admin + ':' + secret).encode()).decode()
+        def call(method, path, payload=None):
+            body = None if payload is None else json.dumps(payload).encode()
+            request = urllib.request.Request(base + path, data=body, method=method,
+                headers={'Authorization': auth, 'Content-Type': 'application/json'})
+            with urllib.request.urlopen(request, timeout=10) as response:
+                return response.read()
+        call('PUT', '/users/' + urllib.parse.quote(app, safe=''),
+             {'password': app_secret, 'tags': ''})
+        expected = {
+            'configure': r'^(fsm_b6_it_.*|market\.(direct|mq)|delay\.(exchange|queue)|dead\.(exchange|queue)|seckill\.failure\.(exchange|queue))$',
+            'write': r'^(fsm_b6_it_.*|market\.(direct|mq)|delay\.(exchange|queue)|dead\.(exchange|queue)|seckill\.failure\.(exchange|queue))$',
+            'read': r'^(fsm_b6_it_.*|market\.(direct|mq)|delay\.(exchange|queue)|dead\.(exchange|queue)|seckill\.failure\.(exchange|queue))$'
+        }
+        permission_path = '/permissions/' + urllib.parse.quote(vhost, safe='') + '/' + urllib.parse.quote(app, safe='')
+        call('PUT', permission_path, expected)
+        actual = json.loads(call('GET', permission_path))
+        if any(actual.get(key) != value for key, value in expected.items()):
+            raise SystemExit('RabbitMQ application permission verification failed')
+        PY
+
+  rabbitmq-cleaner:
+    image: python:3.11-alpine
+    profiles: ["cleanup"]
+    depends_on:
+      rabbitmq:
+        condition: service_healthy
+    environment:
+      B6_RABBITMQ_PROVISIONER_USER: ${B6_RABBITMQ_PROVISIONER_USER:?set B6_RABBITMQ_PROVISIONER_USER}
+      B6_RABBITMQ_PROVISIONER_PASSWORD: ${B6_RABBITMQ_PROVISIONER_PASSWORD:?set B6_RABBITMQ_PROVISIONER_PASSWORD}
+      B6_RABBITMQ_APP_USER: ${B6_RABBITMQ_USER:?set B6_RABBITMQ_USER}
+      B6_RABBITMQ_VHOST: ${B6_RABBITMQ_VHOST:?set a unique fsm_b6_it_<32hex> vhost per run}
+    entrypoint: ["/bin/sh", "-ec"]
+    command:
+      - |
+        test "$$B6_RABBITMQ_PROVISIONER_USER" != "$$B6_RABBITMQ_APP_USER"
+        echo "$$B6_RABBITMQ_VHOST" | grep -Eq '^fsm_b6_it_[0-9a-f]{32}$$'
+        python3 - <<'PY'
+        import base64, os, urllib.parse, urllib.request
+        base = 'http://rabbitmq:15672/api'
+        admin = os.environ['B6_RABBITMQ_PROVISIONER_USER']
+        secret = os.environ['B6_RABBITMQ_PROVISIONER_PASSWORD']
+        app = os.environ['B6_RABBITMQ_APP_USER']
+        vhost = os.environ['B6_RABBITMQ_VHOST']
+        auth = 'Basic ' + base64.b64encode((admin + ':' + secret).encode()).decode()
+        def delete(path):
+            request = urllib.request.Request(base + path, method='DELETE',
+                headers={'Authorization': auth})
+            with urllib.request.urlopen(request, timeout=10):
+                pass
+        delete('/users/' + urllib.parse.quote(app, safe=''))
+        delete('/vhosts/' + urllib.parse.quote(vhost, safe=''))
+        PY
