@@ -1,6 +1,6 @@
 # B7-coupon-review-integrity · Evidence
 
-> Workpack status: CI 验证中（2026-09-04）；commit `413b345` / [PR #19](https://github.com/wzhwwwzzzhhh/Final-StandMarket/pull/19)
+> Workpack status: 已归档（2026-09-04）；[PR #19](https://github.com/wzhwwwzzzhhh/Final-StandMarket/pull/19) @ `be2e928` 首轮 5 项 checks 全绿，等待归档提交复验后合并
 
 ## Acceptance criteria
 
@@ -71,6 +71,8 @@
 | 2026-09-04 12:06 CST | `cd backend; mvn test` | 453 tests；0 failures；0 errors；117 skipped；BUILD SUCCESS | B7 远程交付前四模块完整后端新鲜回归；条件真实依赖测试已由上一行显式执行 |
 | 2026-09-04 12:07 CST | 远端基线与提交前 Git/安全检查 | PASS | `Final-StandMarket/master` 与 HEAD 均为 `657286e6`；0 ahead/0 behind；`git diff --check` 通过；暂存区为空；B7 测试凭据、私钥和 Access Key 无 diff 命中；忽略配置未进入 Git |
 | 2026-09-04 12:09 CST | commit / push / PR | PASS | 创建 `413b345 feat(order): 完善优惠券与评价完整性`，无强推推送 `codex/b7-coupon-review-integrity`，建立 [PR #19](https://github.com/wzhwwwzzzhhh/Final-StandMarket/pull/19) 指向 `master`；配置合并后关闭 Issue #18，并引用 Stage B #3 |
+| 2026-09-04 | PR #19 @ `be2e928` GitHub checks | 5/5 PASS；MERGEABLE | Java backend、fashion-client build、fashion-admin build、Python agent、Gitleaks 对目标提交全部成功；结果来自 GitHub，不以本地命令冒充 |
+| 2026-09-04 | 用户合并授权 | confirmed | 进入合并前需求状态同步与 workpack 归档；归档提交仍须再次通过 GitHub checks 才能合并 |
 
 ## Residual gates
 
@@ -80,4 +82,4 @@
 
 ## Local delivery summary
 
-B7 已本地验证并进入 PR #19 的 CI 验证：独立 Review P0/P1/P2/P3=0，远程交付前真实 MySQL/Redis 24/24、完整后端 453/453（117 条条件测试跳过）和用户端生产构建均通过；Git/敏感信息/清理检查通过。尚未合并、迁移生产库或部署；不得据此宣称可生产发布。
+B7 已本地验证并归档：独立 Review P0/P1/P2/P3=0，远程交付前真实 MySQL/Redis 24/24、完整后端 453/453（117 条条件测试跳过）和用户端生产构建均通过；PR #19 @ `be2e928` 的 5 项 GitHub checks 全绿。当前等待归档提交复验后合并；尚未迁移生产库或部署，不得据此宣称可生产发布。

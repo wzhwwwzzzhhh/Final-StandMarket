@@ -20,13 +20,13 @@ docs/workpack/
 
 | 阶段 | 切片 | 状态 | 需求源 | Plan | Review | Evidence |
 |---|---|---|---|---|---|---|
-| B7 | coupon-review-integrity | CI 验证中（[PR #19](https://github.com/wzhwwwzzzhhh/Final-StandMarket/pull/19)） | [阶段 B B7](../plans/阶段B-P0P1交易链路修复.md#b7优惠与评价业务完整性p1) / [Issue #18](https://github.com/wzhwwwzzzhhh/Final-StandMarket/issues/18) | [plan](B7-coupon-review-integrity/plan.md) | [PASS](B7-coupon-review-integrity/review.md) | [evidence](B7-coupon-review-integrity/evidence.md) |
 | B0 | credential-log-safety | AC1-AC5 与 CI 已通过；AC6 阻塞 Issue #4、B11 与生产发布，不阻塞 B1-B10 本地开发 | [阶段 B B0](../plans/阶段B-P0P1交易链路修复.md#b0密码token-与日志安全p0) / [Issue #4](https://github.com/wzhwwwzzzhhh/Final-StandMarket/issues/4) | [plan](B0-credential-log-safety/plan.md) | [PASS](B0-credential-log-safety/review.md) | [evidence](B0-credential-log-safety/evidence.md) |
 
 ## 已归档
 
 | 阶段 | 切片 | 本地交付日期 | Review | Evidence |
 |---|---|---|---|---|
+| B7 | coupon-review-integrity | 2026-09-04 | [PASS（P0/P1/P2/P3=0）](归档/B7-coupon-review-integrity/review.md) | [evidence](归档/B7-coupon-review-integrity/evidence.md) |
 | B6 | rabbitmq-reliability | 2026-09-03 | [PASS（P0/P1/P2=0）](归档/B6-rabbitmq-reliability/review.md) | [evidence](归档/B6-rabbitmq-reliability/evidence.md) |
 | B5 | seckill-state-inventory | 2026-09-01 | [PASS](归档/B5-seckill-state-inventory/review.md) | [evidence](归档/B5-seckill-state-inventory/evidence.md) |
 | B4 | resource-ownership | 2026-09-01 | [PASS](归档/B4-resource-ownership/review.md) | [evidence](归档/B4-resource-ownership/evidence.md) |
