@@ -5,7 +5,9 @@ const reviewApi = {
   list: (productId, params) => api.get(`/user/review/list/${productId}`, { params }),
   stats: (productId) => api.get(`/user/review/stats/${productId}`),
   my: (params) => api.get('/user/review/my', { params }),
-  check: (orderId) => api.get(`/user/review/check/${orderId}`)
+  check: (orderId, productId) => api.get(`/user/review/check/${orderId}`, {
+    params: { productId }
+  })
 }
 
 export default reviewApi

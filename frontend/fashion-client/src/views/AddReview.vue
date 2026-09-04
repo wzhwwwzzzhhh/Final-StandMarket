@@ -115,9 +115,9 @@ export default {
       })
     },
     checkReviewed() {
-      reviewApi.check(this.$route.params.orderId).then(response => {
+      reviewApi.check(this.$route.params.orderId, this.$route.params.productId).then(response => {
         if (response.data.code === 1 && response.data.data.reviewed) {
-          this.$message.warning('该订单已评价')
+          this.$message.warning('该订单商品已评价')
           this.$router.back()
         }
       })

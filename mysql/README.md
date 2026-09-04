@@ -9,7 +9,8 @@
 | `final07.sql` | 历史全量数据库导出/初始化脚本 | 仅用于新建开发或测试库前的人工审查初始化；不得覆盖已有生产库 |
 | `address_book.sql` | 地址簿表补充 | 历史功能脚本，执行前检查表是否已存在 |
 | `favorite_table.sql` | 收藏夹表 | 历史功能脚本 |
-| `review_table.sql` | 商品评价表 | 历史功能脚本 |
+| `review_table.sql` | 商品评价表初始化基线 | 仅用于尚无 `review` 表的新建库；`IF NOT EXISTS` 不会升级已有表 |
+| `add_review_integrity.sql` | B7 评价资格与订单商品唯一约束 | 已有库唯一升级入口；脏数据、错误/部分定义在 DDL 前主动失败，生产执行仍受 B10/B11 与单独授权约束 |
 | `payment_table.sql` | 支付记录表 | 历史功能脚本 |
 | `add_payment_active_unique.sql` | B1 活动支付流水唯一约束 | 已有库增量脚本；执行前停支付写入，冲突/部分结构会主动失败 |
 | `refund_table.sql` | 售后退款表 | 历史功能脚本 |

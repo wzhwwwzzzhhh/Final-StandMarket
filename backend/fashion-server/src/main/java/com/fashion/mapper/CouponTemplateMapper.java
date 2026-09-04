@@ -33,6 +33,11 @@ public interface CouponTemplateMapper {
     CouponTemplate selectById(Long id);
 
     /**
+     * 事务内读取当前模板版本并持有共享锁，防止资格判断期间被管理端改写。
+     */
+    CouponTemplate selectByIdForShare(Long id);
+
+    /**
      * 分页查询模板
      */
     List<CouponTemplate> list(@Param("page") int page, @Param("pageSize") int pageSize,

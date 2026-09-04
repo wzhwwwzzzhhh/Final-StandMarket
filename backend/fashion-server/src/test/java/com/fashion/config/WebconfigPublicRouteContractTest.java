@@ -65,6 +65,8 @@ class WebconfigPublicRouteContractTest {
         mockMvc.perform(post("/user/login")).andExpect(status().isOk());
         mockMvc.perform(get("/user/product/1")).andExpect(status().isOk());
         mockMvc.perform(get("/user/category/list")).andExpect(status().isOk());
+        mockMvc.perform(get("/user/review/list/1")).andExpect(status().isOk());
+        mockMvc.perform(get("/user/review/stats/1")).andExpect(status().isOk());
     }
 
     @Test
@@ -72,6 +74,10 @@ class WebconfigPublicRouteContractTest {
     void staleAndPrivateRoutesAreProtected() throws Exception {
         mockMvc.perform(post("/user/send-sms-code")).andExpect(status().isUnauthorized());
         mockMvc.perform(get("/user/private-resource")).andExpect(status().isUnauthorized());
+        mockMvc.perform(post("/user/review/add")).andExpect(status().isUnauthorized());
+        mockMvc.perform(get("/user/review/my")).andExpect(status().isUnauthorized());
+        mockMvc.perform(get("/user/review/check/1")).andExpect(status().isUnauthorized());
+        mockMvc.perform(get("/user/review/list/1/export")).andExpect(status().isUnauthorized());
     }
 
     @Test
@@ -148,12 +154,15 @@ class WebconfigPublicRouteContractTest {
     @RestController
     static class RouteProbeController {
 
-        @PostMapping({"/user/register", "/user/sms-code", "/user/login", "/user/send-sms-code"})
+        @PostMapping({"/user/register", "/user/sms-code", "/user/login", "/user/send-sms-code",
+                "/user/review/add"})
         String postRoute() {
             return "ok";
         }
 
-        @GetMapping({"/user/product/1", "/user/category/list", "/user/private-resource", "/upload/file"})
+        @GetMapping({"/user/product/1", "/user/category/list", "/user/private-resource", "/upload/file",
+                "/user/review/list/1", "/user/review/stats/1", "/user/review/my", "/user/review/check/1",
+                "/user/review/list/1/export"})
         String getRoute() {
             return "ok";
         }

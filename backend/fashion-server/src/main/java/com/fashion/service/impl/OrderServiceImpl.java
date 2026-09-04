@@ -10,6 +10,7 @@ import com.github.pagehelper.PageInfo;
 import com.fashion.context.BaseContext;
 import com.fashion.dto.OrderCreateDTO;
 import com.fashion.service.OrderService;
+import com.fashion.service.support.CartSelectionValidator;
 import org.springframework.beans.factory.annotation.Autowired;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.redis.core.StringRedisTemplate;
@@ -27,6 +28,9 @@ import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.TreeMap;
+
+import static com.fashion.exception.PublicBusinessException.Code.*;
+import static com.fashion.exception.PublicBusinessException.of;
 
 @Service
 @Slf4j
@@ -132,14 +136,12 @@ public class OrderServiceImpl implements OrderService {
     public Orders create(OrderCreateDTO orderCreateDTO) {
         Long userId = BaseContext.getUserId();
         if (userId == null) {
-            throw new RuntimeException("用户未登录");
+            throw of(USER_NOT_LOGGED_IN);
         }
-        if (orderCreateDTO == null || orderCreateDTO.getProductIds() == null || orderCreateDTO.getProductIds().isEmpty()) {
-            throw new RuntimeException("请选择要结算的商品");
+        if (orderCreateDTO == null) {
+            throw of(ORDER_REQUEST_REQUIRED);
         }
-        if (new HashSet<>(orderCreateDTO.getProductIds()).size() != orderCreateDTO.getProductIds().size()) {
-            throw new IllegalArgumentException("购物车项不能重复");
-        }
+        CartSelectionValidator.validate(orderCreateDTO.getProductIds());
 
         Orders orders = new Orders();
         orders.setUserId(userId);
@@ -159,7 +161,7 @@ public class OrderServiceImpl implements OrderService {
         if (orderCreateDTO.getAddressId() != null) {
             AddressBook addressBook = addressBookMapper.getByIdAndUserId(orderCreateDTO.getAddressId(), userId);
             if (addressBook == null) {
-                throw new IllegalStateException("地址不存在");
+                throw of(ADDRESS_NOT_FOUND);
             }
             orders.setConsignee(addressBook.getConsignee());
             orders.setPhone(addressBook.getPhone());
@@ -175,33 +177,33 @@ public class OrderServiceImpl implements OrderService {
         List<ShoppingCart> selectedCartItems = shoppingCartMapper.findByIdsAndUserId(
                 userId, orderCreateDTO.getProductIds());
         if (selectedCartItems == null || selectedCartItems.size() != orderCreateDTO.getProductIds().size()) {
-            throw new IllegalStateException("购物车商品不存在或无权操作");
+            throw of(CART_FORBIDDEN);
         }
         Map<Long, ShoppingCart> cartItemsById = new HashMap<>();
         for (ShoppingCart selectedCartItem : selectedCartItems) {
             if (selectedCartItem == null || selectedCartItem.getId() == null
                     || cartItemsById.put(selectedCartItem.getId(), selectedCartItem) != null) {
-                throw new IllegalStateException("购物车快照无效");
+                throw of(CART_SNAPSHOT_INVALID);
             }
         }
         for (Long cartItemId : orderCreateDTO.getProductIds()) {
             ShoppingCart cartItem = cartItemsById.get(cartItemId);
             if (cartItem == null) {
-                throw new RuntimeException("购物车商品不存在");
+                throw of(CART_ITEM_NOT_FOUND);
             }
             // 校验购物车项归属当前用户
             if (!Objects.equals(cartItem.getUserId(), userId)) {
-                throw new RuntimeException("存在无权操作的商品");
+                throw of(CART_ITEM_FORBIDDEN);
             }
             if (cartItem.getNumber() == null || cartItem.getNumber() <= 0) {
-                throw new IllegalArgumentException("购物车商品数量必须大于零");
+                throw of(CART_QUANTITY_INVALID);
             }
             Product product = productMapper.getById(cartItem.getProductId());
             if (product == null) {
-                throw new RuntimeException("商品不存在");
+                throw of(PRODUCT_NOT_FOUND);
             }
             if (product.getStock() < cartItem.getNumber()) {
-                throw new RuntimeException("商品库存不足：" + product.getName());
+                throw of(PRODUCT_OUT_OF_STOCK);
             }
             OrderDetail orderDetail = new OrderDetail();
             orderDetail.setOrderId(orders.getId());
@@ -218,7 +220,7 @@ public class OrderServiceImpl implements OrderService {
             orderProductIds.add(cartItem.getProductId());
         }
         if (orderDetails.isEmpty()) {
-            throw new RuntimeException("购物车为空");
+            throw of(CART_EMPTY);
         }
 
         Map<Long, Integer> quantityByProductId = new TreeMap<>();
@@ -228,7 +230,7 @@ public class OrderServiceImpl implements OrderService {
         for (Map.Entry<Long, Integer> entry : quantityByProductId.entrySet()) {
             int affectedRows = productMapper.deductStock(entry.getKey(), entry.getValue());
             if (affectedRows != 1) {
-                throw new IllegalStateException("商品库存不足，商品ID：" + entry.getKey());
+                throw of(PRODUCT_OUT_OF_STOCK);
             }
         }
 

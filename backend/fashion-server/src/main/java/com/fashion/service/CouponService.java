@@ -3,6 +3,7 @@ package com.fashion.service;
 import com.fashion.entity.CouponTemplate;
 import com.fashion.entity.PageResult;
 import com.fashion.entity.UserCoupon;
+import com.fashion.vo.AvailableCouponVO;
 
 import java.math.BigDecimal;
 import java.util.List;
@@ -64,7 +65,7 @@ public interface CouponService {
     /**
      * 结算页可用券（按金额门槛 + 商品范围过滤）
      */
-    List<UserCoupon> listAvailable(Long userId, BigDecimal totalAmount, List<Long> productIds);
+    List<AvailableCouponVO> listAvailable(Long userId, List<Long> cartItemIds);
 
     // ==================== 下单集成（供 OrderServiceImpl 调用） ====================
 

@@ -2,20 +2,24 @@ package com.fashion.controller.user;
 
 import com.fashion.dto.OrderCreateDTO;
 import com.fashion.entity.Orders;
+import com.fashion.exception.PublicBusinessException;
 import com.fashion.result.Result;
 import com.fashion.service.OrderService;
 import org.springframework.beans.factory.annotation.Autowired;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.UUID;
 
 /**
  * 用户订单Controller
  */
 @RestController
 @RequestMapping("/user/order")
+@Slf4j
 public class UserOrderController {
     
     @Autowired
@@ -29,8 +33,13 @@ public class UserOrderController {
         try {
             Orders createdOrder = orderService.create(orderCreateDTO);
             return Result.success(createdOrder);
-        } catch (RuntimeException e) {
+        } catch (PublicBusinessException e) {
             return Result.error(e.getMessage());
+        } catch (RuntimeException e) {
+            String traceId = UUID.randomUUID().toString();
+            log.error("下单失败 traceId={}, exceptionType={}", traceId,
+                    e.getClass().getName());
+            return Result.error("下单失败，请稍后重试");
         }
     }
     

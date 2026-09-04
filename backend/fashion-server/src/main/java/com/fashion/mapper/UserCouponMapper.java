@@ -4,6 +4,7 @@ import com.fashion.entity.UserCoupon;
 import org.apache.ibatis.annotations.Mapper;
 import org.apache.ibatis.annotations.Param;
 
+import java.time.LocalDateTime;
 import java.util.List;
 
 /**
@@ -13,14 +14,32 @@ import java.util.List;
 public interface UserCouponMapper {
 
     /**
-     * 新增持有券（领取）
+     * 使用锁后数据库时间和锁定模板版本领取持有券。
      */
-    int insert(UserCoupon userCoupon);
+    int insertClaim(@Param("userId") Long userId, @Param("templateId") Long templateId,
+                    @Param("eligibilityTime") LocalDateTime eligibilityTime);
 
     /**
      * 根据id查询（联表带模板信息）
      */
     UserCoupon selectById(Long id);
+
+    /**
+     * 事务内读取持有券当前版本并持有排他锁。
+     */
+    UserCoupon selectByIdForUpdate(Long id);
+
+    /**
+     * 在所有资格行锁取得后读取数据库时间线性化点。
+     */
+    LocalDateTime selectDatabaseTime();
+
+    /**
+     * 依据锁定快照和数据库时间执行最终状态 CAS。
+     */
+    int lockCouponAt(@Param("id") Long id, @Param("userId") Long userId,
+                     @Param("templateId") Long templateId,
+                     @Param("eligibilityTime") LocalDateTime eligibilityTime);
 
     /**
      * 查询用户卡包（可按状态过滤，联表带模板信息）
@@ -36,11 +55,6 @@ public interface UserCouponMapper {
      * 查询某模板已被领取的数量（发行总量校验）
      */
     int countByTemplate(@Param("templateId") Long templateId);
-
-    /**
-     * 锁定券（乐观锁：仅未使用可锁，返回影响行数）
-     */
-    int lockCoupon(@Param("id") Long id, @Param("userId") Long userId);
 
     /**
      * 回填锁定券的核销订单id
