@@ -1,6 +1,6 @@
 # B7-coupon-review-integrity · Evidence
 
-> Workpack status: 本地已验证（2026-09-04）；未 commit / push / PR
+> Workpack status: CI 验证中（2026-09-04）；commit `413b345` / [PR #19](https://github.com/wzhwwwzzzhhh/Final-StandMarket/pull/19)
 
 ## Acceptance criteria
 
@@ -70,6 +70,7 @@
 | 2026-09-04 12:05 CST | `mvn -pl fashion-server -am -Db7.integration=true ... test` | 24/24 PASS；BUILD SUCCESS | 真实 MySQL 事务/评价 18、迁移 4、真实 MySQL+Redis 7.0.15 联合测试 2；使用 loopback、隔离 schema 与专用 DB15，测试状态已清理 |
 | 2026-09-04 12:06 CST | `cd backend; mvn test` | 453 tests；0 failures；0 errors；117 skipped；BUILD SUCCESS | B7 远程交付前四模块完整后端新鲜回归；条件真实依赖测试已由上一行显式执行 |
 | 2026-09-04 12:07 CST | 远端基线与提交前 Git/安全检查 | PASS | `Final-StandMarket/master` 与 HEAD 均为 `657286e6`；0 ahead/0 behind；`git diff --check` 通过；暂存区为空；B7 测试凭据、私钥和 Access Key 无 diff 命中；忽略配置未进入 Git |
+| 2026-09-04 12:09 CST | commit / push / PR | PASS | 创建 `413b345 feat(order): 完善优惠券与评价完整性`，无强推推送 `codex/b7-coupon-review-integrity`，建立 [PR #19](https://github.com/wzhwwwzzzhhh/Final-StandMarket/pull/19) 指向 `master`；配置合并后关闭 Issue #18，并引用 Stage B #3 |
 
 ## Residual gates
 
@@ -79,4 +80,4 @@
 
 ## Local delivery summary
 
-B7 已本地验证：独立 Review P0/P1/P2/P3=0，真实 MySQL 22/22、真实 MySQL+Redis 2/2、聚焦 52/52、完整后端 453/453（117 条条件测试跳过）和用户端生产构建均通过；Git/敏感信息/清理检查通过。未 commit、push、创建 PR、迁移生产库或部署；不得据此宣称可生产发布。
+B7 已本地验证并进入 PR #19 的 CI 验证：独立 Review P0/P1/P2/P3=0，远程交付前真实 MySQL/Redis 24/24、完整后端 453/453（117 条条件测试跳过）和用户端生产构建均通过；Git/敏感信息/清理检查通过。尚未合并、迁移生产库或部署；不得据此宣称可生产发布。

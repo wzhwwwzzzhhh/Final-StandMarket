@@ -1,6 +1,6 @@
 # B7-coupon-review-integrity · Workpack plan
 
-> Status: 本地已验证（2026-09-04）；未 commit / push / PR
+> Status: CI 验证中（2026-09-04）；commit `413b345` / PR #19
 > Requirement source: `docs/plans/阶段B-P0P1交易链路修复.md` B7 / GitHub Issue #18（Stage B 总跟踪 #3）
 > Design: `docs/design/order/B7-coupon-review-integrity-design.md`（已确认，2026-09-03；独立 Review P0/P1/P2/P3 均为 0）
 > Baseline: `master` @ `657286e6f95f362e6408699967e16db5f1eb21cf`
