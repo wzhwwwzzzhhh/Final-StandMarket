@@ -1,6 +1,6 @@
 # B9-agent-frontend-contract · Evidence
 
-> Status: 本地已验证
+> Status: 已归档（2026-09-04）；[PR #22](https://github.com/wzhwwwzzzhhh/Final-StandMarket/pull/22) @ `4408b02` 首轮 5 项 checks 全绿，等待归档提交复验后合并
 > Updated: 2026-09-04
 > Baseline: `98454176227bb0b0a936a0b6c58e35f3696e6788`
 > Branch: `codex/b9-agent-frontend-contract`
@@ -51,6 +51,8 @@
 | 管理端 `npm run build` | PASS：2290 modules | 仅 chunk size warning |
 | `git diff --check` | PASS | 仅 Windows LF→CRLF 提示，无 whitespace error |
 | 独立只读实现 Review | PASS：P0/P1/P2/P3 = 0 | 最终快照复审 |
+| PR #22 @ `4408b02` GitHub checks | PASS：5/5 | Java backend、Python agent、双前端 build、Gitleaks 全部成功；PR 为 `CLEAN / MERGEABLE` |
+| 用户合并授权 | confirmed | 进入合并前需求状态同步与 workpack 归档；归档提交仍须再次通过 GitHub checks |
 
 ## Real dependency and fault-injection conditions
 
@@ -77,8 +79,8 @@
 - 两套前端没有 lint/typecheck 脚本，因此未声称通过这些检查。
 - 未连接真实 ES 或真实 LLM；故障分类使用确定性 stub，真实 Redis 7 与真实 HTTP/TCP 失败另有运行证据。
 - B9 不含 MySQL schema/数据迁移，未运行数据库迁移。
-- 未执行 commit、push、PR、merge、生产凭据轮换、生产 Redis 操作或部署。
+- 已完成 commit、push 和 PR；尚未执行 merge、生产凭据轮换、生产 Redis 操作或部署。
 
 ## Local delivery summary
 
-B9 已达到“本地已验证”：AC1–AC17 均有可运行证据，独立实现 Review P0/P1/P2/P3 全为 0，审查后全量验证通过。该状态不解除 B0-AC6、B10、B11 或 B9 的生产发布门禁，也不代表已获部署授权。
+B9 已本地验证并归档：AC1–AC17 均有可运行证据，独立实现 Review P0/P1/P2/P3 全为 0，审查后全量验证与 PR #22 首轮 5 项 GitHub checks 均通过。当前等待归档提交复验后合并；B0-AC6、B10、B11 和生产发布门禁仍未解除，也未获得部署授权。

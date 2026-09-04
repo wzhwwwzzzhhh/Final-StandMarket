@@ -1,8 +1,8 @@
 # B9-agent-frontend-contract · Workpack plan
 
-> Status: 本地已验证（2026-09-04）
-> Requirement source: [阶段 B B9](../../plans/阶段B-P0P1交易链路修复.md#b9ai-服务与前端契约治理p1) / [GitHub Issue #21](https://github.com/wzhwwwzzzhhh/Final-StandMarket/issues/21)
-> Design: [B9 AI 服务与前端契约治理 · 已确认](../../design/agent/B9-agent-frontend-contract-design.md)
+> Status: 已归档（2026-09-04；PR #22 首轮 5 项 checks 全绿，等待归档提交复验后合并）
+> Requirement source: [阶段 B B9](../../../plans/阶段B-P0P1交易链路修复.md#b9ai-服务与前端契约治理p1) / [GitHub Issue #21](https://github.com/wzhwwwzzzhhh/Final-StandMarket/issues/21)
+> Design: [B9 AI 服务与前端契约治理 · 已确认](../../../design/agent/B9-agent-frontend-contract-design.md)
 > Branch: `codex/b9-agent-frontend-contract`
 > Baseline: `98454176227bb0b0a936a0b6c58e35f3696e6788`
 > Updated: 2026-09-04

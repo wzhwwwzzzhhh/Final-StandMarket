@@ -574,6 +574,7 @@ cd agent-service && python -m pytest -q
 已归档工作包：
 
 - B3（2026-08-30）：本地已验证，独立实现审查 PASS（P0/P1/P2/P3 均为 0）；后端干净全量 163 tests、显式 B3 MySQL/Spring 10 tests、两端生产构建通过。详见 [B3 review](../workpack/归档/B3-refund-state/review.md) 与 [evidence](../workpack/归档/B3-refund-state/evidence.md)。真实 `1 -> 2`、生产历史对账、B0-AC6/B11 发布门禁仍未完成。
+- B9（2026-09-04）：本地已验证并进入远程交付，独立实现审查 PASS（P0/P1/P2/P3 均为 0）；Java 474 tests、Python 70 tests（真实 Redis 7）、用户端 25 tests、管理端 2 tests、双前端生产构建通过，PR #22 首轮 5 项 GitHub checks 全绿。详见 [B9 review](../workpack/归档/B9-agent-frontend-contract/review.md) 与 [evidence](../workpack/归档/B9-agent-frontend-contract/evidence.md)。B0-AC6、B10、B11 和生产发布门禁仍未完成。
 
 其余工作包实现、测试、独立审查和证据归档后补充：
 
