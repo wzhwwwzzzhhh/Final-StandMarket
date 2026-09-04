@@ -3,6 +3,7 @@
 > Status: PASS（P0=0、P1=0、P2=0）
 > Scope: Issue #20、confirmed Design、B8 implementation diff、tests and evidence
 > Reviewer: Turing（独立只读 agent）
+> Archived: 2026-09-04；PR #23 首轮 5 项 GitHub checks 全绿
 
 ## Review gate
 

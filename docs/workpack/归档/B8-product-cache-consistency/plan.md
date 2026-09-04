@@ -1,6 +1,6 @@
 # B8 商品缓存版本化与 ES 可恢复同步 · Implementation Plan
 
-> Status: 已确认，进行中（2026-09-04）
+> Status: 已归档（2026-09-04；PR #23 首轮 5 项 checks 全绿，等待归档提交复验后合并）
 > Requirement source: `docs/plans/阶段B-P0P1交易链路修复.md` B8 / GitHub Issue #20
 > Confirmed Design: `docs/design/cache/B8-product-cache-consistency-design.md`（2026-09-04，独立 Review P0/P1/P2/P3=0）
 > Baseline: `98454176227bb0b0a936a0b6c58e35f3696e6788`

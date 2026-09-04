@@ -1,6 +1,6 @@
 # B8 商品缓存版本化与 ES 可恢复同步 · Evidence
 
-> Status: 本地已验证（保留已披露的 MySQL 8.0.15 tooling blocker）
+> Status: 已归档（2026-09-04）；[PR #23](https://github.com/wzhwwwzzzhhh/Final-StandMarket/pull/23) @ `f2f4a2c` 首轮 5 项 checks 全绿，等待归档提交复验后合并；保留已披露的 MySQL 8.0.15 tooling blocker
 > Baseline: `98454176227bb0b0a936a0b6c58e35f3696e6788`
 > Current remote master observed: `0512000cf2e80eb7c9ec9c3441e3b5b310845d0d`（含 B9）
 
@@ -141,6 +141,17 @@
   - 危险命令候选仅为计划中明确禁止的 `FLUSHDB` 文本，以及四个经正则限定 UUID schema 的集成测试 `DROP DATABASE` 清理；无宽泛清理命令。
   - 主工作区受保护的 `.agents/skills/fsm-development-workflow/SKILL.md`、`AGENTS.md`、`docs/开发规范.md`、`docs/prototypes/` 状态保持原样，未暂存、覆盖或混入 B8。
 - 远程刷新：`git fetch Final-StandMarket master` 因当前主机无法连接 GitHub 443 失败；没有把失败描述为最新远端。兼容回归基于本地已获取的 `0512000`（已含 B9，且高于任务指定最低基线）。
+
+## Remote delivery verification
+
+### 2026-09-04 18:48-19:01 CST
+
+- GitHub CLI 认证为仓库账号 `wzhwwwzzzhhh`；HTTPS Git 端点超时后，只读验证 GitHub 官方 SSH 通道认证成功，并通过该官方通道获取远端 `master` 与无强推推送功能分支。
+- 最新远端 `master` 为 `0512000cf2e80eb7c9ec9c3441e3b5b310845d0d`；B8 单一功能提交无冲突变基，提交由 `d8138b8` 重写为 `f2f4a2c`。
+- 变基后 `cd backend; mvn test` 新鲜退出码 0：Tests run 572, Failures 0, Errors 0, Skipped 147；Reactor 4/4 SUCCESS；`git diff --check Final-StandMarket/master...HEAD` 退出码 0；106 个文件均为 B8 已审查范围。
+- [PR #23](https://github.com/wzhwwwzzzhhh/Final-StandMarket/pull/23) 首轮 checks 5/5 PASS：Java backend、Python agent、fashion-admin build、fashion-client build、Gitleaks。
+- 用户已明确授权 commit、push、PR、merge；本归档提交仍须再次通过同一组 GitHub checks，禁止绕过失败或缺失检查。
+- 未执行生产 MySQL/Redis/ES 操作、生产迁移或部署；B0-AC6、B10、B11 与 B8 的生产发布门禁仍保持关闭。
 
 ## Blockers
 
