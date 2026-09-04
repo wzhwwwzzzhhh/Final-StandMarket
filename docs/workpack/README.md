@@ -21,6 +21,7 @@ docs/workpack/
 | 阶段 | 切片 | 状态 | 需求源 | Plan | Review | Evidence |
 |---|---|---|---|---|---|---|
 | B0 | credential-log-safety | AC1-AC5 与 CI 已通过；AC6 阻塞 Issue #4、B11 与生产发布，不阻塞 B1-B10 本地开发 | [阶段 B B0](../plans/阶段B-P0P1交易链路修复.md#b0密码token-与日志安全p0) / [Issue #4](https://github.com/wzhwwwzzzhhh/Final-StandMarket/issues/4) | [plan](B0-credential-log-safety/plan.md) | [PASS](B0-credential-log-safety/review.md) | [evidence](B0-credential-log-safety/evidence.md) |
+| B8 | product-cache-consistency | 本地已验证 | [阶段 B B8](../plans/阶段B-P0P1交易链路修复.md) / [Issue #20](https://github.com/wzhwwwzzzhhh/Final-StandMarket/issues/20) | [plan](B8-product-cache-consistency/plan.md) | [PASS](B8-product-cache-consistency/review.md) | [evidence](B8-product-cache-consistency/evidence.md) |
 
 ## 已归档
 

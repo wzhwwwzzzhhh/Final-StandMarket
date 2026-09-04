@@ -6,13 +6,8 @@ import com.fashion.entity.PageResult;
 import com.fashion.dto.ProductSaveDTO;
 import com.fashion.dto.ProductUpdateDTO;
 import com.fashion.result.Result;
-import com.fashion.service.ProductIndexService;
 import com.fashion.service.ProductService;
-import com.fashion.utils.CacheClient;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.*;
-
-import java.util.List;
 
 import com.fashion.dto.ProductQueryDTO;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -24,14 +19,11 @@ import org.springframework.web.bind.annotation.PostMapping;
 @RequestMapping("/admin/product")
 public class ProductController {
 
-    @Autowired
-    private ProductService productService;
+    private final ProductService productService;
 
-    @Autowired
-    private CacheClient cacheClient;
-
-    @Autowired
-    private ProductIndexService productIndexService;
+    public ProductController(ProductService productService) {
+        this.productService = productService;
+    }
 
     /**
      * 新增商品
@@ -50,10 +42,9 @@ public class ProductController {
         product.setTag(productSaveDTO.getTag());
         product.setStatus(productSaveDTO.getStatus());
 
-        productService.save(product);
-        cacheClient.delete("productPage:*");
-        // 同步到 ES
-        productIndexService.syncProduct(product);
+        if (!productService.save(product)) {
+            return Result.error("新增失败");
+        }
         return Result.success();
     }
 
@@ -76,7 +67,7 @@ public class ProductController {
         if(id == null){
             return Result.error("id不能为空");
         }
-        Product product = productService.getById(id);
+        Product product = productService.getByIdIncludingInactive(id);
         if(product == null){
             return Result.error("商品不存在");
         }
@@ -96,9 +87,6 @@ public class ProductController {
         if(!flag){
             return Result.error("删除失败");
         }
-        cacheClient.delete("productPage:*");
-        // 从 ES 删除
-        productIndexService.deleteProduct(id);
         return Result.success();
     }
 
@@ -127,9 +115,6 @@ public class ProductController {
         if(!flag){
             return Result.error("修改失败");
         }
-        cacheClient.delete("productPage:*");
-        // 同步到 ES
-        productIndexService.syncProduct(product);
         return Result.success();
     }
 

@@ -5,18 +5,29 @@ import com.github.pagehelper.PageInfo;
 import com.fashion.entity.Product;
 import com.fashion.entity.PageResult;
 import com.fashion.mapper.ProductMapper;
+import com.fashion.product.ProductCatalogMutationCoordinator;
+import com.fashion.product.ProductItemState;
+import com.fashion.product.ProductMutationClassifier;
+import com.fashion.product.ProductMutationKind;
 import com.fashion.service.ProductService;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 import com.fashion.dto.ProductQueryDTO;
+import java.time.LocalDateTime;
 import java.util.List;
-import java.util.Map;
+import java.util.Objects;
 
 @Service
 public class ProductServiceImpl implements ProductService {
-    
-    @Autowired
-    private ProductMapper productMapper;
+
+    private final ProductMapper productMapper;
+    private final ProductCatalogMutationCoordinator catalogCoordinator;
+
+    public ProductServiceImpl(ProductMapper productMapper,
+                              ProductCatalogMutationCoordinator catalogCoordinator) {
+        this.productMapper = productMapper;
+        this.catalogCoordinator = catalogCoordinator;
+    }
 
 
     /**
@@ -51,6 +62,11 @@ public class ProductServiceImpl implements ProductService {
     public Product getById(Long id) {
         return productMapper.getById(id);
     }
+
+    @Override
+    public Product getByIdIncludingInactive(Long id) {
+        return productMapper.getByIdIncludingInactive(id);
+    }
     
     /**
      * 新增商品
@@ -58,8 +74,29 @@ public class ProductServiceImpl implements ProductService {
      * @return 是否成功
      */
     @Override
+    @Transactional
     public boolean save(Product product) {
-        return productMapper.save(product) > 0;
+        if (product == null) {
+            throw new IllegalArgumentException("product is required");
+        }
+        product.setSales(product.getSales() == null ? 0 : product.getSales());
+        LocalDateTime now = LocalDateTime.now();
+        if (product.getCreateTime() == null) {
+            product.setCreateTime(now);
+        }
+        if (product.getUpdateTime() == null) {
+            product.setUpdateTime(now);
+        }
+        if (productMapper.save(product) != 1 || product.getId() == null) {
+            return false;
+        }
+        Product committed = requireProjectionSnapshot(product.getId());
+        if (!Objects.equals(product.getImage(), committed.getImage())
+                || normalizeSales(committed.getSales()) != product.getSales()) {
+            throw new IllegalStateException("persisted product projection differs from requested facts");
+        }
+        catalogCoordinator.record(committed, stateOf(committed));
+        return true;
     }
     
     /**
@@ -68,8 +105,27 @@ public class ProductServiceImpl implements ProductService {
      * @return 是否成功
      */
     @Override
+    @Transactional
     public boolean update(Product product) {
-        return productMapper.update(product) > 0;
+        if (product == null || product.getId() == null) {
+            throw new IllegalArgumentException("product id is required");
+        }
+        Product existing = productMapper.getByIdForUpdate(product.getId());
+        if (existing == null) {
+            return false;
+        }
+        ProductMutationKind kind = ProductMutationClassifier.classify(existing, product);
+        if (!kind.changesAnything()) {
+            return true;
+        }
+        if (productMapper.update(product) != 1) {
+            return false;
+        }
+        if (kind.changesCatalog()) {
+            Product committed = requireProjectionSnapshot(product.getId());
+            catalogCoordinator.record(committed, stateOf(committed));
+        }
+        return true;
     }
     
     /**
@@ -78,8 +134,45 @@ public class ProductServiceImpl implements ProductService {
      * @return 是否成功
      */
     @Override
+    @Transactional
     public boolean removeById(Long id) {
-        return productMapper.deleteById(id) > 0;
+        if (id == null) {
+            throw new IllegalArgumentException("product id is required");
+        }
+        Product existing = productMapper.getByIdForUpdate(id);
+        if (existing == null) {
+            return false;
+        }
+        if (productMapper.deleteById(id) != 1) {
+            return false;
+        }
+        existing.setSales(normalizeSales(existing.getSales()));
+        catalogCoordinator.record(existing, ProductItemState.DELETED);
+        return true;
+    }
+
+    private Product requireProjectionSnapshot(Long id) {
+        Product snapshot = productMapper.getByIdIncludingInactive(id);
+        if (snapshot == null) {
+            throw new IllegalStateException("persisted product projection snapshot is missing");
+        }
+        snapshot.setSales(normalizeSales(snapshot.getSales()));
+        return snapshot;
+    }
+
+    private int normalizeSales(Integer sales) {
+        if (sales == null) {
+            return 0;
+        }
+        if (sales < 0) {
+            throw new IllegalStateException("product sales cannot be negative");
+        }
+        return sales;
+    }
+
+    private ProductItemState stateOf(Product product) {
+        return Integer.valueOf(1).equals(product.getStatus())
+                ? ProductItemState.ACTIVE : ProductItemState.INACTIVE;
     }
     
 

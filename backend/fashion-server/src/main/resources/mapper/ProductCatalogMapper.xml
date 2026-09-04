@@ -1,0 +1,288 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.fashion.mapper.ProductCatalogMapper">
+
+    <select id="readListVersion" resultType="long">
+        select list_version from product_catalog_state where id = 1
+    </select>
+
+    <select id="lockListVersion" resultType="long">
+        select list_version from product_catalog_state where id = 1 for update
+    </select>
+
+    <select id="readRevision" resultType="com.fashion.entity.ProductCatalogRevision">
+        select product_id,item_version,item_state,es_locked_by,es_locked_until,updated_at
+        from product_catalog_revision where product_id=#{productId}
+    </select>
+
+    <update id="advanceListVersion">
+        update product_catalog_state
+        set list_version = list_version + 1,
+            updated_at = current_timestamp(3)
+        where id = 1
+          and list_version = #{expectedVersion}
+          and list_version &lt; 9007199254740991
+    </update>
+
+    <insert id="upsertRevision">
+        insert into product_catalog_revision(product_id, item_version, item_state, updated_at)
+        values(#{productId}, #{itemVersion}, #{itemState}, current_timestamp(3))
+        on duplicate key update
+            item_version = values(item_version),
+            item_state = values(item_state),
+            updated_at = values(updated_at)
+    </insert>
+
+    <insert id="insertProjectionTask" parameterType="com.fashion.entity.ProductProjectionTask"
+            useGeneratedKeys="true" keyProperty="id">
+        insert into product_projection_task(
+            target, product_id, catalog_version, operation, payload, payload_sha256,
+            status, attempt_count, claim_count, repair_count, next_retry_at,
+            created_at, updated_at
+        ) values (
+            #{target}, #{productId}, #{catalogVersion}, #{operation}, #{payload}, #{payloadSha256},
+            #{status}, #{attemptCount}, #{claimCount}, #{repairCount}, #{nextRetryAt},
+            current_timestamp(3), current_timestamp(3)
+        )
+    </insert>
+
+    <insert id="insertProjectionTaskIfAbsent" parameterType="com.fashion.entity.ProductProjectionTask"
+            useGeneratedKeys="true" keyProperty="id">
+        insert into product_projection_task(
+            target, product_id, catalog_version, operation, payload, payload_sha256,
+            status, attempt_count, claim_count, repair_count, next_retry_at,
+            created_at, updated_at
+        ) values (
+            #{target}, #{productId}, #{catalogVersion}, #{operation}, #{payload}, #{payloadSha256},
+            #{status}, #{attemptCount}, #{claimCount}, #{repairCount}, #{nextRetryAt},
+            current_timestamp(3), current_timestamp(3)
+        )
+        on duplicate key update id=id
+    </insert>
+
+    <select id="readRevisionForUpdate" resultType="com.fashion.entity.ProductCatalogRevision">
+        select product_id,item_version,item_state,es_locked_by,es_locked_until,updated_at
+        from product_catalog_revision where product_id=#{productId} for update
+    </select>
+
+    <update id="terminalizeExhausted">
+        update product_projection_task
+        set status='FAILED_TERMINAL',
+            locked_by=null,
+            locked_until=null,
+            next_retry_at=null,
+            last_error_summary='attempt_budget_exhausted_after_lease_recovery',
+            completed_at=current_timestamp(3),
+            updated_at=current_timestamp(3)
+        where target=#{target}
+          and attempt_count &gt;= #{maxAttempts}
+          and (status in ('PENDING','RETRY_WAIT')
+            or (status='PROCESSING' and locked_until&lt;current_timestamp(3)))
+    </update>
+
+    <select id="lockNextClaimable" resultType="com.fashion.entity.ProductProjectionTask">
+        select * from product_projection_task
+        where target=#{target}
+          and attempt_count &lt; #{maxAttempts}
+          and ((status='PENDING')
+            or (status='RETRY_WAIT' and (next_retry_at is null or next_retry_at&lt;=current_timestamp(3)))
+            or (status='PROCESSING' and locked_until&lt;current_timestamp(3)))
+        order by catalog_version asc,id asc
+        limit 1 for update skip locked
+    </select>
+
+    <update id="claimEsRevisionLease">
+        update product_catalog_revision
+        set es_locked_by=#{token},es_locked_until=#{lockedUntil},updated_at=current_timestamp(3)
+        where product_id=#{productId}
+          and (es_locked_until is null or es_locked_until&lt;current_timestamp(3) or es_locked_by=#{token})
+    </update>
+
+    <update id="releaseEsRevisionLease">
+        update product_catalog_revision
+        set es_locked_by=null,es_locked_until=null,updated_at=current_timestamp(3)
+        where product_id=#{productId} and es_locked_by=#{token}
+    </update>
+
+    <update id="markTaskProcessing">
+        update product_projection_task
+        set status='PROCESSING',
+            attempt_count=attempt_count+1,
+            claim_count=claim_count+1,
+            locked_by=#{token},
+            locked_until=#{lockedUntil},
+            next_retry_at=null,
+            updated_at=current_timestamp(3)
+        where id=#{id} and attempt_count&lt;#{maxAttempts}
+          and (status in ('PENDING','RETRY_WAIT')
+            or (status='PROCESSING' and locked_until&lt;current_timestamp(3)))
+    </update>
+
+    <select id="readProjectionTask" resultType="com.fashion.entity.ProductProjectionTask">
+        select * from product_projection_task where id=#{id}
+    </select>
+
+    <select id="ownsProjectionDeliveryLease" resultType="int">
+        select count(*)
+        from product_projection_task t
+        left join product_catalog_revision r on r.product_id=t.product_id
+        where t.id=#{id} and t.status='PROCESSING' and t.locked_by=#{token}
+          and t.locked_until&gt;#{requiredUntil}
+          and (t.target&lt;&gt;'ES' or (r.es_locked_by=#{token} and r.es_locked_until&gt;#{requiredUntil}))
+    </select>
+
+    <select id="ownsCurrentProjectionDelivery" resultType="int">
+        select count(*)
+        from product_projection_task t
+        join product_catalog_revision r on r.product_id=t.product_id
+        where t.id=#{id} and t.status='PROCESSING' and t.locked_by=#{token}
+          and t.locked_until&gt;#{requiredUntil}
+          and r.item_version=t.catalog_version
+          and (t.target&lt;&gt;'ES' or (r.es_locked_by=#{token} and r.es_locked_until&gt;#{requiredUntil}))
+    </select>
+
+    <update id="completeProjectionTask">
+        update product_projection_task
+        set status=#{status},
+            next_retry_at=#{nextRetryAt},
+            last_error_summary=#{lastErrorSummary},
+            locked_by=null,
+            locked_until=null,
+            completed_at=case when #{status} in ('SUCCEEDED','SUPERSEDED','FAILED_TERMINAL')
+                              then current_timestamp(3) else null end,
+            updated_at=current_timestamp(3)
+        where id=#{id} and status='PROCESSING' and locked_by=#{token}
+    </update>
+
+    <insert id="insertReconcileRun" parameterType="com.fashion.entity.ProductProjectionReconcileRun"
+            useGeneratedKeys="true" keyProperty="id">
+        insert into product_projection_reconcile_run(
+          mode,phase,status,cursor_payload,scan_count,drift_count,repair_count,
+          clean_verify_count,attempt_count,updated_at
+        ) values(
+          #{mode},#{phase},#{status},#{cursorPayload},#{scanCount},#{driftCount},#{repairCount},
+          #{cleanVerifyCount},#{attemptCount},current_timestamp(3)
+        )
+    </insert>
+
+    <select id="readActiveReconcileRun" resultType="com.fashion.entity.ProductProjectionReconcileRun">
+        select * from product_projection_reconcile_run
+        where active_slot=1 order by id desc limit 1
+    </select>
+
+    <select id="readLatestReconcileRun" resultType="com.fashion.entity.ProductProjectionReconcileRun">
+        select * from product_projection_reconcile_run order by id desc limit 1
+    </select>
+
+    <select id="listCurrentEsTasksAfter" resultType="com.fashion.entity.ProductProjectionTask">
+        select t.id,t.target,r.product_id,r.item_version catalog_version,
+               coalesce(t.operation,case when r.item_state='ACTIVE' then 'UPSERT' else 'DELETE' end) operation,
+               t.payload,t.payload_sha256,t.status,t.attempt_count,t.claim_count,t.repair_count,
+               t.next_retry_at,t.locked_by,t.locked_until,t.last_error_summary,t.created_at,t.updated_at,
+               t.completed_at,t.manual_replay_count,t.last_replayed_at
+        from product_catalog_revision r
+        left join product_projection_task t
+          on t.target='ES' and t.product_id=r.product_id and t.catalog_version=r.item_version
+        where r.product_id&gt;#{afterProductId}
+        order by r.product_id asc limit #{limit}
+    </select>
+
+    <select id="readCurrentEsTask" resultType="com.fashion.entity.ProductProjectionTask">
+        select t.* from product_catalog_revision r
+        join product_projection_task t
+          on t.target='ES' and t.product_id=r.product_id and t.catalog_version=r.item_version
+        where r.product_id=#{productId}
+    </select>
+
+    <update id="reopenProjectionTaskForRepair">
+        update product_projection_task
+        set status='RETRY_WAIT',attempt_count=0,next_retry_at=current_timestamp(3),
+            repair_count=repair_count+1,locked_by=null,locked_until=null,
+            completed_at=null,last_error_summary='reconciliation_drift',updated_at=current_timestamp(3)
+        where id=#{id} and status in ('SUCCEEDED','SUPERSEDED') and repair_count&lt;#{maxRepairs}
+    </update>
+
+    <update id="terminalizeExhaustedReconcileRuns">
+        update product_projection_reconcile_run
+        set status='FAILED_TERMINAL',locked_by=null,locked_until=null,next_retry_at=null,
+            last_error_summary='reconciliation_attempt_budget_exhausted',
+            completed_at=current_timestamp(3),updated_at=current_timestamp(3)
+        where active_slot=1 and attempt_count&gt;=#{maxAttempts}
+          and (status in ('PENDING','RETRY_WAIT')
+            or (status='RUNNING' and locked_until&lt;current_timestamp(3)))
+    </update>
+
+    <update id="claimReconcileRun">
+        update product_projection_reconcile_run
+        set attempt_count=attempt_count +
+              case when status='RUNNING' and locked_until&lt;current_timestamp(3) then 1 else 0 end,
+            status='RUNNING',locked_by=#{token},locked_until=#{lockedUntil},next_retry_at=null,
+            started_at=coalesce(started_at,current_timestamp(3)),updated_at=current_timestamp(3)
+        where active_slot=1 and attempt_count&lt;#{maxAttempts}
+          and (status='PENDING'
+            or (status='RETRY_WAIT' and (next_retry_at is null or next_retry_at&lt;=current_timestamp(3)))
+            or (status='RUNNING' and locked_until&lt;current_timestamp(3)))
+        order by id asc limit 1
+    </update>
+
+    <select id="readClaimedReconcileRun" resultType="com.fashion.entity.ProductProjectionReconcileRun">
+        select * from product_projection_reconcile_run
+        where status='RUNNING' and locked_by=#{token} limit 1
+    </select>
+
+    <update id="saveClaimedReconcileRun" parameterType="com.fashion.entity.ProductProjectionReconcileRun">
+        update product_projection_reconcile_run
+        set phase=#{phase},status=#{status},cursor_payload=#{cursorPayload},
+            scan_count=#{scanCount},drift_count=#{driftCount},repair_count=#{repairCount},
+            clean_verify_count=#{cleanVerifyCount},last_error_summary=#{lastErrorSummary},
+            locked_by=null,locked_until=null,
+            completed_at=case when #{status} in ('SUCCEEDED','FAILED_TERMINAL')
+                         then current_timestamp(3) else null end,
+            updated_at=current_timestamp(3)
+        where id=#{id} and status='RUNNING' and locked_by=#{lockedBy}
+    </update>
+
+    <update id="failClaimedReconcileRun">
+        update product_projection_reconcile_run
+        set status=#{status},attempt_count=attempt_count+1,next_retry_at=#{nextRetryAt},
+            last_error_summary=#{lastErrorSummary},locked_by=null,locked_until=null,
+            completed_at=case when #{status}='FAILED_TERMINAL' then current_timestamp(3) else null end,
+            updated_at=current_timestamp(3)
+        where id=#{id} and status='RUNNING' and locked_by=#{token}
+    </update>
+
+    <select id="summarizeProjectionTasks" resultType="com.fashion.entity.ProductProjectionStatusSummary">
+        select summary.target,summary.status,summary.task_count,summary.oldest_created_at,
+               summary.max_attempts,summary.total_attempts,summary.next_retry_at,
+               (select recent.last_error_summary from product_projection_task recent
+                where recent.target=summary.target and recent.status=summary.status
+                  and recent.last_error_summary is not null
+                order by recent.updated_at desc,recent.id desc limit 1) last_error_summary
+        from (
+          select target,status,count(*) task_count,min(created_at) oldest_created_at,
+                 max(attempt_count) max_attempts,sum(attempt_count) total_attempts,
+                 min(next_retry_at) next_retry_at
+          from product_projection_task group by target,status
+        ) summary order by summary.target,summary.status
+    </select>
+
+    <select id="listProjectionTaskViews" resultType="com.fashion.entity.ProductProjectionTaskView">
+        select id,target,product_id,catalog_version,operation,status,attempt_count,claim_count,
+               repair_count,manual_replay_count,next_retry_at,locked_until,last_error_summary,
+               created_at,updated_at,completed_at,last_replayed_at
+        from product_projection_task
+        where (#{target} is null or target=#{target}) and (#{status} is null or status=#{status})
+        order by id desc limit #{limit}
+    </select>
+
+    <update id="replayTerminalProjectionTask">
+        update product_projection_task
+        set status='RETRY_WAIT',attempt_count=0,next_retry_at=current_timestamp(3),
+            locked_by=null,locked_until=null,completed_at=null,
+            manual_replay_count=manual_replay_count+1,last_replayed_at=current_timestamp(3),
+            last_error_summary='manual_replay',updated_at=current_timestamp(3)
+        where id=#{id} and status='FAILED_TERMINAL' and locked_by is null
+    </update>
+</mapper>

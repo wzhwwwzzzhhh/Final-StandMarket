@@ -4,15 +4,9 @@ import com.fashion.dto.ProductQueryDTO;
 import com.fashion.entity.Product;
 import com.fashion.entity.PageResult;
 import com.fashion.result.Result;
-import com.fashion.service.ProductService;
-import com.fashion.utils.CacheClient;
+import com.fashion.product.ProductCatalogCacheService;
 
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.*;
-
-import java.util.concurrent.TimeUnit;
-import java.util.LinkedHashMap;
-import java.util.Map;
 
 
 /**
@@ -22,49 +16,22 @@ import java.util.Map;
 @RequestMapping("/user/product")
 public class UserProductController {
 
-    @Autowired
-    private ProductService productService;
-    @Autowired
-    private CacheClient cacheClient;
+    private final ProductCatalogCacheService catalogCacheService;
+
+    public UserProductController(ProductCatalogCacheService catalogCacheService) {
+        this.catalogCacheService = catalogCacheService;
+    }
 
     /**
      * 分页查询商品列表
      */
     @GetMapping
     public Result<PageResult<Product>> page(ProductQueryDTO query) {
-        // 构建参数Map
-        Map<String, Object> params = new LinkedHashMap<>();
-        params.put("page", query.getPage());
-        params.put("pageSize", query.getPageSize());
-        params.put("categoryId", query.getCategoryId());
-        params.put("sortBy", query.getSortBy());
-        params.put("keyword", query.getKeyword());
-        params.put("tag", query.getTag());
-        params.put("isSale", query.getIsSale());
-
-        // 生成缓存键
-        String cacheKey = "productPage:" + generateCacheKey(params);
-
-        // 从缓存中获取分页结果
-        PageResult<Product> pageResult = cacheClient.get(cacheKey, PageResult.class);
-        // 调用Service层的分页查询方法
-        if(pageResult == null){
-            pageResult = productService.pageProducts(query);
-            cacheClient.set(cacheKey, pageResult, 60 * 60 * 24L, TimeUnit.SECONDS);
+        try {
+            return Result.success(catalogCacheService.page(query));
+        } catch (IllegalArgumentException invalid) {
+            return Result.error("商品查询参数错误");
         }
-        return Result.success(pageResult);
-    }
-
-    private String generateCacheKey(Map<String, Object> params) {
-        StringBuilder sb = new StringBuilder();
-        for (Map.Entry<String, Object> entry : params.entrySet()) {
-            sb.append(entry.getKey()).append(":")
-              .append(entry.getValue() != null ? entry.getValue() : "null").append(":");
-        }
-        if (sb.length() > 0) {
-            sb.setLength(sb.length() - 1);
-        }
-        return sb.toString();
     }
 
     /**
@@ -75,9 +42,7 @@ public class UserProductController {
         if(id == null){
             return Result.error("id不能为空");
         }
-        Product product =cacheClient.queryWithLogicalExpire("product:", id, Product.class,
-                productService::getById,
-                60 * 60 * 24L, TimeUnit.SECONDS);
+        Product product = catalogCacheService.detail(id);
 
         if(product == null){
             return Result.error("商品不存在");

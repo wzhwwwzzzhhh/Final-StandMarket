@@ -21,6 +21,8 @@ public interface ProductService {
      * @return 商品
      */
     Product getById(Long id);
+
+    Product getByIdIncludingInactive(Long id);
     
     /**
      * 新增商品
