@@ -417,7 +417,7 @@ export default {
         })
         
         const response = await seckillApi.deleteSeckillOrder(order.id)
-        if (response.data.code === 0) {
+        if (response.data.code === 1) {
           this.$message.success('删除订单成功')
           this.loadSeckillOrders()
           this.loadStatistics()

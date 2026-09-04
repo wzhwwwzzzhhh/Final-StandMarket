@@ -64,12 +64,38 @@
 <script>
 import { chatWithAgent } from '@/api/agent'
 
-function genId() {
-  if (crypto.randomUUID) return crypto.randomUUID().slice(0, 16)
-  return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, c => {
-    const r = Math.random() * 16 | 0
-    return (c === 'x' ? r : (r & 0x3 | 0x8)).toString(16)
-  }).slice(0, 16)
+const SESSION_ID_PATTERN = /^[A-Za-z0-9_-]{22,64}$/
+const DEGRADATION_REASONS = new Set([
+  'REDIS_UNAVAILABLE',
+  'ELASTICSEARCH_UNAVAILABLE',
+  'LLM_UNAVAILABLE',
+  'JAVA_TOOL_UNAVAILABLE',
+  'PYTHON_AGENT_UNAVAILABLE'
+])
+
+function isValidProduct(product) {
+  return product && typeof product === 'object' && !Array.isArray(product) &&
+    Number.isInteger(product.id) && product.id > 0 &&
+    typeof product.name === 'string' && product.name.trim() &&
+    typeof product.price === 'number' && Number.isFinite(product.price) && product.price >= 0 &&
+    typeof product.image === 'string' && product.image.trim()
+}
+
+function isValidAgentData(data) {
+  if (!data || typeof data !== 'object' || Array.isArray(data)) return false
+  if (!SESSION_ID_PATTERN.test(data.sessionId || '')) return false
+  if (typeof data.reply !== 'string' || !data.reply.trim()) return false
+  if (!Array.isArray(data.products) || !data.products.every(isValidProduct)) return false
+  if (typeof data.degraded !== 'boolean' || !Array.isArray(data.degradationReasons)) return false
+  if (!data.degradationReasons.every(reason => DEGRADATION_REASONS.has(reason))) return false
+  return data.degraded === (data.degradationReasons.length > 0)
+}
+
+function loadStoredSession() {
+  const stored = localStorage.getItem('agent_session') || ''
+  if (stored && SESSION_ID_PATTERN.test(stored)) return stored
+  if (stored) localStorage.removeItem('agent_session')
+  return ''
 }
 
 export default {
@@ -80,19 +106,13 @@ export default {
       loading: false,
       inputText: '',
       pendingLogin: false,
-      sessionId: localStorage.getItem('agent_session') || '',
+      sessionId: loadStoredSession(),
       messages: []
     }
   },
   computed: {
     quickChips() {
       return ['有什么推荐？', '我的订单到哪了？', '帮我搭配一套', '身高170体重65选什么尺码？']
-    },
-    userId() {
-      try {
-        const info = JSON.parse(localStorage.getItem('userInfo') || '{}')
-        return info.id || 0
-      } catch { return 0 }
     }
   },
   methods: {
@@ -114,53 +134,73 @@ export default {
       const msg = (text || '').trim()
       if (!msg || this.loading) return
 
+      if (!localStorage.getItem('token')) {
+        this.pendingLogin = true
+        this.messages.push({
+          role: 'assistant',
+          content: '需要先登录才能使用 AI 导购，去登录一下吧～',
+          products: []
+        })
+        return
+      }
+
       this.messages.push({ role: 'user', content: msg, products: [] })
       this.inputText = ''
       this.loading = true
       this.scrollBottom()
 
-      if (!this.sessionId) {
-        this.sessionId = genId()
-        localStorage.setItem('agent_session', this.sessionId)
+      try {
+        await this.requestAgent(msg, true)
+      } finally {
+        this.loading = false
+        this.scrollBottom()
       }
+    },
+    async requestAgent(message, mayRetrySession) {
+      const payload = { message }
+      if (this.sessionId) payload.sessionId = this.sessionId
 
       try {
-        const res = await chatWithAgent({
-          userId: this.userId || -1,
-          sessionId: this.sessionId,
-          message: msg
-        })
-        const data = res.data
-        if (data.code === 1 && data.data) {
-          this.messages.push({
-            role: 'assistant',
-            content: data.data.reply || '抱歉，暂时无法回复',
-            products: data.data.products || []
-          })
-        } else if (data.msg && data.msg.includes('登录')) {
-          // 后端要求登录态，未登录时引导跳转登录页
-          this.messages.push({
-            role: 'assistant',
-            content: '需要先登录才能使用订单查询等服务，去登录一下吧～',
-            products: []
-          })
-          this.pendingLogin = true
-        } else {
-          this.messages.push({
-            role: 'assistant',
-            content: data.msg || '服务暂时不可用',
-            products: []
-          })
+        const response = await chatWithAgent(payload)
+        const body = response.data || {}
+        if (body.code !== 1 || !body.data) {
+          this.pushAssistant(body.msg || '服务暂时不可用')
+          return
         }
-      } catch {
+        const data = body.data
+        if (!isValidAgentData(data)) {
+          this.pushAssistant('服务暂时不可用')
+          return
+        }
+        this.sessionId = data.sessionId
+        localStorage.setItem('agent_session', data.sessionId)
+        this.pendingLogin = false
         this.messages.push({
           role: 'assistant',
-          content: '网络连接失败，请稍后再试',
-          products: []
+          content: data.reply || '抱歉，暂时无法回复',
+          products: data.products || []
         })
+      } catch (error) {
+        const status = error?.response?.status
+        const errorCode = error?.response?.data?.msg
+        if (status === 422 && errorCode === 'INVALID_SESSION_ID' && mayRetrySession && this.sessionId) {
+          this.sessionId = ''
+          localStorage.removeItem('agent_session')
+          await this.requestAgent(message, false)
+          return
+        }
+        if (status === 401) {
+          this.pendingLogin = true
+          this.pushAssistant('登录状态已失效，请重新登录后再试')
+        } else if (status === 422) {
+          this.pushAssistant(errorCode === 'INVALID_MESSAGE' ? '消息内容无效，请修改后重试' : '输入内容无效')
+        } else {
+          this.pushAssistant('网络连接失败，请稍后再试')
+        }
       }
-      this.loading = false
-      this.scrollBottom()
+    },
+    pushAssistant(content) {
+      this.messages.push({ role: 'assistant', content, products: [] })
     },
     goProduct(id) {
       this.$router.push(`/product/detail/${id}`)

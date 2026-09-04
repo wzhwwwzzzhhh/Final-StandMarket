@@ -16,11 +16,11 @@
 
       <h2 v-if="!checked" class="title">查询中...</h2>
       <h2 v-else-if="payPending" class="title">支付处理中</h2>
-      <h2 v-else class="title">{{ paySuccess ? '支付成功' : '支付失败' }}</h2>
+      <h2 v-else class="title">{{ resultTitle }}</h2>
 
       <p v-if="!checked" class="desc">正在查询支付结果...</p>
       <p v-else-if="payPending" class="desc">支付宝已付款成功，等待回调确认中，请稍后刷新查看订单状态</p>
-      <p v-else class="desc">{{ paySuccess ? '订单已支付成功，等待商家发货' : '支付未完成，请重新尝试' }}</p>
+      <p v-else class="desc">{{ resultDescription }}</p>
 
       <div class="order-info" v-if="orderId">
         <span class="label">订单编号：</span>
@@ -45,6 +45,7 @@
 <script>
 import { CircleCheck, CircleClose, Loading, Clock } from '@element-plus/icons-vue'
 import { paymentApi } from '@/api/payment'
+import { buildAlipayVerifyParams, interpretPayStatus } from './paymentStatus'
 
 export default {
   name: 'PayResult',
@@ -53,10 +54,35 @@ export default {
     return {
       orderId: null,
       checked: false,
-      paySuccess: false,
-      payPending: false,
+      paymentState: 'loading',
       retryCount: 0,
       retryTimer: null
+    }
+  },
+  computed: {
+    paySuccess() {
+      return this.paymentState === 'success'
+    },
+    payPending() {
+      return this.paymentState === 'pending'
+    },
+    resultTitle() {
+      const titles = {
+        success: '支付成功',
+        failed: '支付失败',
+        incomplete: '支付未完成',
+        invalid: '支付结果无效'
+      }
+      return titles[this.paymentState] || '支付失败'
+    },
+    resultDescription() {
+      const descriptions = {
+        success: '订单已支付成功，等待商家发货',
+        failed: '支付失败，请重新尝试',
+        incomplete: '未查询到支付记录，请确认后重新支付',
+        invalid: '支付回跳参数无效，请返回订单页查询'
+      }
+      return descriptions[this.paymentState] || '支付结果暂不可用'
     }
   },
   beforeUnmount() {
@@ -67,11 +93,14 @@ export default {
   created() {
     this.orderId = this.$route.query.orderId
     // 验签必须保留支付宝返回的完整参数集合，只排除本站追加的 orderId。
-    this.alipayParams = Object.fromEntries(
-      Object.entries(this.$route.query)
-        .filter(([key]) => key !== 'orderId')
-        .map(([key, value]) => [key, Array.isArray(value) ? value[0] : value])
-    )
+    try {
+      this.alipayParams = buildAlipayVerifyParams(this.$route.query)
+    } catch {
+      this.alipayParams = {}
+      this.paymentState = 'invalid'
+      this.checked = true
+      return
+    }
     // 如果有支付宝回跳参数，走验签流程
     if (this.alipayParams.out_trade_no || this.alipayParams.trade_no) {
       this.verifyAlipayReturn()
@@ -79,7 +108,7 @@ export default {
       this.queryPayStatus()
     } else {
       this.checked = true
-      this.paySuccess = false
+      this.paymentState = 'invalid'
     }
   },
   methods: {
@@ -87,7 +116,9 @@ export default {
     verifyAlipayReturn() {
       paymentApi.verifyReturn(this.alipayParams).then(response => {
         if (response.data.code === 1 && response.data.data) {
-          this.paySuccess = response.data.data.payStatus === 2
+          this.applyPayStatus(response.data.data.payStatus)
+        } else {
+          this.paymentState = 'invalid'
         }
         this.checked = true
       }).catch(() => {
@@ -96,27 +127,30 @@ export default {
           this.queryPayStatus()
         } else {
           this.checked = true
-          this.paySuccess = false
+          this.paymentState = 'invalid'
         }
       })
     },
     queryPayStatus() {
       paymentApi.payStatus(this.orderId).then(response => {
         if (response.data.code === 1) {
-          const status = response.data.data.payStatus
-          this.paySuccess = status === 2
-          this.payPending = status === 0 || status === 1
+          this.applyPayStatus(response.data.data.payStatus)
+        } else {
+          this.paymentState = 'invalid'
         }
         this.checked = true
-        // 如果支付仍在处理中，自动重试3次
-        if (this.payPending && this.retryCount < 3) {
-          this.retryCount++
-          this.retryTimer = setTimeout(() => this.queryPayStatus(), 3000)
-        }
       }).catch(() => {
         this.checked = true
-        this.paySuccess = false
+        this.paymentState = 'invalid'
       })
+    },
+    applyPayStatus(status) {
+      const mapped = interpretPayStatus(status)
+      this.paymentState = mapped.state
+      if (mapped.shouldPoll && this.orderId && this.retryCount < 3) {
+        this.retryCount++
+        this.retryTimer = setTimeout(() => this.queryPayStatus(), 3000)
+      }
     },
     viewOrder() {
       this.$router.push('/order')

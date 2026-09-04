@@ -1,13 +1,18 @@
 package com.fashion.controller.user;
 
+import com.fasterxml.jackson.databind.JsonMappingException;
 import com.fashion.context.BaseContext;
 import com.fashion.entity.Orders;
 import com.fashion.result.Result;
 import com.fashion.dto.AgentChatRequest;
 import com.fashion.dto.AgentChatResponse;
+import com.fashion.dto.AgentInternalChatRequest;
 import com.fashion.service.AgentService;
 import com.fashion.service.OrderService;
-import org.springframework.beans.factory.annotation.Autowired;
+import com.fashion.util.AgentSessionIdGenerator;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
+import org.springframework.http.converter.HttpMessageNotReadableException;
 import org.springframework.util.StringUtils;
 import org.springframework.web.bind.annotation.*;
 
@@ -19,30 +24,63 @@ import java.util.Map;
 @RequestMapping("/user/agent")
 public class AgentController {
 
-    @Autowired
-    private AgentService agentService;
+    private final AgentService agentService;
+    private final OrderService orderService;
+    private final AgentSessionIdGenerator sessionIdGenerator;
 
-    @Autowired
-    private OrderService orderService;
+    public AgentController(AgentService agentService, OrderService orderService,
+                           AgentSessionIdGenerator sessionIdGenerator) {
+        this.agentService = agentService;
+        this.orderService = orderService;
+        this.sessionIdGenerator = sessionIdGenerator;
+    }
 
     @PostMapping("/chat")
-    public Result<AgentChatResponse> chat(@RequestBody AgentChatRequest request,
-                                          @RequestHeader(value = "Authorization", required = false) String authorization) {
-        if (!StringUtils.hasText(request.getMessage())) {
-            return Result.error("message cannot be empty");
+    public ResponseEntity<Result<AgentChatResponse>> chat(
+            @RequestBody(required = false) AgentChatRequest request,
+            @RequestHeader(value = "Authorization", required = false) String authorization) {
+        if (request == null || !StringUtils.hasText(request.getMessage())
+                || request.getMessage().trim().length() > 2000) {
+            return ResponseEntity.unprocessableEntity().body(Result.error("INVALID_MESSAGE"));
         }
-        // 以服务端登录态为准，防止前端伪造 userId 查询他人数据
         Long currentUserId = BaseContext.getUserId();
-        if (currentUserId == null) {
-            return Result.error("请先登录");
+        if (currentUserId == null || !StringUtils.hasText(authorization)
+                || !authorization.matches("^Bearer [^\\s]+$")) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(Result.error("UNAUTHORIZED"));
         }
-        request.setUserId(currentUserId.intValue());
-        // 透传用户 token，供 agent 调用订单等敏感接口时鉴权
-        if (StringUtils.hasText(authorization) && authorization.startsWith("Bearer ")) {
-            request.setToken(authorization.substring(7));
+
+        String sessionId = request.getSessionId();
+        if (request.sessionIdWasProvided()) {
+            if (!StringUtils.hasText(sessionId) || !sessionIdGenerator.isValid(sessionId)) {
+                return ResponseEntity.unprocessableEntity().body(Result.error("INVALID_SESSION_ID"));
+            }
+        } else {
+            sessionId = sessionIdGenerator.generate();
         }
-        AgentChatResponse response = agentService.chat(request);
-        return Result.success(response);
+
+        AgentInternalChatRequest internalRequest = new AgentInternalChatRequest();
+        internalRequest.setUserId(currentUserId);
+        internalRequest.setSessionId(sessionId);
+        internalRequest.setMessage(request.getMessage().trim());
+        internalRequest.setUserAuthorization(authorization);
+        AgentChatResponse response = agentService.chat(internalRequest);
+        return ResponseEntity.ok(Result.success(response));
+    }
+
+    @ExceptionHandler(HttpMessageNotReadableException.class)
+    public ResponseEntity<Result<Void>> handleUnreadableChatRequest(HttpMessageNotReadableException exception) {
+        Throwable cause = exception;
+        while (cause != null) {
+            if (cause instanceof JsonMappingException) {
+                for (JsonMappingException.Reference reference : ((JsonMappingException) cause).getPath()) {
+                    if ("sessionId".equals(reference.getFieldName())) {
+                        return ResponseEntity.unprocessableEntity().body(Result.error("INVALID_SESSION_ID"));
+                    }
+                }
+            }
+            cause = cause.getCause();
+        }
+        return ResponseEntity.unprocessableEntity().body(Result.error("INVALID_MESSAGE"));
     }
 
     /**

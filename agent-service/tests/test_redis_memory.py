@@ -23,8 +23,9 @@ def test_history_is_chronological():
     raw = [json.dumps(m, ensure_ascii=False) for m in reversed(msgs)]
 
     with patch.object(redis_memory.redis_client, "lrange", AsyncMock(return_value=raw)):
-        history = asyncio.run(redis_memory.get_history(key))
+        history, degraded = asyncio.run(redis_memory.get_history(1, key))
     assert [m["content"] for m in history] == ["u1", "a1", "u2"]
+    assert degraded is False
 
 
 def test_get_history_calls_reverse():
@@ -36,25 +37,23 @@ def test_get_history_calls_reverse():
     ]
     with patch.object(redis_memory.redis_client, "lrange", AsyncMock(return_value=raw)):
         import asyncio
-        got = asyncio.run(redis_memory.get_history(key))
+        got, degraded = asyncio.run(redis_memory.get_history(1, key))
     assert got[0]["role"] == "user"
     assert got[1]["role"] == "assistant"
+    assert degraded is False
 
 
 # ===================== 结构化消息 =====================
 
 def test_save_message_uses_structured_dict():
-    with patch.object(redis_memory.redis_client, "lpush", AsyncMock()) as lp, \
-         patch.object(redis_memory.redis_client, "ltrim", AsyncMock()) as lt, \
-         patch.object(redis_memory.redis_client, "expire", AsyncMock()) as ex:
+    with patch.object(redis_memory.redis_client, "eval", AsyncMock()) as ev:
         import asyncio
-        asyncio.run(redis_memory.save_message("s1", "user", "你好"))
-        args, _ = lp.call_args
-        stored = json.loads(args[1])
+        asyncio.run(redis_memory.save_message(1, "s1", "user", "你好"))
+        args, _ = ev.call_args
+        stored = json.loads(args[3])
         assert stored["role"] == "user"
         assert stored["content"] == "你好"
-        # 必须设置 TTL
-        ex.assert_called_once()
+        assert args[4] == redis_memory.settings.agent_session_ttl_seconds
 
 
 # ===================== 槽位 / 物理信息提取（与 D2/D4 联动） =====================

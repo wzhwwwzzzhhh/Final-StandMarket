@@ -1,54 +1,20 @@
-import axios from 'axios'
-
-// 创建axios实例
-const api = axios.create({
-  baseURL: '/api', // 后端API基础路径
-  timeout: 10000, // 请求超时时间
-  headers: {
-    'Content-Type': 'application/json'
-  }
-})
-
-// 请求拦截器，添加token
-api.interceptors.request.use(config => {
-  const token = localStorage.getItem('token')
-  if (token) {
-    config.headers.Authorization = `Bearer ${token}`
-  }
-  return config
-}, error => {
-  console.error('请求拦截器错误:', error)
-  return Promise.reject(error)
-})
-
-// 响应拦截器，处理错误
-api.interceptors.response.use(response => {
-  return response
-}, error => {
-  if (error.response && error.response.status === 401) {
-    // 未授权，跳转到登录页
-    localStorage.removeItem('token')
-    localStorage.removeItem('userInfo')
-    window.location.href = '/login'
-  }
-  return Promise.reject(error)
-})
+import api from '@/utils/request'
 
 // 用户相关API
 export const userApi = {
   // 用户登录
   login: (data) => {
-    return api.post('/user/login', data)
+    return api.post('/user/login', data, { skipAuthRedirect: true })
   },
 
   // 发送验证码
   sendSmsCode: (phone) => {
-    return api.post('/user/sms-code', phone)
+    return api.post('/user/sms-code', phone, { skipAuthRedirect: true })
   },
 
   // 用户注册
   register: (data) => {
-    return api.post('/user/register', data)
+    return api.post('/user/register', data, { skipAuthRedirect: true })
   },
 
   // 获取用户信息

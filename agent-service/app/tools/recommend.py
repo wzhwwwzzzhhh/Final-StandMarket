@@ -10,7 +10,7 @@ from app.tools.outfit_rules import (
     build_es_category_query,
 )
 
-es = Elasticsearch(hosts=[settings.es_host])
+es = Elasticsearch(hosts=[settings.es_host], request_timeout=5)
 
 
 def get_complementary(item_name: str, category_id: int = None) -> list[dict]:
@@ -47,11 +47,22 @@ def recommend_outfit(query: str, size: int = 4) -> dict:
     body = build_es_category_query(keywords, size=size)
     try:
         resp = es.search(index="products", body=body)
-        products = [h["_source"] for h in resp["hits"]["hits"]]
+        hits = resp["hits"]["hits"]
+        if not isinstance(hits, list):
+            raise ValueError("invalid Elasticsearch hits")
+        products = [
+            dict(hit["_source"])
+            for hit in hits
+            if isinstance(hit, dict) and isinstance(hit.get("_source"), dict)
+        ]
     except Exception:
         products = []
+        unavailable = True
+    else:
+        unavailable = False
     return {
         "products": products,
         "main_category": main_category,
         "reason": reason_for(main_category, "搭配单品"),
+        "error": unavailable,
     }

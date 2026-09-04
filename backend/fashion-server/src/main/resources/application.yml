@@ -71,7 +71,11 @@ fashion:
   sentinel:
     seckill-qps: ${FASHION_SENTINEL_SECKILL_QPS:500}
   agent:
-    url: ${fashion.agent.url:http://localhost:8000}
+    base-url: ${FASHION_AGENT_BASE_URL:}
+    connect-timeout-ms: ${FASHION_AGENT_CONNECT_TIMEOUT_MS:3000}
+    read-timeout-ms: ${FASHION_AGENT_READ_TIMEOUT_MS:10000}
+    internal-token: ${FASHION_AGENT_INTERNAL_TOKEN:}
+    allow-insecure-http: ${FASHION_AGENT_ALLOW_INSECURE_HTTP:false}
   jwt:
     # 设置jwt签名加密时使用的秘钥
     admin-secret-key: ${FASHION_JWT_ADMIN_SECRET_KEY}
