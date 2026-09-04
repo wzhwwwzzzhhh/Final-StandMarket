@@ -5,6 +5,7 @@ import com.fashion.dto.OrderCreateDTO;
 import com.fashion.entity.Orders;
 import com.fashion.entity.Product;
 import com.fashion.entity.ShoppingCart;
+import com.fashion.exception.PublicBusinessException;
 import com.fashion.mapper.AddressBookMapper;
 import com.fashion.mapper.OrderDetailMapper;
 import com.fashion.mapper.OrderMapper;
@@ -22,6 +23,9 @@ import org.springframework.test.util.ReflectionTestUtils;
 import java.math.BigDecimal;
 import java.util.Arrays;
 import java.util.Collections;
+import java.util.List;
+import java.util.stream.Collectors;
+import java.util.stream.LongStream;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNull;
@@ -42,6 +46,7 @@ class OrderCreationInventoryTest {
     private OrderDetailMapper orderDetailMapper;
     private ShoppingCartMapper shoppingCartMapper;
     private ProductMapper productMapper;
+    private ValueOperations<String, String> valueOperations;
     private ShoppingCart cart;
 
     @BeforeEach
@@ -54,7 +59,7 @@ class OrderCreationInventoryTest {
         shoppingCartMapper = mock(ShoppingCartMapper.class);
         productMapper = mock(ProductMapper.class);
         StringRedisTemplate redisTemplate = mock(StringRedisTemplate.class);
-        ValueOperations<String, String> valueOperations = mock(ValueOperations.class);
+        valueOperations = mock(ValueOperations.class);
 
         cart = new ShoppingCart();
         cart.setId(11L);
@@ -123,7 +128,7 @@ class OrderCreationInventoryTest {
         OrderCreateDTO request = new OrderCreateDTO();
         request.setProductIds(java.util.Arrays.asList(11L, 11L));
 
-        assertThrows(IllegalArgumentException.class, () -> service.create(request));
+        assertThrows(PublicBusinessException.class, () -> service.create(request));
 
         verify(orderMapper, never()).insert(any());
         verify(orderDetailMapper, never()).batchInsert(any());
@@ -136,7 +141,7 @@ class OrderCreationInventoryTest {
         OrderCreateDTO request = new OrderCreateDTO();
         request.setProductIds(Collections.singletonList(11L));
 
-        assertThrows(IllegalStateException.class, () -> service.create(request));
+        assertThrows(PublicBusinessException.class, () -> service.create(request));
 
         verify(productMapper).deductStock(100L, 2);
         verify(orderMapper, never()).insert(any());
@@ -174,9 +179,36 @@ class OrderCreationInventoryTest {
         OrderCreateDTO request = new OrderCreateDTO();
         request.setProductIds(Collections.singletonList(11L));
 
-        assertThrows(IllegalArgumentException.class, () -> service.create(request));
+        assertThrows(PublicBusinessException.class, () -> service.create(request));
 
         verify(productMapper, never()).deductStock(any(), any());
+        verify(orderMapper, never()).insert(any());
+    }
+
+    @Test
+    @DisplayName("超过一百个购物车项必须在生成订单号前被拒绝")
+    void rejectsOversizedCartSelectionBeforeRedisMutation() {
+        List<Long> cartItemIds = LongStream.rangeClosed(1, 101)
+                .boxed()
+                .collect(Collectors.toList());
+        OrderCreateDTO request = new OrderCreateDTO();
+        request.setProductIds(cartItemIds);
+
+        assertThrows(PublicBusinessException.class, () -> service.create(request));
+
+        verify(valueOperations, never()).increment(anyString());
+        verify(orderMapper, never()).insert(any());
+    }
+
+    @Test
+    @DisplayName("非正购物车项标识必须在生成订单号前被拒绝")
+    void rejectsNonPositiveCartItemIdentifierBeforeRedisMutation() {
+        OrderCreateDTO request = new OrderCreateDTO();
+        request.setProductIds(Collections.singletonList(0L));
+
+        assertThrows(PublicBusinessException.class, () -> service.create(request));
+
+        verify(valueOperations, never()).increment(anyString());
         verify(orderMapper, never()).insert(any());
     }
 }

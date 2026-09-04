@@ -302,7 +302,7 @@ import { ArrowLeft, Plus } from '@element-plus/icons-vue'
 import { orderApi, addressApi, seckillApi, cartApi } from '../api/product'
 import addressApiFull from '../api/address'
 import regionData from '../utils/regionData'
-import { couponApi, calcCouponDiscount } from '../api/coupon'
+import { couponApi } from '../api/coupon'
 
 const router = useRouter()
 const route = useRoute()
@@ -371,7 +371,7 @@ const couponDiscount = computed(() => calculatedAmount.value.couponDiscount)
 const generalCoupon = computed(() => generalCoupons.value.find(c => c.id === selectedGeneralCoupon.value) || null)
 const generalCouponDiscount = computed(() => {
   if (!selectedGeneralCoupon.value || !generalCoupon.value) return 0
-  return calcCouponDiscount(generalCoupon.value, totalAmount.value)
+  return Number(generalCoupon.value.discountAmount) || 0
 })
 const finalAmount = computed(() => {
   const seckillFinal = calculatedAmount.value.finalAmount || totalAmount.value
@@ -405,7 +405,7 @@ const thresholdText = (threshold) => {
 }
 
 const getGeneralCouponDiscount = (coupon) => {
-  return calcCouponDiscount(coupon, totalAmount.value)
+  return Number(coupon?.discountAmount) || 0
 }
 
 // 选择了秒杀活动/秒杀券时不可再选通用券（服务端同样拦截）
@@ -416,10 +416,9 @@ const isGeneralCouponUsable = () => {
 // 加载结算页可用通用券
 const loadGeneralCoupons = async () => {
   try {
-    const productIds = selectedItems.value.map(item => item.productId).filter(Boolean)
+    const cartItemIds = selectedItems.value.map(item => item.id).filter(Boolean)
     const res = await couponApi.getAvailableCoupons({
-      totalAmount: totalAmount.value,
-      productIds: productIds.join(',')
+      cartItemIds: cartItemIds.join(',')
     })
     if (res.data.code === 1) {
       generalCoupons.value = res.data.data || []

@@ -58,6 +58,10 @@
         select <include refid="baseColumns"/> from coupon_template t where t.id = #{id}
     </select>
 
+    <select id="selectByIdForShare" parameterType="java.lang.Long" resultType="com.fashion.entity.CouponTemplate">
+        select <include refid="baseColumns"/> from coupon_template t where t.id = #{id} for share
+    </select>
+
     <!-- 分页查询模板 -->
     <select id="list" resultType="com.fashion.entity.CouponTemplate">
         select <include refid="baseColumns"/> from coupon_template t
@@ -82,8 +86,9 @@
     <select id="listClaimable" resultType="com.fashion.entity.CouponTemplate">
         select <include refid="baseColumns"/> from coupon_template t
         where t.status = 1
-          and (t.valid_type = 2
-               or (t.valid_type = 1 and t.start_time &lt;= now() and t.end_time &gt;= now()))
+          and ((t.valid_type = 2 and t.valid_days &gt; 0)
+               or (t.valid_type = 1 and t.start_time &lt; t.end_time
+                   and t.start_time &lt;= now(3) and now(3) &lt; t.end_time))
         order by t.id desc
     </select>
 </mapper>

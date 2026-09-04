@@ -44,7 +44,10 @@ public class Webconfig  implements WebMvcConfigurer {
                         // 商品相关 - 不需要登录
                         "/user/product/**",
                         // 分类相关 - 不需要登录
-                        "/user/category/**"
+                        "/user/category/**",
+                        // 商品公开评价只放行列表与统计，写入/我的/检查仍需登录
+                        "/user/review/list/*",
+                        "/user/review/stats/*"
                 )
                 .order(2);
     }

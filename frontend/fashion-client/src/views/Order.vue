@@ -73,9 +73,17 @@
               <el-button v-if="order.status === 3 || order.status === 4" size="small" type="warning" @click="handleRefund(order)">
                 申请退款
               </el-button>
-              <el-button v-if="order.status === 4" type="success" size="small" @click="handleReview(order)">
-                去评价
-              </el-button>
+              <template v-if="order.status === 4">
+                <el-button
+                  v-for="item in uniqueReviewItems(order)"
+                  :key="`review-${order.id}-${item.productId}`"
+                  type="success"
+                  size="small"
+                  @click="handleReview(order, item.productId)"
+                >
+                  评价{{ item.name ? `「${item.name}」` : '商品' }}
+                </el-button>
+              </template>
               <el-button size="small" @click="handleViewDetail(order.id)">
                 查看详情
               </el-button>
@@ -386,9 +394,15 @@ export default {
         this.detailVisible = false
       })
     },
-    handleReview(order) {
-      // 取订单中第一个商品去评价
-      const productId = order.items && order.items.length > 0 ? order.items[0].productId : null
+    uniqueReviewItems(order) {
+      const seen = new Set()
+      return (order.items || []).filter(item => {
+        if (!item.productId || seen.has(item.productId)) return false
+        seen.add(item.productId)
+        return true
+      })
+    },
+    handleReview(order, productId) {
       if (productId) {
         this.$router.push(`/add-review/${order.id}/${productId}`)
       } else {

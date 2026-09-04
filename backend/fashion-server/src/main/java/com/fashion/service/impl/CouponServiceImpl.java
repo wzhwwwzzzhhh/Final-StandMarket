@@ -4,27 +4,38 @@ import com.fashion.entity.CouponTemplate;
 import com.fashion.entity.PageResult;
 import com.fashion.entity.Product;
 import com.fashion.entity.UserCoupon;
+import com.fashion.exception.PublicBusinessException;
 import com.fashion.mapper.CouponTemplateMapper;
 import com.fashion.mapper.ProductMapper;
+import com.fashion.mapper.ShoppingCartMapper;
 import com.fashion.mapper.UserCouponMapper;
 import com.fashion.service.CouponService;
+import com.fashion.service.support.CartSelectionValidator;
+import com.fashion.service.support.CouponPricingPolicy;
+import com.fashion.vo.AvailableCouponVO;
 import lombok.extern.slf4j.Slf4j;
 import org.redisson.api.RLock;
 import org.redisson.api.RedissonClient;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.support.TransactionSynchronizationAdapter;
 import org.springframework.transaction.support.TransactionSynchronizationManager;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
-import java.util.Arrays;
+import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Map;
+import java.util.Objects;
 import java.util.Set;
 import java.util.concurrent.TimeUnit;
-import java.util.stream.Collectors;
+
+import static com.fashion.exception.PublicBusinessException.Code.*;
+import static com.fashion.exception.PublicBusinessException.of;
 
 /**
  * 通用优惠券服务实现类
@@ -43,7 +54,12 @@ public class CouponServiceImpl implements CouponService {
     private ProductMapper productMapper;
 
     @Autowired
+    private ShoppingCartMapper shoppingCartMapper;
+
+    @Autowired
     private RedissonClient redissonClient;
+
+    private final CouponPricingPolicy couponPricingPolicy = new CouponPricingPolicy();
 
     // ==================== 管理端 ====================
 
@@ -103,64 +119,44 @@ public class CouponServiceImpl implements CouponService {
     @Override
     @Transactional
     public void claim(Long userId, Long templateId) {
-        if (userId == null) {
-            throw new RuntimeException("用户未登录");
-        }
-        CouponTemplate template = couponTemplateMapper.selectById(templateId);
-        if (template == null || template.getStatus() == null || template.getStatus() != 1) {
-            throw new RuntimeException("优惠券不存在或已停用");
-        }
-        LocalDateTime now = LocalDateTime.now();
-        if (template.getValidType() != null && template.getValidType() == 1) {
-            if (template.getStartTime() != null && now.isBefore(template.getStartTime())) {
-                throw new RuntimeException("优惠券未开始领取");
-            }
-            if (template.getEndTime() != null && now.isAfter(template.getEndTime())) {
-                throw new RuntimeException("优惠券已过期");
-            }
+        if (userId == null || templateId == null || templateId <= 0) {
+            throw of(COUPON_UNAVAILABLE);
         }
 
         RLock lock = redissonClient.getLock("coupon:claim:" + templateId);
         try {
-            if (!lock.tryLock(2, 5, TimeUnit.SECONDS)) {
-                throw new RuntimeException("领取人数过多，请稍后再试");
+            // Omit a fixed lease so Redisson's watchdog keeps the lock alive until
+            // transaction completion, including slow commits and rollbacks.
+            if (!lock.tryLock(2, TimeUnit.SECONDS)) {
+                throw of(CLAIM_BUSY);
             }
+            CouponTemplate template = couponTemplateMapper.selectByIdForShare(templateId);
+            LocalDateTime eligibilityTime = userCouponMapper.selectDatabaseTime();
+            validateClaimTemplateAt(template, eligibilityTime);
             // 每人限领
             int perUserLimit = template.getPerUserLimit() == null ? 1 : template.getPerUserLimit();
             int claimed = userCouponMapper.countByUserAndTemplate(userId, templateId);
             if (claimed >= perUserLimit) {
-                throw new RuntimeException("已达每人限领数量");
+                throw of(CLAIM_LIMIT_REACHED);
             }
             // 发行总量
             int totalCount = template.getTotalCount() == null ? 0 : template.getTotalCount();
             if (totalCount > 0) {
                 int issued = userCouponMapper.countByTemplate(templateId);
                 if (issued >= totalCount) {
-                    throw new RuntimeException("优惠券已领完");
+                    throw of(COUPON_SOLD_OUT);
                 }
             }
-            // 计算有效期
-            LocalDateTime expireTime;
-            if (template.getValidType() != null && template.getValidType() == 1) {
-                expireTime = template.getEndTime();
-            } else {
-                int validDays = template.getValidDays() == null ? 7 : template.getValidDays();
-                expireTime = now.plusDays(validDays);
+            if (userCouponMapper.insertClaim(userId, templateId, eligibilityTime) != 1) {
+                throw of(COUPON_UNAVAILABLE);
             }
-            UserCoupon userCoupon = new UserCoupon();
-            userCoupon.setUserId(userId);
-            userCoupon.setTemplateId(templateId);
-            userCoupon.setStatus(0);
-            userCoupon.setObtainTime(now);
-            userCoupon.setExpireTime(expireTime);
-            userCouponMapper.insert(userCoupon);
-            log.info("用户领券成功 userId={}, templateId={}, userCouponId={}", userId, templateId, userCoupon.getId());
+            log.info("用户领券成功 userId={}, templateId={}", userId, templateId);
         } catch (InterruptedException e) {
             Thread.currentThread().interrupt();
-            throw new RuntimeException("领取优惠券失败");
+            throw of(CLAIM_FAILED);
         } finally {
             // 事务提交/回滚完成后再释放锁，避免并发领取在计数校验时读到未提交数据
-            if (lock.isHeldByCurrentThread()) {
+            if (lock.isHeldByCurrentThread() && TransactionSynchronizationManager.isSynchronizationActive()) {
                 TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronizationAdapter() {
                     @Override
                     public void afterCompletion(int status) {
@@ -169,6 +165,8 @@ public class CouponServiceImpl implements CouponService {
                         }
                     }
                 });
+            } else if (lock.isHeldByCurrentThread()) {
+                lock.unlock();
             }
         }
     }
@@ -184,73 +182,96 @@ public class CouponServiceImpl implements CouponService {
     }
 
     @Override
-    public List<UserCoupon> listAvailable(Long userId, BigDecimal totalAmount, List<Long> productIds) {
+    public List<AvailableCouponVO> listAvailable(Long userId, List<Long> cartItemIds) {
         if (userId == null) {
-            throw new RuntimeException("用户未登录");
+            throw of(USER_NOT_LOGGED_IN);
+        }
+        CartSelectionValidator.validate(cartItemIds);
+        List<com.fashion.entity.ShoppingCart> cartItems =
+                shoppingCartMapper.findByIdsAndUserId(userId, cartItemIds);
+        if (cartItems == null || cartItems.size() != cartItemIds.size()) {
+            throw of(CART_FORBIDDEN);
+        }
+        Map<Long, com.fashion.entity.ShoppingCart> cartsById = new HashMap<>();
+        for (com.fashion.entity.ShoppingCart cart : cartItems) {
+            if (cart == null || cart.getId() == null || !Objects.equals(userId, cart.getUserId())
+                    || cart.getNumber() == null || cart.getNumber() <= 0
+                    || cartsById.put(cart.getId(), cart) != null) {
+                throw of(CART_SNAPSHOT_INVALID);
+            }
+        }
+        BigDecimal originalAmount = BigDecimal.ZERO;
+        Set<Long> orderProductIds = new HashSet<>();
+        Map<Long, Product> productsById = new HashMap<>();
+        for (Long cartItemId : cartItemIds) {
+            com.fashion.entity.ShoppingCart cart = cartsById.get(cartItemId);
+            if (cart == null || cart.getProductId() == null) {
+                throw of(CART_SNAPSHOT_INVALID);
+            }
+            Product product = productsById.computeIfAbsent(cart.getProductId(), productMapper::getById);
+            if (product == null || product.getPrice() == null
+                    || product.getPrice().compareTo(BigDecimal.ZERO) < 0) {
+                throw of(PRODUCT_PRICE_INVALID);
+            }
+            originalAmount = originalAmount.add(
+                    product.getPrice().multiply(BigDecimal.valueOf(cart.getNumber())));
+            orderProductIds.add(product.getId());
         }
         markExpired();
         List<UserCoupon> candidates = userCouponMapper.listUsable(userId);
         if (candidates == null || candidates.isEmpty()) {
-            return candidates;
+            return java.util.Collections.emptyList();
         }
-        // 商品范围校验所需数据
-        Set<Long> orderProductIds = productIds == null ? new HashSet<>() : new HashSet<>(productIds);
-        List<Product> products = orderProductIds.isEmpty() ? new java.util.ArrayList<>() : productMapper.selectBatchByIds(new java.util.ArrayList<>(orderProductIds));
-        BigDecimal amount = totalAmount == null ? BigDecimal.ZERO : totalAmount;
-
-        return candidates.stream()
-                .filter(c -> {
-                    BigDecimal threshold = c.getThreshold() == null ? BigDecimal.ZERO : c.getThreshold();
-                    return amount.compareTo(threshold) >= 0 && inScope(c, orderProductIds, products);
-                })
-                .collect(Collectors.toList());
+        List<Product> products = new ArrayList<>(productsById.values());
+        List<AvailableCouponVO> result = new ArrayList<>();
+        for (UserCoupon candidate : candidates) {
+            try {
+                BigDecimal discount = couponPricingPolicy.calculateDiscount(
+                        candidate, originalAmount, orderProductIds, products);
+                result.add(toAvailableCoupon(candidate, discount));
+            } catch (PublicBusinessException ignored) {
+                // 候选列表中的非法/不适用规则失败关闭，不暴露到可用列表。
+            }
+        }
+        return result;
     }
 
     // ==================== 下单集成 ====================
 
     @Override
-    @Transactional
+    @Transactional(propagation = Propagation.MANDATORY)
     public BigDecimal lockAndDiscount(Long userId, Long userCouponId, BigDecimal totalAmount, List<Long> productIds) {
         if (userCouponId == null) {
             return BigDecimal.ZERO;
         }
-        UserCoupon userCoupon = userCouponMapper.selectById(userCouponId);
-        if (userCoupon == null) {
-            throw new RuntimeException("优惠券不存在");
+        UserCoupon userCoupon = userCouponMapper.selectByIdForUpdate(userCouponId);
+        if (userCoupon == null || userId == null || !userId.equals(userCoupon.getUserId())
+                || userCoupon.getStatus() == null || userCoupon.getStatus() != 0
+                || userCoupon.getUseOrderId() != null || userCoupon.getTemplateId() == null) {
+            throw of(COUPON_UNAVAILABLE);
         }
-        if (!userCoupon.getUserId().equals(userId)) {
-            throw new RuntimeException("无权使用该优惠券");
-        }
-        if (userCoupon.getStatus() == null || userCoupon.getStatus() != 0) {
-            throw new RuntimeException("优惠券已使用或已失效");
-        }
-        if (userCoupon.getExpireTime() == null || userCoupon.getExpireTime().isBefore(LocalDateTime.now())) {
-            throw new RuntimeException("优惠券已过期");
-        }
+        CouponTemplate template = couponTemplateMapper.selectByIdForShare(userCoupon.getTemplateId());
+        LocalDateTime eligibilityTime = userCouponMapper.selectDatabaseTime();
+        validateEligibilityAt(userCoupon, template, eligibilityTime);
+        applyTemplateSnapshot(userCoupon, template);
 
-        BigDecimal amount = totalAmount == null ? BigDecimal.ZERO : totalAmount;
-        BigDecimal threshold = userCoupon.getThreshold() == null ? BigDecimal.ZERO : userCoupon.getThreshold();
-        if (amount.compareTo(threshold) < 0) {
-            throw new RuntimeException("未达到优惠券使用门槛");
-        }
-
-        // 商品范围校验
         Set<Long> orderProductIds = productIds == null ? new HashSet<>() : new HashSet<>(productIds);
-        List<Product> products = orderProductIds.isEmpty() ? new java.util.ArrayList<>() : productMapper.selectBatchByIds(new java.util.ArrayList<>(orderProductIds));
-        if (!inScope(userCoupon, orderProductIds, products)) {
-            throw new RuntimeException("优惠券不适用当前商品");
-        }
+        List<Product> products = requiresProductSnapshot(template)
+                ? productMapper.selectBatchByIds(new java.util.ArrayList<>(orderProductIds))
+                : java.util.Collections.emptyList();
+        BigDecimal discount = couponPricingPolicy.calculateDiscount(
+                userCoupon, totalAmount, orderProductIds, products);
 
-        // 乐观锁锁定：仅 status=0 可锁，影响行数=0 说明已被并发占用
-        int rows = userCouponMapper.lockCoupon(userCouponId, userId);
+        int rows = userCouponMapper.lockCouponAt(
+                userCouponId, userId, userCoupon.getTemplateId(), eligibilityTime);
         if (rows != 1) {
-            throw new RuntimeException("优惠券正在被使用，请刷新后重试");
+            throw of(COUPON_UNAVAILABLE);
         }
-        return calculateDiscount(userCoupon, amount);
+        return discount;
     }
 
     @Override
-    @Transactional
+    @Transactional(propagation = Propagation.MANDATORY)
     public void bindUseOrder(Long userId, Long userCouponId, Long orderId) {
         if (userCouponId != null && orderId != null) {
             if (userCouponMapper.setUseOrderId(userCouponId, userId, orderId) != 1) {
@@ -296,52 +317,65 @@ public class CouponServiceImpl implements CouponService {
 
     // ==================== 私有工具 ====================
 
-    /**
-     * 计算券抵扣金额（按类型），结果不高于订单金额
-     */
-    private BigDecimal calculateDiscount(UserCoupon userCoupon, BigDecimal totalAmount) {
-        BigDecimal discountValue = userCoupon.getDiscount() == null ? BigDecimal.ZERO : userCoupon.getDiscount();
-        BigDecimal result;
-        Integer type = userCoupon.getTemplateType();
-        if (type != null && type == 2) {
-            // 折扣券：discount=8.5 表示 85 折，抵扣 = 金额 * (1 - 折扣/10)
-            BigDecimal rate = discountValue.compareTo(BigDecimal.ZERO) <= 0
-                    ? new BigDecimal("10")
-                    : discountValue.min(new BigDecimal("10"));
-            result = totalAmount.multiply(BigDecimal.ONE.subtract(rate.divide(new BigDecimal("10"), 4, BigDecimal.ROUND_HALF_UP)))
-                    .setScale(2, BigDecimal.ROUND_HALF_UP);
-        } else {
-            // 满减/现金券：抵扣 = 券面金额
-            result = discountValue;
+    private void validateEligibilityAt(UserCoupon userCoupon, CouponTemplate template,
+                                       LocalDateTime eligibilityTime) {
+        if (template == null || eligibilityTime == null || template.getStatus() == null
+                || template.getStatus() != 1 || userCoupon.getExpireTime() == null
+                || !userCoupon.getExpireTime().isAfter(eligibilityTime)) {
+            throw of(COUPON_UNAVAILABLE);
         }
-        return result.min(totalAmount).max(BigDecimal.ZERO).setScale(2, BigDecimal.ROUND_HALF_UP);
+        Integer validType = template.getValidType();
+        if (validType == null) {
+            throw of(COUPON_UNAVAILABLE);
+        }
+        if (validType == 1) {
+            if (template.getStartTime() == null || template.getEndTime() == null
+                    || !template.getStartTime().isBefore(template.getEndTime())
+                    || eligibilityTime.isBefore(template.getStartTime())
+                    || !eligibilityTime.isBefore(template.getEndTime())) {
+                throw of(COUPON_UNAVAILABLE);
+            }
+        } else if (validType == 2) {
+            if (template.getValidDays() == null || template.getValidDays() <= 0) {
+                throw of(COUPON_UNAVAILABLE);
+            }
+        } else {
+            throw of(COUPON_UNAVAILABLE);
+        }
     }
 
-    /**
-     * 券适用范围校验：0全店 1指定分类（订单全部商品属于该分类） 2指定商品（订单全部商品在指定集合内）
-     */
-    private boolean inScope(UserCoupon userCoupon, Set<Long> orderProductIds, List<Product> products) {
-        if (orderProductIds.isEmpty()) {
-            return true;
-        }
-        Integer scopeType = userCoupon.getScopeType() == null ? 0 : userCoupon.getScopeType();
-        if (scopeType == 0) {
-            return true;
-        }
-        if (scopeType == 1) {
-            Long categoryId = userCoupon.getApplyCategoryId();
-            return products != null && !products.isEmpty()
-                    && products.stream().allMatch(p -> categoryId != null && categoryId.equals(p.getCategoryId()));
-        }
-        if (scopeType == 2) {
-            Set<String> applyIds = new HashSet<>();
-            if (userCoupon.getApplyProductIds() != null && !userCoupon.getApplyProductIds().isEmpty()) {
-                Arrays.stream(userCoupon.getApplyProductIds().split(","))
-                        .map(String::trim).filter(s -> !s.isEmpty()).forEach(applyIds::add);
-            }
-            return orderProductIds.stream()
-                    .allMatch(id -> applyIds.contains(String.valueOf(id)));
-        }
-        return true;
+    private void validateClaimTemplateAt(CouponTemplate template, LocalDateTime eligibilityTime) {
+        UserCoupon syntheticHolder = new UserCoupon();
+        syntheticHolder.setExpireTime(LocalDateTime.MAX);
+        validateEligibilityAt(syntheticHolder, template, eligibilityTime);
     }
+
+    private void applyTemplateSnapshot(UserCoupon userCoupon, CouponTemplate template) {
+        userCoupon.setTemplateName(template.getName());
+        userCoupon.setTemplateType(template.getType());
+        userCoupon.setThreshold(template.getThreshold());
+        userCoupon.setDiscount(template.getDiscount());
+        userCoupon.setScopeType(template.getScopeType());
+        userCoupon.setApplyCategoryId(template.getApplyCategoryId());
+        userCoupon.setApplyProductIds(template.getApplyProductIds());
+    }
+
+    private boolean requiresProductSnapshot(CouponTemplate template) {
+        return template != null && template.getScopeType() != null && template.getScopeType() != 0;
+    }
+
+    private AvailableCouponVO toAvailableCoupon(UserCoupon coupon, BigDecimal discountAmount) {
+        AvailableCouponVO vo = new AvailableCouponVO();
+        vo.setId(coupon.getId());
+        vo.setTemplateId(coupon.getTemplateId());
+        vo.setTemplateName(coupon.getTemplateName());
+        vo.setTemplateType(coupon.getTemplateType());
+        vo.setThreshold(coupon.getThreshold());
+        vo.setDiscount(coupon.getDiscount());
+        vo.setScopeType(coupon.getScopeType());
+        vo.setExpireTime(coupon.getExpireTime());
+        vo.setDiscountAmount(discountAmount);
+        return vo;
+    }
+
 }

@@ -12,10 +12,23 @@
         t.scope_type as scopeType, t.apply_category_id as applyCategoryId, t.apply_product_ids as applyProductIds
     </sql>
 
-    <!-- 领取新增 -->
-    <insert id="insert" parameterType="com.fashion.entity.UserCoupon" useGeneratedKeys="true" keyProperty="id">
-        insert into user_coupon (user_id, template_id, status, obtain_time, expire_time, use_order_id, use_time)
-        values (#{userId}, #{templateId}, #{status}, #{obtainTime}, #{expireTime}, #{useOrderId}, #{useTime})
+    <insert id="insertClaim">
+        insert into user_coupon
+            (user_id, template_id, status, obtain_time, expire_time, use_order_id, use_time)
+        select #{userId}, t.id, 0, #{eligibilityTime},
+               case
+                   when t.valid_type = 1 then t.end_time
+                   when t.valid_type = 2 then date_add(#{eligibilityTime}, interval t.valid_days day)
+               end,
+               null, null
+        from coupon_template t
+        where t.id = #{templateId}
+          and t.status = 1
+          and (
+              (t.valid_type = 1 and t.start_time &lt; t.end_time
+               and t.start_time &lt;= #{eligibilityTime} and #{eligibilityTime} &lt; t.end_time)
+              or (t.valid_type = 2 and t.valid_days &gt; 0)
+          )
     </insert>
 
     <!-- 根据id查询（联模板） -->
@@ -24,6 +37,30 @@
         inner join coupon_template t on c.template_id = t.id
         where c.id = #{id}
     </select>
+
+    <select id="selectByIdForUpdate" parameterType="java.lang.Long" resultType="com.fashion.entity.UserCoupon">
+        select c.id, c.user_id as userId, c.template_id as templateId, c.status,
+               c.obtain_time as obtainTime, c.expire_time as expireTime,
+               c.use_order_id as useOrderId, c.use_time as useTime
+        from user_coupon c
+        where c.id = #{id}
+        for update
+    </select>
+
+    <select id="selectDatabaseTime" resultType="java.time.LocalDateTime">
+        select now(3)
+    </select>
+
+    <update id="lockCouponAt">
+        update user_coupon
+        set status = 3
+        where id = #{id}
+          and user_id = #{userId}
+          and template_id = #{templateId}
+          and status = 0
+          and use_order_id is null
+          and expire_time &gt; #{eligibilityTime}
+    </update>
 
     <!-- 用户卡包查询 -->
     <select id="listByUserId" resultType="com.fashion.entity.UserCoupon">
@@ -43,12 +80,6 @@
     <select id="countByTemplate" resultType="java.lang.Integer">
         select count(*) from user_coupon where template_id = #{templateId}
     </select>
-
-    <!-- 锁定券：仅未使用可锁，校验影响行数=1 防并发重复使用 -->
-    <update id="lockCoupon">
-        update user_coupon set status = 3
-        where id = #{id} and user_id = #{userId} and status = 0
-    </update>
 
     <!-- 回填锁定券的核销订单id -->
     <update id="setUseOrderId">
@@ -70,7 +101,7 @@
 
     <!-- 批量置过期 -->
     <update id="markExpired">
-        update user_coupon set status = 2 where status = 0 and expire_time &lt; now()
+        update user_coupon set status = 2 where status = 0 and expire_time &lt;= now(3)
     </update>
 
     <!-- 结算页可用券候选：未使用、未过期、模板启用且在有效期内 -->
@@ -79,9 +110,11 @@
         inner join coupon_template t on c.template_id = t.id
         where c.user_id = #{userId}
           and c.status = 0
-          and c.expire_time &gt; now()
+          and c.expire_time &gt; now(3)
           and t.status = 1
-          and (t.valid_type = 2 or (t.valid_type = 1 and t.start_time &lt;= now() and t.end_time &gt;= now()))
+          and ((t.valid_type = 2 and t.valid_days &gt; 0)
+               or (t.valid_type = 1 and t.start_time &lt; t.end_time
+                   and t.start_time &lt;= now(3) and now(3) &lt; t.end_time))
         order by c.expire_time asc
     </select>
 

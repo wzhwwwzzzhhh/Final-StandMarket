@@ -2,11 +2,11 @@ package com.fashion.service.impl;
 
 import com.fashion.context.BaseContext;
 import com.fashion.dto.SeckillCancelResponse;
+import com.fashion.dto.ReviewCreateDTO;
 import com.fashion.entity.OrderDetail;
 import com.fashion.entity.Orders;
 import com.fashion.entity.Payment;
 import com.fashion.entity.Refund;
-import com.fashion.entity.Review;
 import com.fashion.entity.SeckillOrder;
 import com.fashion.mapper.OrderDetailMapper;
 import com.fashion.mapper.OrderMapper;
@@ -14,6 +14,7 @@ import com.fashion.mapper.PaymentMapper;
 import com.fashion.mapper.RefundMapper;
 import com.fashion.mapper.ReviewMapper;
 import com.fashion.mapper.SeckillOrderMapper;
+import com.fashion.vo.ReviewMineVO;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -119,25 +120,30 @@ class UserResourceOwnershipContractTest {
     }
 
     @Test
-    @DisplayName("评价服务覆盖客户端 userId 且本人查询来自登录态")
+    @DisplayName("评价服务只使用登录态身份并按订单商品检查")
     void reviewServiceUsesCurrentUser() {
         BaseContext.setUserId(7L);
         ReviewMapper mapper = mock(ReviewMapper.class);
         ReviewServiceImpl service = new ReviewServiceImpl();
         ReflectionTestUtils.setField(service, "reviewMapper", mapper);
-        Review submitted = new Review();
-        submitted.setUserId(99L);
+        ReviewCreateDTO submitted = new ReviewCreateDTO();
         submitted.setOrderId(100L);
-        Review existing = new Review();
-        when(mapper.selectByOrderIdAndUserId(100L, 7L)).thenReturn(existing);
+        submitted.setProductId(200L);
+        submitted.setRating(5);
+        ReviewMineVO saved = new ReviewMineVO();
+        saved.setOrderId(100L);
+        saved.setProductId(200L);
+        when(mapper.insertAuthorized(7L, submitted)).thenReturn(1);
+        when(mapper.selectMineByOrderProductUser(100L, 200L, 7L)).thenReturn(saved);
+        when(mapper.existsByOrderProductUser(100L, 200L, 7L)).thenReturn(1);
 
-        service.addReview(submitted);
-        Review result = invoke(service, "getByOrderIdForCurrentUser",
-                new Class<?>[]{Long.class}, 100L);
+        ReviewMineVO result = service.addReview(submitted);
+        boolean reviewed = service.hasReviewed(100L, 200L);
 
-        assertEquals(7L, submitted.getUserId());
-        assertSame(existing, result);
-        verify(mapper).selectByOrderIdAndUserId(100L, 7L);
+        assertSame(saved, result);
+        assertTrue(reviewed);
+        verify(mapper).insertAuthorized(7L, submitted);
+        verify(mapper).existsByOrderProductUser(100L, 200L, 7L);
     }
 
     @Test

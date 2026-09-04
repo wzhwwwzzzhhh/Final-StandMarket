@@ -54,25 +54,8 @@ export const couponApi = {
     return api.get(url)
   },
 
-  // 结算页可用券（按金额 + 商品范围过滤）
+  // 结算页可用券（后端按当前用户购物车快照计价）
   getAvailableCoupons: (params) => {
     return api.get('/user/coupon/available', { params })
   }
-}
-
-// 券抵扣金额计算（供结算页展示，与服务端规则一致）
-export const calcCouponDiscount = (coupon, totalAmount) => {
-  const amount = Number(totalAmount) || 0
-  if (!coupon) return 0
-  const type = coupon.templateType
-  let discount = 0
-  if (type === 2) {
-    // 折扣券：discount=8.5 表示 85 折
-    const rate = Math.min(Number(coupon.discount) || 10, 10)
-    discount = amount * (1 - rate / 10)
-  } else {
-    // 满减/现金券
-    discount = Number(coupon.discount) || 0
-  }
-  return Math.min(Math.max(discount, 0), amount)
 }

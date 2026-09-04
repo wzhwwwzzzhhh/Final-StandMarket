@@ -6,6 +6,7 @@ import com.fashion.entity.AddressBook;
 import com.fashion.entity.Orders;
 import com.fashion.entity.Product;
 import com.fashion.entity.ShoppingCart;
+import com.fashion.exception.PublicBusinessException;
 import com.fashion.mapper.AddressBookMapper;
 import com.fashion.mapper.OrderDetailMapper;
 import com.fashion.mapper.OrderMapper;
@@ -96,7 +97,7 @@ class OrderAddressOwnershipTest {
         OrderCreateDTO request = request(9L);
         when(addressMapper.getByIdAndUserId(9L, 7L)).thenReturn(null);
 
-        assertThrows(IllegalStateException.class, () -> service.create(request));
+        assertThrows(PublicBusinessException.class, () -> service.create(request));
 
         verify(productMapper, never()).deductStock(any(), any());
         verify(orderMapper, never()).insert(any());
