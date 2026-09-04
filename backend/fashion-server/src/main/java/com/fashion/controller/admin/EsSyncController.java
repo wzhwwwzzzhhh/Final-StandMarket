@@ -2,33 +2,35 @@ package com.fashion.controller.admin;
 
 import com.fashion.common.annotation.OperationLog;
 import com.fashion.result.Result;
-import com.fashion.service.ProductIndexService;
-import org.springframework.beans.factory.annotation.Autowired;
+import com.fashion.entity.ProductReconciliationStatusView;
+import com.fashion.product.ProductReconciliationService;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.web.bind.annotation.*;
-
-import java.util.Map;
 
 /**
  * ES 同步管理
  */
 @RestController
 @RequestMapping("/admin/es")
+@Slf4j
 public class EsSyncController {
 
-    @Autowired
-    private ProductIndexService productIndexService;
+    private final ProductReconciliationService reconciliationService;
 
-    /**
-     * 全量重建索引（删除 + 创建 + 同步所有商品）
-     */
+    public EsSyncController(ProductReconciliationService reconciliationService) {
+        this.reconciliationService = reconciliationService;
+    }
+
+    /** 创建一个非破坏性的 MySQL/ES 对账任务。 */
     @PostMapping("/sync")
-    @OperationLog(module = "ES同步", operation = "全量重建索引")
+    @OperationLog(module = "ES同步", operation = "创建非破坏性对账")
     public Result<String> syncAll() {
         try {
-            productIndexService.rebuildIndex();
-            return Result.success("全量同步完成");
+            Long runId = reconciliationService.start("CUTOVER").getId();
+            return Result.success("已创建非破坏性对账任务 runId=" + runId);
         } catch (RuntimeException e) {
-            return Result.error(e.getMessage());
+            log.error("创建商品对账任务失败, errorType={}", e.getClass().getSimpleName());
+            return Result.error("创建商品对账任务失败");
         }
     }
 
@@ -36,8 +38,7 @@ public class EsSyncController {
      * 查看 ES 索引状态
      */
     @GetMapping("/status")
-    public Result<Map<String, Object>> status() {
-        Map<String, Object> status = productIndexService.getIndexStatus();
-        return Result.success(status);
+    public Result<ProductReconciliationStatusView> status() {
+        return Result.success(reconciliationService.status());
     }
 }

@@ -41,12 +41,21 @@ public interface ProductMapper {
      */
     Product getById(Long id);
 
+    /** Reads all statuses for admin/catalog projection use. */
+    Product getByIdIncludingInactive(Long id);
+
+    /** Serializes a product mutation inside the caller's MySQL transaction. */
+    Product getByIdForUpdate(Long id);
+
     /**
      * 根据ID批量查询商品（浏览历史用，保持结果与传入顺序无关，由业务层重排）
      * @param ids 商品ID集合
      * @return 商品列表
      */
     List<Product> selectBatchByIds(@Param("ids") List<Long> ids);
+
+    /** Dynamic stock is never served from the long-lived product cache. */
+    List<Product> selectStocksByIds(@Param("ids") List<Long> ids);
     
     /**
      * 新增商品

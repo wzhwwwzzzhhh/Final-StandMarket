@@ -1,18 +1,18 @@
 package com.fashion.utils;
 
 import cn.hutool.core.util.StrUtil;
-import cn.hutool.json.JSONObject;
 import cn.hutool.json.JSONUtil;
 import com.fashion.properties.RedisData;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.redis.core.StringRedisTemplate;
+import org.springframework.data.redis.core.script.DefaultRedisScript;
 
 import org.springframework.stereotype.Component;
 
 import java.time.LocalDateTime;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.LinkedBlockingQueue;
-import java.util.concurrent.ThreadPoolExecutor;
+import java.time.Duration;
+import java.util.Collections;
+import java.util.UUID;
 import java.util.concurrent.TimeUnit;
 import java.util.function.Function;
 
@@ -20,16 +20,28 @@ import java.util.function.Function;
 @Slf4j
 public class CacheClient {
 
-    private final StringRedisTemplate stringRedisTemplate;
-    private static final String LOCK_KEY_PREFIX = "lock:";
-    //线程池，用于异步执行缓存重建任务
-    //用ThreadPoolExecutor实现
-    private static final ExecutorService CACHE_REBUILD_EXECUTOR = new ThreadPoolExecutor(
-            10, 15, 10L,
-            TimeUnit.SECONDS, new LinkedBlockingQueue<>(100000),
-            new ThreadPoolExecutor.CallerRunsPolicy()
-    );
+    private static final DefaultRedisScript<Long> COMPARE_DELETE_SCRIPT = new DefaultRedisScript<>(
+            "if redis.call('get', KEYS[1]) == ARGV[1] then " +
+                    "return redis.call('del', KEYS[1]) else return 0 end", Long.class);
+    private static final DefaultRedisScript<Long> MAX_PUBLISH_SCRIPT = new DefaultRedisScript<>(
+            "local current = redis.call('get', KEYS[1]); " +
+                    "local incoming = tonumber(ARGV[1]); " +
+                    "if not incoming then return -2 end; " +
+                    "if not current then redis.call('set', KEYS[1], ARGV[1]); return 1 end; " +
+                    "local currentNumber = tonumber(current); " +
+                    "if not currentNumber then return -1 end; " +
+                    "if currentNumber <= incoming then " +
+                    "if currentNumber < incoming then redis.call('set', KEYS[1], ARGV[1]) end; " +
+                    "return 1 end; return 0", Long.class);
+    private static final DefaultRedisScript<Long> FENCED_SET_SCRIPT = new DefaultRedisScript<>(
+            "if redis.call('get', KEYS[1]) ~= ARGV[1] then return 0 end; " +
+                    "local published = redis.call('get', KEYS[2]); " +
+                    "if not published then return -1 end; " +
+                    "local current = tonumber(published); local candidate = tonumber(ARGV[2]); " +
+                    "if not current or not candidate or current > candidate then return -2 end; " +
+                    "redis.call('psetex', KEYS[3], ARGV[4], ARGV[3]); return 1", Long.class);
 
+    private final StringRedisTemplate stringRedisTemplate;
     //初始化缓存客户端
     public CacheClient(StringRedisTemplate stringRedisTemplate) {
         this.stringRedisTemplate = stringRedisTemplate;
@@ -51,13 +63,70 @@ public class CacheClient {
             }
             return JSONUtil.toBean(json, type);
         } catch (Exception e) {
-            log.warn("Redis数据解析失败，key: {}, 数据: {}", key, json);
+            log.warn("Redis数据解析失败，key: {}, type: {}", key, e.getClass().getSimpleName());
             return null;
         }
     }
     //清除缓存
     public void delete(String key) {
         stringRedisTemplate.delete(key);
+    }
+
+    public String getRaw(String key) {
+        return stringRedisTemplate.opsForValue().get(key);
+    }
+
+    public Long publishMaxVersion(String key, long version) {
+        Long result = stringRedisTemplate.execute(
+                MAX_PUBLISH_SCRIPT, Collections.singletonList(key), Long.toString(version));
+        return result == null ? 0L : result;
+    }
+
+    public void setRaw(String key, String value, Duration ttl) {
+        if (ttl == null || ttl.isZero() || ttl.isNegative()) {
+            throw new IllegalArgumentException("cache TTL must be positive");
+        }
+        stringRedisTemplate.opsForValue().set(key, value, ttl.toMillis(), TimeUnit.MILLISECONDS);
+    }
+
+    public Long fencedSet(String lockKey, String publishedVersionKey, String valueKey,
+                          String token, long version, String value, Duration ttl) {
+        if (token == null || token.isEmpty() || ttl == null || ttl.isZero() || ttl.isNegative()) {
+            return 0L;
+        }
+        Long result = stringRedisTemplate.execute(FENCED_SET_SCRIPT,
+                java.util.Arrays.asList(lockKey, publishedVersionKey, valueKey),
+                token, Long.toString(version), value, Long.toString(ttl.toMillis()));
+        return result == null ? 0L : result;
+    }
+
+    /**
+     * Acquires a lease and returns its unforgeable ownership token. A null token
+     * carries no release capability.
+     */
+    public String tryLockToken(String key, Duration ttl) {
+        if (key == null || key.isEmpty()) {
+            throw new IllegalArgumentException("lock key is required");
+        }
+        if (ttl == null || ttl.isZero() || ttl.isNegative()) {
+            throw new IllegalArgumentException("lock TTL must be positive");
+        }
+        String token = UUID.randomUUID().toString();
+        Boolean acquired = stringRedisTemplate.opsForValue().setIfAbsent(
+                key, token, ttl.toMillis(), TimeUnit.MILLISECONDS);
+        return Boolean.TRUE.equals(acquired) ? token : null;
+    }
+
+    /**
+     * Atomically releases only the lease still owned by {@code token}.
+     */
+    public Long releaseLock(String key, String token) {
+        if (key == null || key.isEmpty() || token == null || token.isEmpty()) {
+            return 0L;
+        }
+        Long result = stringRedisTemplate.execute(
+                COMPARE_DELETE_SCRIPT, Collections.singletonList(key), token);
+        return result == null ? 0L : result;
     }
 
     public void setWithLogicalExpire(String key, Object value, Long time) {
@@ -89,118 +158,5 @@ public class CacheClient {
         stringRedisTemplate.opsForValue().set(key, JSONUtil.toJsonStr(t), time, TimeUnit.SECONDS);
         return t;
     }
-
-    //逻辑过期解决缓存击穿
-    public <T,ID> T queryWithLogicalExpire(String keyPrefix, ID id , Class< T> type, Function<ID, T> dbFallback, Long time, TimeUnit unit) {
-        String key = keyPrefix + id;
-        String json = stringRedisTemplate.opsForValue().get(key);
-        RedisData redisData = JSONUtil.toBean(json, RedisData.class);
-        //不为空应该返回缓存数据且判断是否未过期
-        if(StrUtil.isBlank( json)){
-            if(json == null){
-                //说明是第一次请求，直接查询数据库
-                T t = dbFallback.apply(id);
-                if(t == null){
-                    stringRedisTemplate.opsForValue().set(key, "", time,unit);
-                    return  null;
-                }
-                setWithLogicalExpire(key, t, time);
-                return t;
-            }
-            //否则为空值
-            return null;
-        }
-
-        //判断是否过期
-        //未过期应该返回缓存数据
-        if(redisData.getExpireTime()!= null &&redisData.getExpireTime().isAfter(LocalDateTime.now())){
-            return JSONUtil.toBean((JSONObject) redisData.getData(), type);
-        }
-        //缓存已过期，重建缓存，且返回旧值
-        T t = JSONUtil.toBean((JSONObject) redisData.getData(), type);
-        String lockKey = LOCK_KEY_PREFIX + keyPrefix + id;
-        boolean isLock = tryLock(lockKey);
-        if(isLock){
-            //重建缓存
-            CACHE_REBUILD_EXECUTOR.submit(() -> {
-                try {
-                    T t2 = dbFallback.apply(id);
-                    if(t2 == null){
-                        stringRedisTemplate.opsForValue().set(key, "", time,unit);
-                        //如果为空说明之前未null，直接返回就行
-                        return;
-                    }else{
-                        setWithLogicalExpire(key, t2, time);
-                    }
-                    log.info("重建缓存成功，key：{}", key);
-                } catch (Exception e) {
-                    log.error("重建缓存失败，key：{}", key, e);
-                } finally {
-                    unLock(lockKey);
-                }
-            });
-        }
-        //返回t（t是之前的值）
-        return t;
-    }
-    /**
-     * 缓存击穿 获取互斥锁
-     */
-    public <T,ID> T queryWithMutex(String keyPrefix, ID id , Class< T> type, Function<ID, T> dbFallback, Long time, TimeUnit unit) {
-        String key = keyPrefix + id;
-        //从Redis中获取数据
-        String json = stringRedisTemplate.opsForValue().get(key);
-        if(json != null){
-            if(StrUtil.isNotBlank( json)){
-                return JSONUtil.toBean(json, type);
-            }
-            return null;
-        }
-        String lockKey = LOCK_KEY_PREFIX + keyPrefix + id;
-        boolean isLock = tryLock(lockKey);
-        try {
-            if(!isLock){
-                Thread.sleep(50);
-                return queryWithMutex(keyPrefix, id, type, dbFallback, time, unit);
-            }else{
-                //二重检测
-                json = stringRedisTemplate.opsForValue().get(key);
-                if(json != null){
-                    if(StrUtil.isNotBlank( json)){
-                        return JSONUtil.toBean(json, type);
-                    }
-                    return null;
-                }
-                T t = dbFallback.apply(id);
-                if(t == null){
-                    stringRedisTemplate.opsForValue().set(key, "", time,unit);
-                }
-                stringRedisTemplate.opsForValue().set(key, JSONUtil.toJsonStr(t), time, unit);
-            }
-        } catch (Exception e) {
-            throw new RuntimeException(e);
-        } finally {
-            unLock(lockKey);
-        }
-        return null;
-    }
-
-    /**
-     * 尝试获取锁
-     * @param key 锁的key
-     * @return 是否成功
-     */
-    public boolean tryLock(String key) {
-        Boolean flag = stringRedisTemplate.opsForValue().setIfAbsent(key, "1", 10L, TimeUnit.SECONDS);
-        return flag != null && flag ;
-    }
-    /**
-     * 释放锁
-     * @param key 锁的key
-     */
-    public void unLock(String key) {
-        stringRedisTemplate.delete(key);
-    }
-
 
 }

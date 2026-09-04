@@ -70,6 +70,30 @@ logging:
 fashion:
   sentinel:
     seckill-qps: ${FASHION_SENTINEL_SECKILL_QPS:500}
+  product-cache:
+    list-physical-ttl: ${FASHION_PRODUCT_CACHE_LIST_TTL:15m}
+    detail-logical-ttl: ${FASHION_PRODUCT_CACHE_DETAIL_LOGICAL_TTL:10m}
+    detail-physical-ttl: ${FASHION_PRODUCT_CACHE_DETAIL_PHYSICAL_TTL:30m}
+    empty-physical-ttl: ${FASHION_PRODUCT_CACHE_EMPTY_TTL:30s}
+    actual-jitter: ${FASHION_PRODUCT_CACHE_ACTUAL_JITTER:2m}
+    empty-jitter: ${FASHION_PRODUCT_CACHE_EMPTY_JITTER:10s}
+    lock-ttl: ${FASHION_PRODUCT_CACHE_LOCK_TTL:10s}
+  product-projection:
+    max-attempts: ${FASHION_PRODUCT_PROJECTION_MAX_ATTEMPTS:8}
+    batch-size: ${FASHION_PRODUCT_PROJECTION_BATCH_SIZE:20}
+    reconcile-batch-size: ${FASHION_PRODUCT_RECONCILE_BATCH_SIZE:4}
+    lease: ${FASHION_PRODUCT_PROJECTION_LEASE:30s}
+    connect-timeout: ${FASHION_PRODUCT_ES_CONNECT_TIMEOUT:1s}
+    socket-timeout: ${FASHION_PRODUCT_ES_SOCKET_TIMEOUT:3s}
+    connection-request-timeout: ${FASHION_PRODUCT_ES_CONNECTION_REQUEST_TIMEOUT:1s}
+    lease-margin: ${FASHION_PRODUCT_PROJECTION_LEASE_MARGIN:3s}
+    retry-base: ${FASHION_PRODUCT_PROJECTION_RETRY_BASE:1s}
+    retry-max: ${FASHION_PRODUCT_PROJECTION_RETRY_MAX:5m}
+    retry-jitter: ${FASHION_PRODUCT_PROJECTION_RETRY_JITTER:1s}
+    index-name: ${FASHION_PRODUCT_ES_INDEX:products}
+    poll-delay: ${FASHION_PRODUCT_PROJECTION_POLL_DELAY_MS:1000}
+    reconcile-poll-delay: ${FASHION_PRODUCT_RECONCILE_POLL_DELAY_MS:5000}
+    reconcile-interval: ${FASHION_PRODUCT_RECONCILE_INTERVAL_MS:300000}
   agent:
     base-url: ${FASHION_AGENT_BASE_URL:}
     connect-timeout-ms: ${FASHION_AGENT_CONNECT_TIMEOUT_MS:3000}

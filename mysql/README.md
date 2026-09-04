@@ -19,6 +19,7 @@
 | `data_enrichment.sql` | 开发/演示数据补充 | 不应直接导入生产环境 |
 | `add_indexes.sql` | 商品、订单、秒杀与用户高频查询索引 | 可重复执行；在目标库执行前仍需评审执行窗口和索引重复性 |
 | `add_seckill_mq_reliability.sql` | B6 可靠消息、补偿与对账状态 | 前向迁移；先校验订单号、索引和同名表形状，脏数据/非空部分迁移主动失败；生产执行仍受 B10/B11 与单独授权约束 |
+| `add_product_cache_consistency.sql` | B8 商品目录版本、Redis/ES 恢复任务与对账游标 | MySQL 8.0.16+ 前向迁移；只允许 state→revision→task→reconcile 的 exact-empty 部分前缀恢复，错误定义、反向/非空前缀和脏数据主动失败；生产执行仍受 B10/B11 与单独授权约束 |
 
 ## 生产环境规则
 

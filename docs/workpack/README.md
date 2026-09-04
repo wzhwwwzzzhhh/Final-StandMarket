@@ -26,6 +26,7 @@ docs/workpack/
 
 | 阶段 | 切片 | 本地交付日期 | Review | Evidence |
 |---|---|---|---|---|
+| B8 | product-cache-consistency | 2026-09-04 | [PASS（P0/P1/P2=0）](归档/B8-product-cache-consistency/review.md) | [evidence](归档/B8-product-cache-consistency/evidence.md) |
 | B9 | agent-frontend-contract | 2026-09-04 | [PASS（P0/P1/P2/P3=0）](归档/B9-agent-frontend-contract/review.md) | [evidence](归档/B9-agent-frontend-contract/evidence.md) |
 | B7 | coupon-review-integrity | 2026-09-04 | [PASS（P0/P1/P2/P3=0）](归档/B7-coupon-review-integrity/review.md) | [evidence](归档/B7-coupon-review-integrity/evidence.md) |
 | B6 | rabbitmq-reliability | 2026-09-03 | [PASS（P0/P1/P2=0）](归档/B6-rabbitmq-reliability/review.md) | [evidence](归档/B6-rabbitmq-reliability/evidence.md) |
