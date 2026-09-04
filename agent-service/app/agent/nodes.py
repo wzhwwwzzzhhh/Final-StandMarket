@@ -13,6 +13,7 @@ from app.tools.format import format_orders, format_order_summary
 from app.tools.outfit_rules import rule_based_reply, reason_for
 from app.agent.prompts import INTENT_PROMPT, REPLY_PROMPT, SIZE_PROMPT
 from app.config import settings
+from app.degradation import add_reason
 
 logger = logging.getLogger(__name__)
 
@@ -42,8 +43,8 @@ def _chat_completion(messages: list, max_tokens: int = 200, temperature: float =
             max_tokens=max_tokens,
         )
         return resp.choices[0].message.content
-    except Exception as e:
-        logger.warning("LLM 调用失败: %s", e)
+    except Exception as exc:
+        logger.warning("LLM request failed exceptionType=%s", type(exc).__name__)
         return None
 
 
@@ -98,6 +99,7 @@ def recognize_intent(state: dict) -> dict:
             state["intent"] = intent
             return state
     state["intent"] = _keyword_intent(message)
+    add_reason(state, "LLM_UNAVAILABLE")
     return state
 
 
@@ -109,7 +111,8 @@ def search_product_node(state: dict) -> dict:
     state["search_total"] = result.get("total", 0)
     if result.get("error"):
         state["search_error"] = True
-        logger.warning("ES 搜索异常: %s", result["error"])
+        add_reason(state, "ELASTICSEARCH_UNAVAILABLE")
+        logger.warning("Elasticsearch search unavailable")
     return state
 
 
@@ -119,54 +122,63 @@ def recommend_node(state: dict) -> dict:
     state["recommendations"] = data.get("products", [])
     state["recommend_category"] = data.get("main_category", "")
     state["recommend_reason"] = data.get("reason", "")
+    if data.get("error"):
+        add_reason(state, "ELASTICSEARCH_UNAVAILABLE")
+        logger.warning("Elasticsearch recommendation unavailable")
     return state
 
 
-def _fetch_orders(token: str) -> dict:
+def _fetch_orders(user_authorization: str) -> dict:
     """调 Java 订单接口获取当前用户订单"""
     url = f"{settings.backend_base_url}/user/agent/order/list"
     headers = {}
-    if token:
-        headers["Authorization"] = f"Bearer {token}"
+    if user_authorization:
+        headers["Authorization"] = user_authorization
     try:
         resp = httpx.get(url, headers=headers, timeout=5)
         if resp.status_code == 200:
             body = resp.json()
             # Java Result 包装: {code, data, msg}
-            if isinstance(body, dict) and body.get("data") is not None:
+            if (
+                isinstance(body, dict)
+                and body.get("code") == 1
+                and isinstance(body.get("data"), list)
+                and all(isinstance(order, dict) for order in body["data"])
+            ):
                 return {"orders": body["data"]}
-            return {"orders": []}
-        return {"error": f"查询失败(status={resp.status_code})"}
-    except Exception as e:
-        logger.warning("订单接口调用失败: %s", e)
-        return {"error": "订单服务暂时不可用"}
+            return {"error": True}
+        return {"error": True}
+    except Exception as exc:
+        logger.warning("Java order tool failed exceptionType=%s", type(exc).__name__)
+        return {"error": True}
 
 
-def _fetch_tracking(order_id, token: str) -> dict:
+def _fetch_tracking(order_id, user_authorization: str) -> dict:
     """调 Java 物流接口获取物流信息"""
     url = f"{settings.backend_base_url}/user/agent/tracking/{order_id}"
     headers = {}
-    if token:
-        headers["Authorization"] = f"Bearer {token}"
+    if user_authorization:
+        headers["Authorization"] = user_authorization
     try:
         resp = httpx.get(url, headers=headers, timeout=5)
         if resp.status_code == 200:
             body = resp.json()
-            if isinstance(body, dict) and body.get("data") is not None:
+            if isinstance(body, dict) and body.get("code") == 1 and isinstance(body.get("data"), dict):
                 return {"tracking": body["data"]}
-            return {"error": body.get("msg", "暂无物流信息")}
-        return {"error": f"查询失败(status={resp.status_code})"}
-    except Exception as e:
-        logger.warning("物流接口调用失败: %s", e)
-        return {"error": "物流服务暂时不可用"}
+            return {"error": True}
+        return {"error": True}
+    except Exception as exc:
+        logger.warning("Java tracking tool failed exceptionType=%s", type(exc).__name__)
+        return {"error": True}
 
 
 def order_node(state: dict) -> dict:
     """订单查询节点：拉取订单列表，若最近订单在途则补充物流信息"""
-    token = state.get("token", "")
-    data = _fetch_orders(token)
+    user_authorization = state.get("userAuthorization", "")
+    data = _fetch_orders(user_authorization)
     if data.get("error"):
-        state["order_info"] = {"error": data["error"]}
+        state["order_info"] = {"error": True}
+        add_reason(state, "JAVA_TOOL_UNAVAILABLE")
         return state
 
     orders = data.get("orders", [])
@@ -175,9 +187,11 @@ def order_node(state: dict) -> dict:
     # 为最近的在途订单补充物流信息
     for order in orders:
         if order.get("status") in (2, 3) and order.get("id"):
-            tracking = _fetch_tracking(order["id"], token)
+            tracking = _fetch_tracking(order["id"], user_authorization)
             if tracking.get("tracking"):
                 order["tracking"] = tracking["tracking"]
+            elif tracking.get("error"):
+                add_reason(state, "JAVA_TOOL_UNAVAILABLE")
             break
     return state
 
@@ -215,6 +229,38 @@ def size_node(state: dict) -> dict:
     # 关联推荐商品
     result = search_products(f"{garment_type} {state['size_recommend']}", size=3)
     state["recommendations"] = result.get("hits", [])
+    if result.get("error"):
+        add_reason(state, "ELASTICSEARCH_UNAVAILABLE")
+    return state
+
+
+def _apply_rule_reply(state: dict, data: dict) -> dict:
+    intent = state["intent"]
+    if intent == "order":
+        state["reply"] = rule_based_reply("order", order_text=data.get("order", ""))
+    elif intent == "size":
+        size_text = f"{state.get('size_garment', '上装')}建议选 {state.get('size_recommend', 'M')} 码，点击下方卡片看看相关商品～"
+        state["reply"] = rule_based_reply(
+            "size",
+            size_text=size_text,
+            product_names=[p.get("name", "") for p in state.get("recommendations", []) if isinstance(p, dict)],
+        )
+    elif intent == "recommend":
+        names = [p.get("name", "") for p in state.get("recommendations", []) if isinstance(p, dict)]
+        state["reply"] = rule_based_reply(
+            "recommend",
+            product_names=names,
+            reason=state.get("recommend_reason", "") or f"搭配{('、'.join(names[:2]))}更完整。",
+        )
+    elif intent == "search":
+        names = [p.get("name", "") for p in state.get("search_results", []) if isinstance(p, dict)]
+        state["reply"] = rule_based_reply(
+            "search",
+            search_total=state.get("search_total", 0),
+            product_names=names,
+        )
+    else:
+        state["reply"] = rule_based_reply("chat")
     return state
 
 
@@ -247,6 +293,16 @@ def generate_reply(state: dict) -> dict:
     if state.get("size_recommend"):
         data["size"] = f"{state['size_garment']}建议穿{state['size_recommend']}码"
 
+    reasons = set(state.get("degradationReasons") or [])
+    if "ELASTICSEARCH_UNAVAILABLE" in reasons and intent in ("search", "recommend"):
+        state["reply"] = "商品检索暂不可用，请稍后再试。"
+        return state
+    if "JAVA_TOOL_UNAVAILABLE" in reasons and intent == "order":
+        state["reply"] = "订单服务暂不可用，请稍后再试。"
+        return state
+    if "LLM_UNAVAILABLE" in reasons:
+        return _apply_rule_reply(state, data)
+
     reply = _chat_completion(
         messages=_build_chat_messages(state, REPLY_PROMPT.format(intent=intent, data=str(data)),
                                       max_turns=8),
@@ -257,27 +313,5 @@ def generate_reply(state: dict) -> dict:
         return state
 
     # ===== LLM 不可用：规则兜底 =====
-    if intent == "order":
-        state["reply"] = rule_based_reply("order", order_text=data.get("order", ""))
-    elif intent == "size":
-        if state.get("size_waiting"):
-            state["reply"] = "请告诉我你的身高和体重，我来帮你推荐合适的尺码，比如「身高170，体重65公斤」。"
-        else:
-            size_text = f"{state.get('size_garment', '上装')}建议选 {state.get('size_recommend', 'M')} 码，点击下方卡片看看相关商品～"
-            state["reply"] = rule_based_reply("size", size_text=size_text,
-                                              product_names=[p.get("name", "") for p in state.get("recommendations", [])])
-    elif intent == "recommend":
-        names = [p.get("name", "") for p in state.get("recommendations", [])]
-        state["reply"] = rule_based_reply(
-            "recommend", product_names=names,
-            reason=state.get("recommend_reason", "") or f"搭配{('、'.join(names[:2]))}更完整。")
-    elif intent == "search":
-        names = [p.get("name", "") for p in state.get("search_results", [])]
-        if state.get("search_error"):
-            state["reply"] = "服务繁忙，请稍后再试。"
-        else:
-            state["reply"] = rule_based_reply("search", search_total=state.get("search_total", 0),
-                                              product_names=names)
-    else:
-        state["reply"] = rule_based_reply("chat")
-    return state
+    add_reason(state, "LLM_UNAVAILABLE")
+    return _apply_rule_reply(state, data)

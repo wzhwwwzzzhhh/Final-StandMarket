@@ -1,48 +1,89 @@
 import json
+import logging
 
 import redis.asyncio as aioredis
 
 from app.config import settings
 
-redis_client = aioredis.from_url(settings.redis_url, decode_responses=True)
+logger = logging.getLogger(__name__)
 
-SESSION_TTL_SECONDS = 7 * 24 * 3600  # 7 天
+redis_client = aioredis.from_url(
+    settings.redis_url,
+    decode_responses=True,
+    socket_connect_timeout=settings.redis_connect_timeout_seconds,
+    socket_timeout=settings.redis_socket_timeout_seconds,
+)
 
-
-async def get_history(session_id: str, max_turns: int = 10) -> list[dict]:
-    key = f"agent:session:{session_id}"
-    raw = await redis_client.lrange(key, 0, max_turns * 2 - 1)
-    # lpush 写入导致列表头为最新消息，此处 reverse 恢复时间正序
-    return [json.loads(item) for item in reversed(raw)]
-
-
-async def save_message(session_id: str, role: str, content: str):
-    key = f"agent:session:{session_id}"
-    msg = {"role": role, "content": content}
-    await redis_client.lpush(key, json.dumps(msg, ensure_ascii=False))
-    await redis_client.ltrim(key, 0, 19)
-    await redis_client.expire(key, SESSION_TTL_SECONDS)
+_SAVE_HISTORY_LUA = """
+redis.call('LPUSH', KEYS[1], ARGV[1])
+redis.call('LTRIM', KEYS[1], 0, 19)
+redis.call('EXPIRE', KEYS[1], ARGV[2])
+return 1
+"""
 
 
-async def clear_history(session_id: str):
-    await redis_client.delete(f"agent:session:{session_id}")
+def history_key(user_id: int, session_id: str) -> str:
+    return f"agent:user:{user_id}:session:{session_id}:history"
 
 
-# ===================== 会话槽位 =====================
+def slots_key(user_id: int, session_id: str) -> str:
+    return f"agent:user:{user_id}:session:{session_id}:slots"
 
-async def get_slots(session_id: str) -> dict:
-    key = f"agent:slots:{session_id}"
-    raw = await redis_client.get(key)
+
+async def get_history(user_id: int, session_id: str, max_turns: int = 10) -> tuple[list[dict], bool]:
+    raw = await redis_client.lrange(history_key(user_id, session_id), 0, max_turns * 2 - 1)
+    messages = []
+    invalid_count = 0
+    for item in reversed(raw):
+        try:
+            decoded = json.loads(item)
+            if not isinstance(decoded, dict) or decoded.get("role") not in ("user", "assistant"):
+                raise ValueError("invalid history item")
+            messages.append(decoded)
+        except (TypeError, ValueError, json.JSONDecodeError):
+            invalid_count += 1
+    if invalid_count:
+        logger.warning("Redis history contained invalid entries count=%d", invalid_count)
+    return messages, invalid_count > 0
+
+
+async def save_message(user_id: int, session_id: str, role: str, content: str):
+    key = history_key(user_id, session_id)
+    message = json.dumps({"role": role, "content": content}, ensure_ascii=False)
+    await redis_client.eval(
+        _SAVE_HISTORY_LUA,
+        1,
+        key,
+        message,
+        settings.agent_session_ttl_seconds,
+    )
+
+
+async def clear_history(user_id: int, session_id: str):
+    await redis_client.delete(history_key(user_id, session_id))
+
+
+async def get_slots(user_id: int, session_id: str) -> tuple[dict, bool]:
+    raw = await redis_client.get(slots_key(user_id, session_id))
     if not raw:
-        return {}
-    return json.loads(raw)
+        return {}, False
+    try:
+        decoded = json.loads(raw)
+        if not isinstance(decoded, dict):
+            raise ValueError("invalid slots")
+        return decoded, False
+    except (TypeError, ValueError, json.JSONDecodeError):
+        logger.warning("Redis slots contained invalid data")
+        return {}, True
 
 
-async def save_slots(session_id: str, slots: dict):
-    key = f"agent:slots:{session_id}"
-    await redis_client.set(key, json.dumps(slots, ensure_ascii=False))
-    await redis_client.expire(key, SESSION_TTL_SECONDS)
+async def save_slots(user_id: int, session_id: str, slots: dict):
+    await redis_client.set(
+        slots_key(user_id, session_id),
+        json.dumps(slots, ensure_ascii=False),
+        ex=settings.agent_session_ttl_seconds,
+    )
 
 
-async def clear_slots(session_id: str):
-    await redis_client.delete(f"agent:slots:{session_id}")
+async def clear_slots(user_id: int, session_id: str):
+    await redis_client.delete(slots_key(user_id, session_id))

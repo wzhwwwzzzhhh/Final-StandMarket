@@ -1,12 +1,12 @@
 package com.fashion.service.impl;
 
-import com.fashion.dto.AgentChatRequest;
+import com.fashion.config.AgentProperties;
 import com.fashion.dto.AgentChatResponse;
+import com.fashion.dto.AgentInternalChatRequest;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
-import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.http.HttpEntity;
@@ -26,17 +26,23 @@ class AgentServiceImplTest {
     @Mock
     private RestTemplate restTemplate;
 
-    @InjectMocks
     private AgentServiceImpl agentService;
 
-    private AgentChatRequest request;
+    @Mock
+    private AgentProperties properties;
+
+    private AgentInternalChatRequest request;
 
     @BeforeEach
     void setUp() {
-        request = new AgentChatRequest();
-        request.setUserId(1);
-        request.setSessionId("test-session");
+        when(properties.getChatUrl()).thenReturn("http://127.0.0.1:8000/chat");
+        when(properties.getInternalToken()).thenReturn("0123456789abcdef0123456789abcdef");
+        agentService = new AgentServiceImpl(restTemplate, properties);
+        request = new AgentInternalChatRequest();
+        request.setUserId(1L);
+        request.setSessionId("abcdefghijklmnopqrstuv");
         request.setMessage("帮我找一件连衣裙");
+        request.setUserAuthorization("Bearer delegated-user-token");
     }
 
     @Test
@@ -44,7 +50,7 @@ class AgentServiceImplTest {
     void testChatSuccess() {
         AgentChatResponse mockResponse = new AgentChatResponse();
         mockResponse.setReply("为您推荐以下连衣裙...");
-        mockResponse.setSessionId("test-session");
+        mockResponse.setSessionId(request.getSessionId());
 
         when(restTemplate.postForObject(
                 anyString(),
@@ -56,7 +62,7 @@ class AgentServiceImplTest {
 
         assertNotNull(result);
         assertEquals("为您推荐以下连衣裙...", result.getReply());
-        assertEquals("test-session", result.getSessionId());
+        assertEquals(request.getSessionId(), result.getSessionId());
         verify(restTemplate, times(1)).postForObject(
                 anyString(),
                 any(HttpEntity.class),
@@ -77,7 +83,7 @@ class AgentServiceImplTest {
 
         assertNotNull(result);
         assertEquals("AI 助手暂时不可用，请稍后再试。", result.getReply());
-        assertEquals("", result.getSessionId());
+        assertEquals(request.getSessionId(), result.getSessionId());
     }
 
     @Test
@@ -92,8 +98,8 @@ class AgentServiceImplTest {
         AgentChatResponse result = agentService.chat(request);
 
         assertNotNull(result);
-        assertEquals("抱歉，AI 助手暂时无法回复，请稍后再试。", result.getReply());
-        assertEquals("", result.getSessionId());
+        assertEquals("AI 助手暂时不可用，请稍后再试。", result.getReply());
+        assertEquals(request.getSessionId(), result.getSessionId());
     }
 
     @Test
@@ -108,8 +114,8 @@ class AgentServiceImplTest {
         AgentChatResponse result = agentService.chat(request);
 
         assertNotNull(result);
-        assertEquals("AI 助手连接超时，请检查网络后重试。", result.getReply());
-        assertEquals("", result.getSessionId());
+        assertEquals("AI 助手暂时不可用，请稍后再试。", result.getReply());
+        assertEquals(request.getSessionId(), result.getSessionId());
     }
 
     @Test
@@ -124,28 +130,7 @@ class AgentServiceImplTest {
         AgentChatResponse result = agentService.chat(request);
 
         assertNotNull(result);
-        assertEquals("AI 助手连接超时，请检查网络后重试。", result.getReply());
-        assertEquals("", result.getSessionId());
-    }
-
-    @Test
-    @DisplayName("测试请求不包含 sessionId")
-    void testChatWithoutSessionId() {
-        request.setSessionId(null);
-
-        AgentChatResponse mockResponse = new AgentChatResponse();
-        mockResponse.setReply("您好，有什么可以帮您的？");
-        mockResponse.setSessionId("new-session-123");
-
-        when(restTemplate.postForObject(
-                anyString(),
-                any(HttpEntity.class),
-                eq(AgentChatResponse.class)
-        )).thenReturn(mockResponse);
-
-        AgentChatResponse result = agentService.chat(request);
-
-        assertNotNull(result);
-        assertEquals("new-session-123", result.getSessionId());
+        assertEquals("AI 助手暂时不可用，请稍后再试。", result.getReply());
+        assertEquals(request.getSessionId(), result.getSessionId());
     }
 }

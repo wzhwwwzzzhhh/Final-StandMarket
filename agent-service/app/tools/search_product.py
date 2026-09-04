@@ -1,7 +1,7 @@
 from elasticsearch import Elasticsearch
 from app.config import settings
 
-es = Elasticsearch(hosts=[settings.es_host])
+es = Elasticsearch(hosts=[settings.es_host], request_timeout=5)
 
 
 def search_products(
@@ -101,24 +101,31 @@ def search_products(
 
     try:
         resp = es.search(index="products", body=body)
-    except Exception as e:
-        # ES 不可用时返回空结果
-        return {"hits": [], "total": 0, "page": page, "size": size, "error": str(e)}
+        hits_container = resp["hits"]
+        hits = hits_container["hits"]
+        if not isinstance(hits, list):
+            raise ValueError("invalid Elasticsearch hits")
+        total_value = hits_container.get("total", 0)
+        total = total_value.get("value", 0) if isinstance(total_value, dict) else total_value
+        if not isinstance(total, int) or total < 0:
+            raise ValueError("invalid Elasticsearch total")
 
-    hits = resp["hits"]["hits"]
-    total = resp["hits"]["total"]["value"] if "total" in resp["hits"] else 0
-
-    results = []
-    for h in hits:
-        src = h["_source"]
-        # 合并高亮
-        highlight = h.get("highlight", {})
-        src["highlight"] = {
-            "name": highlight.get("name", [src.get("name", "")]),
-            "description": highlight.get("description", [src.get("description", "")]),
-        }
-        src["score"] = h["_score"]
-        results.append(src)
+        results = []
+        for h in hits:
+            if not isinstance(h, dict) or not isinstance(h.get("_source"), dict):
+                continue
+            src = dict(h["_source"])
+            highlight = h.get("highlight", {})
+            if not isinstance(highlight, dict):
+                continue
+            src["highlight"] = {
+                "name": highlight.get("name", [src.get("name", "")]),
+                "description": highlight.get("description", [src.get("description", "")]),
+            }
+            src["score"] = h.get("_score")
+            results.append(src)
+    except Exception:
+        return {"hits": [], "total": 0, "page": page, "size": size, "error": True}
 
     return {
         "hits": results,

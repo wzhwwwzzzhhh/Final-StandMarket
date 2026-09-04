@@ -10,13 +10,14 @@ from app.agent.nodes import (
 
 
 def create_initial_state(message: str, user_id: int, session_id: str, history: list = None,
-                         token: str = "", slots: dict = None) -> dict:
+                         user_authorization: str = "", slots: dict = None,
+                         degradation_reasons: list = None) -> dict:
     return {
         "message": message,
         "userId": user_id,
         "sessionId": session_id,
         "history": history or [],
-        "token": token,
+        "userAuthorization": user_authorization,
         "slots": slots or {},
         "intent": "",
         "search_results": [],
@@ -29,6 +30,7 @@ def create_initial_state(message: str, user_id: int, session_id: str, history: l
         "size_garment": "",
         "size_waiting": False,
         "reply": "",
+        "degradationReasons": list(degradation_reasons or []),
     }
 
 

@@ -1,8 +1,8 @@
 package com.fashion.service;
 
-import com.fashion.dto.AgentChatRequest;
 import com.fashion.dto.AgentChatResponse;
+import com.fashion.dto.AgentInternalChatRequest;
 
 public interface AgentService {
-    AgentChatResponse chat(AgentChatRequest request);
+    AgentChatResponse chat(AgentInternalChatRequest request);
 }
