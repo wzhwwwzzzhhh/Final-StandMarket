@@ -153,20 +153,25 @@ Final-StandMarket/
 ### 1️⃣ 启动后端
 
 ```bash
-# 1. 导入数据库
-mysql -u root -p < mysql/final06.sql
+# 1. 准备数据库（结构由 Flyway 自动迁移，无需手动建表）
+# 在 MySQL 中创建一个空库，如 fashion_shop（utf8mb4）：
+#   CREATE DATABASE fashion_shop DEFAULT CHARACTER SET utf8mb4;
 
 # 2. 修改数据库配置
 # 编辑 backend/fashion-server/src/main/resources/application-dev.yml
 # 修改数据库、Redis、RabbitMQ 连接信息
+# （需提供 FASHION_JWT_ADMIN_SECRET_KEY / FASHION_JWT_USER_SECRET_KEY /
+#   FASHION_AGENT_BASE_URL 等环境变量）
 
-# 3. 启动服务
+# 3. 启动服务（应用启动时 Flyway 自动执行 db/migration 下的版本化迁移）
 cd backend
 mvn clean install -DskipTests
 mvn -pl fashion-server spring-boot:run
 
 # 后端启动在 http://localhost:8080
 ```
+
+> 数据库结构变更以 `backend/fashion-server/src/main/resources/db/migration/` 下的 Flyway 版本化迁移为唯一事实来源（V1 全量结构 / V2 不变量校验 / V3 参考数据 seed）。已发布迁移不可修改，新增结构只能追加新版本。详见 [`mysql/README.md`](mysql/README.md)。
 
 ### 2️⃣ 启动前端管理端
 

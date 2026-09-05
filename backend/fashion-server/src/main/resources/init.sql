@@ -1,3 +1,7 @@
+-- ⚠️ 已被 B10 V1__baseline_existing_schema.sql 取代（2026-09-05）。
+-- 本文件不再使用：V1 已接管 shopping_cart 等全部表结构，且本文件的 shopping_cart 结构与 V1 不兼容。
+-- 若开启 spring.sql.init，会与本文件发生双写冲突。不要删除本文件但也不要再依赖它初始化结构。
+--
 -- 创建购物车表
 CREATE TABLE IF NOT EXISTS `shopping_cart` (
   `id` bigint NOT NULL AUTO_INCREMENT COMMENT '主键',
