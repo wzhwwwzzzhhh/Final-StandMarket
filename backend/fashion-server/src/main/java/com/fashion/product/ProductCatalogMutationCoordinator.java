@@ -3,6 +3,7 @@ package com.fashion.product;
 import com.fashion.entity.Product;
 import com.fashion.entity.ProductProjectionTask;
 import com.fashion.mapper.ProductCatalogMapper;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 
 import java.nio.charset.StandardCharsets;
@@ -16,6 +17,7 @@ public class ProductCatalogMutationCoordinator {
     private final CanonicalProductProjectionCodec codec;
     private final AfterCommitRegistrar afterCommitRegistrar;
 
+    @Autowired
     public ProductCatalogMutationCoordinator(ProductCatalogMapper mapper,
                                              AfterCommitRegistrar afterCommitRegistrar) {
         this(mapper, new CanonicalProductProjectionCodec(), afterCommitRegistrar);

@@ -5,6 +5,7 @@ import com.fashion.entity.SeckillMessageLog;
 import com.fashion.mapper.SeckillMessageLogMapper;
 import org.springframework.amqp.core.Message;
 import org.springframework.dao.DuplicateKeyException;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
@@ -18,6 +19,7 @@ public class SeckillInvalidMessageService {
     private final SeckillMessageLogMapper mapper;
     private final SeckillAfterCommitDispatcher afterCommit;
 
+    @Autowired
     public SeckillInvalidMessageService(SeckillMessageLogMapper mapper) {
         this(mapper, new SeckillAfterCommitDispatcher());
     }

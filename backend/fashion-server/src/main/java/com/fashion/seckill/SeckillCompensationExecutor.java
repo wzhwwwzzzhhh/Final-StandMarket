@@ -5,6 +5,7 @@ import com.fashion.entity.SeckillOrder;
 import com.fashion.mapper.SeckillCompensationRecordMapper;
 import com.fashion.mapper.SeckillOrderMapper;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
 import java.time.LocalDateTime;
@@ -27,6 +28,7 @@ public class SeckillCompensationExecutor {
     private final SeckillCompensationService compensationService;
     private final Supplier<String> claimTokenSupplier;
 
+    @Autowired
     public SeckillCompensationExecutor(SeckillCompensationRecordMapper mapper,
                                        SeckillOrderMapper orderMapper,
                                        SeckillReservationService reservationService,

@@ -3,6 +3,7 @@ package com.fashion.seckill;
 import com.fashion.config.DirectExchangeConfig;
 import com.fashion.entity.SeckillMessageLog;
 import com.fashion.mapper.SeckillMessageLogMapper;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.dao.DuplicateKeyException;
 import lombok.extern.slf4j.Slf4j;
@@ -19,6 +20,7 @@ public class SeckillBusinessDeadLetterService {
     private final SeckillCompensationService compensationService;
     private final SeckillAfterCommitDispatcher afterCommit;
 
+    @Autowired
     public SeckillBusinessDeadLetterService(SeckillMessageLogMapper mapper,
                                             SeckillCompensationService compensationService) {
         this(mapper, compensationService, new SeckillAfterCommitDispatcher());
