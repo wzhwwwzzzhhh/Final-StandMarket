@@ -1,44 +1,53 @@
-﻿# MySQL 脚本说明
+# MySQL 脚本说明
 
-本目录保存当前项目的数据库初始化、功能补充和测试数据脚本。它们主要服务于本地开发、测试环境初始化和历史功能记录；**不等同于生产数据库迁移工具。**
+> 数据库结构变更的**唯一事实来源已迁移到 Flyway 版本化迁移**，位于 `backend/fashion-server/src/main/resources/db/migration/`。
+> 本目录脚本自 B10 起仅作**历史参考与结构核对依据**，不再是迁移队列。
 
-## 当前脚本分类
-
-| 文件 | 用途 | 使用边界 |
-|---|---|---|
-| `final07.sql` | 历史全量数据库导出/初始化脚本 | 仅用于新建开发或测试库前的人工审查初始化；不得覆盖已有生产库 |
-| `address_book.sql` | 地址簿表补充 | 历史功能脚本，执行前检查表是否已存在 |
-| `favorite_table.sql` | 收藏夹表 | 历史功能脚本 |
-| `review_table.sql` | 商品评价表初始化基线 | 仅用于尚无 `review` 表的新建库；`IF NOT EXISTS` 不会升级已有表 |
-| `add_review_integrity.sql` | B7 评价资格与订单商品唯一约束 | 已有库唯一升级入口；脏数据、错误/部分定义在 DDL 前主动失败，生产执行仍受 B10/B11 与单独授权约束 |
-| `payment_table.sql` | 支付记录表 | 历史功能脚本 |
-| `add_payment_active_unique.sql` | B1 活动支付流水唯一约束 | 已有库增量脚本；执行前停支付写入，冲突/部分结构会主动失败 |
-| `refund_table.sql` | 售后退款表 | 历史功能脚本 |
-| `add_refund_review_state.sql` | B3 退款审核四状态与申请前状态约束 | 已有库增量脚本；首次迁移遇到不可证明历史事实或部分 marker 时主动失败 |
-| `add_discount_to_activity.sql` | 秒杀活动折扣字段变更 | 历史结构变更，需确认目标库是否已执行 |
-| `data_enrichment.sql` | 开发/演示数据补充 | 不应直接导入生产环境 |
-| `add_indexes.sql` | 商品、订单、秒杀与用户高频查询索引 | 可重复执行；在目标库执行前仍需评审执行窗口和索引重复性 |
-| `add_seckill_mq_reliability.sql` | B6 可靠消息、补偿与对账状态 | 前向迁移；先校验订单号、索引和同名表形状，脏数据/非空部分迁移主动失败；生产执行仍受 B10/B11 与单独授权约束 |
-| `add_product_cache_consistency.sql` | B8 商品目录版本、Redis/ES 恢复任务与对账游标 | MySQL 8.0.16+ 前向迁移；只允许 state→revision→task→reconcile 的 exact-empty 部分前缀恢复，错误定义、反向/非空前缀和脏数据主动失败；生产执行仍受 B10/B11 与单独授权约束 |
-
-## 生产环境规则
-
-1. **禁止**在已有生产库上直接执行完整导出 SQL 来“同步本地数据库”。这会有覆盖订单、用户、库存、支付、秒杀数据的风险。
-2. 后续结构变更统一接入 Flyway（或 Liquibase）版本化迁移：一个版本一个新迁移脚本，已发布脚本不可修改。
-3. 每次生产迁移前必须有 MySQL 可验证备份；删除字段、修改大表、批量更新等高风险操作必须单独评审。
-4. 初始生产数据须从全量脚本中拆出可审查的 schema 与 seed 数据，去除测试用户、测试订单、密钥和无关演示数据。
-5. 生产数据库的日常数据以服务器/云数据库为准；本地如需排查问题，只能使用脱敏副本。
-6. B6 脚本不会声明或修改 RabbitMQ 拓扑，也不会迁移 Redis reservation；生产顺序固定为备份与停写门禁、MySQL 迁移、reservation/registry backfill 核验、B11 排空后 RabbitMQ 切换。回滚保留新增表及证据，禁止以删表、删队列或反向填回旧契约代替前向修复。
-
-## 后续目标位置
-
-Flyway 接入后，迁移脚本建议位于：
+## 版本化迁移（Flyway，事实来源）
 
 ```text
 backend/fashion-server/src/main/resources/db/migration/
-├─ V001__baseline_existing_schema.sql
-├─ V002__add_xxx_table.sql
-└─ V003__add_xxx_index.sql
+├─ V1__baseline_existing_schema.sql        # 当前全量结构（schema-only，29 表；保留 dev 库 AUTO_INCREMENT 起始值）
+├─ V2__verify_baseline_invariants.sql      # 严格只读不变量校验（表/列/唯一索引，引用即失败）
+└─ V3__seed_reference_data.sql             # category 参考数据幂等 seed（INSERT IGNORE）
 ```
 
-在此之前，请不要把本目录现有多个历史脚本当成自动发布时要按顺序重复执行的迁移队列。
+规则：
+
+1. **已发布迁移不可修改**。新增结构只能追加新版本（`V4__...` 起），命名 `V<递增版本>__<描述>.sql`。
+2. `V2` 在首次 `migrate` 时执行（空库路径在 `V1` 之后、存量库路径在 baseline 之后；Flyway 不重跑已应用迁移）：任何预期表/列/索引缺失会**中止迁移**，防止结构不完整存量库被静默 baseline。
+3. `V2` 必须严格只读（仅 `SELECT ... WHERE 1=0` 引用 + 条件失败），不得包含 DDL/DML。
+4. 管理员/员工登录凭据**不得**进入版本化迁移（P1-2 强制带外初始化：文档化人工 SQL + 强随机口令 + 首登改密）。
+5. 演示数据（`data_enrichment.sql`）不进入迁移，仅开发使用。
+
+## 故障恢复
+
+- `migrate` 失败会在 `flyway_schema_history` 留下 `FAILED` 行并中止后续版本。
+- 恢复流程：修复根因后执行 `mvn org.flywaydb:flyway-maven-plugin:8.5.13:repair`（清除 FAILED 行）→ 重新 `migrate`。不要手工删 history 行。
+- 生产迁移前必须 `mysqldump --single-transaction --set-gtid-purged=OFF` 全量备份并在测试库演练。
+
+## 历史脚本（仅参考）
+
+以下脚本用于理解历史结构与 B1-B9 增量，**不要**把它们当作自动发布的迁移队列：
+
+| 文件 | 用途 |
+|---|---|
+| `final07.sql` | 历史全量导出（19 表收敛基座，含 B6/B7 产物）；schema 与部分种子数据 |
+| `payment_table.sql` / `refund_table.sql` / `favorite_table.sql` / `coupon.sql` / `operation_log.sql` | 独立建表脚本（已并入 V1） |
+| `add_payment_active_unique.sql` | B1 支付活动唯一约束（已并入 V1；含脏数据 guard） |
+| `add_order_inventory_state.sql` | B2 普通订单库存状态（已并入 V1；含履约订单 guard） |
+| `add_refund_review_state.sql` | B3 退款四状态（已并入 V1） |
+| `add_seckill_state_inventory.sql` | B5 秒杀状态机（已并入 V1） |
+| `add_seckill_mq_reliability.sql` | B6 可靠消息表（已并入 V1） |
+| `add_review_integrity.sql` | B7 评价唯一约束（已并入 V1） |
+| `add_product_cache_consistency.sql` | B8 商品目录版本表（已并入 V1） |
+| `add_discount_to_activity.sql` / `add_indexes.sql` / `add_unique_index_orders_number.sql` / `migrate_password_bcrypt.sql` | 增量/索引/一次性数据回填（已并入 V1 或属数据迁移） |
+
+## 生产环境规则
+
+1. **禁止**在已有生产库上直接执行完整导出 SQL 来“同步本地数据库”。
+2. 结构变更统一走 Flyway 版本化迁移；已发布脚本不可修改。
+3. 每次生产迁移前必须有 MySQL 可验证备份；删除字段、修改大表、批量更新等高风险操作必须单独评审。
+4. 初始生产数据从全量脚本中拆出可审查的 schema 与 seed，去除测试用户、测试订单、密钥和演示数据。
+5. 生产数据库日常数据以服务器/云数据库为准；本地排查只能使用脱敏副本。
+6. 回滚策略为**只追加、不撤销**：以「迁移前全量备份恢复 + 前向修复迁移」处理，禁止删表/反向 DDL 兜底。

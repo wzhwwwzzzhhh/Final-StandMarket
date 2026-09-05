@@ -27,3 +27,4 @@ P0/P1 审查发现会阻止确认。独立审查不可用时标记 `tooling_bloc
 | B2 | 订单/库存 | [普通订单库存与状态闭环](order/B2-order-inventory-state-design.md) | 已确认（2026-08-30） | PASS |
 | B3 | 退款 | [退款真实状态与审核边界](refund/B3-refund-state-design.md) | 已确认（2026-08-30） | PASS |
 | B5 | 秒杀/库存 | [秒杀支付、取消与库存闭环](seckill/B5-seckill-state-inventory-design.md) | 已确认（2026-09-01） | PASS |
+| B10 | 数据库迁移 | [数据库发布基线](db/B10-database-migration-baseline-design.md) | 已确认（2026-09-05） | PASS（两轮） |

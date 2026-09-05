@@ -5,6 +5,7 @@ import com.fashion.mapper.SeckillMessageLogMapper;
 import com.fashion.service.SeckillOrderService;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.scheduling.annotation.Scheduled;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 
 import java.util.Objects;
@@ -23,6 +24,7 @@ public class SeckillMessageRecoveryTask {
     private final SeckillBusinessDeadLetterService deadLetterService;
     private final Clock clock;
 
+    @Autowired
     public SeckillMessageRecoveryTask(SeckillMessageLogMapper mapper,
                                       SeckillReliablePublisher publisher,
                                       SeckillOrderService orderService,

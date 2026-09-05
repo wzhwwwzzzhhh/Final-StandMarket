@@ -5,6 +5,7 @@ import com.fashion.entity.SeckillOrder;
 import com.fashion.mapper.SeckillMessageLogMapper;
 import com.fashion.mapper.SeckillOrderMapper;
 import com.fashion.mapper.SeckillReconciliationAnomalyMapper;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
 import java.nio.charset.StandardCharsets;
@@ -20,6 +21,7 @@ public class SeckillReconciliationService {
     private final SeckillReconciliationAnomalyMapper anomalyMapper;
     private final SeckillReconciliationPolicy policy;
 
+    @Autowired
     public SeckillReconciliationService(SeckillOrderMapper orderMapper,
                                         SeckillMessageLogMapper messageMapper,
                                         SeckillCompensationExecutor compensationExecutor,
