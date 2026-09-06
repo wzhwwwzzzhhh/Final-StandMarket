@@ -2,6 +2,7 @@ package com.fashion.service.impl;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fashion.constant.RedisKey;
 import com.fashion.dto.UserLoginDto;
 import com.fashion.entity.PageResult;
 import com.fashion.entity.User;
@@ -16,6 +17,7 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.data.redis.core.HashOperations;
 import org.springframework.data.redis.core.StringRedisTemplate;
+import org.springframework.data.redis.core.ValueOperations;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 
 import javax.servlet.http.HttpSession;
@@ -44,6 +46,9 @@ class UserServiceImplTest {
 
     @Mock
     private HashOperations<String, Object, Object> hashOperations;
+
+    @Mock
+    private ValueOperations<String, String> valueOperations;
 
     @Mock
     private HttpSession httpSession;
@@ -100,11 +105,16 @@ class UserServiceImplTest {
     }
 
     @Test
-    @DisplayName("用户注册写入 BCrypt")
+    @DisplayName("用户注册写入 BCrypt（需验证码）")
     void registrationHashesPassword() {
         User user = userWithPassword();
         user.setPassword("raw-password");
+        user.setCode("123456");
         when(userMapper.selectByPhone(user.getPhone())).thenReturn(null);
+
+        String codekey = RedisKey.USER_LOGIN_CODE_KEY + user.getPhone();
+        when(redisTemplate.opsForValue()).thenReturn(valueOperations);
+        when(valueOperations.get(codekey)).thenReturn("123456");
 
         Result<?> result = userService.register(user);
 
@@ -112,6 +122,23 @@ class UserServiceImplTest {
         verify(userMapper).insert(captor.capture());
         assertTrue(new BCryptPasswordEncoder().matches("raw-password", captor.getValue().getPassword()));
         assertEquals(1, result.getCode());
+    }
+
+    @Test
+    @DisplayName("注册验证码错误被拒绝且不写入")
+    void registrationRejectsWrongCode() {
+        User user = userWithPassword();
+        user.setPassword("raw-password");
+        user.setCode("999999");
+
+        String codekey = RedisKey.USER_LOGIN_CODE_KEY + user.getPhone();
+        when(redisTemplate.opsForValue()).thenReturn(valueOperations);
+        when(valueOperations.get(codekey)).thenReturn("123456");
+
+        Result<?> result = userService.register(user);
+
+        assertEquals(0, result.getCode());
+        verify(userMapper, never()).insert(any());
     }
 
     @Test

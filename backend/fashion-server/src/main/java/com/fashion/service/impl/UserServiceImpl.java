@@ -337,12 +337,21 @@ public class UserServiceImpl implements UserService {
     @Override
     public Result<String> register(User user) {
         try {
+            // 验证码校验（与短信登录一致：先验证码，防伪造手机号注册）
+            String codekey = RedisKey.USER_LOGIN_CODE_KEY + user.getPhone();
+            String storedCode = redisTemplate.opsForValue().get(codekey);
+            if (storedCode == null || !storedCode.equals(user.getCode())) {
+                return Result.error("验证码错误或已过期");
+            }
+            // 验证通过后删除验证码，防止重复使用
+            redisTemplate.delete(codekey);
+
             // 检查手机号是否已存在
             User existingUser = userMapper.selectByPhone(user.getPhone());
             if (existingUser != null) {
                 return Result.error("手机号已注册");
             }
-            
+
             // 设置创建时间
             user.setCreateTime(LocalDateTime.now());
 

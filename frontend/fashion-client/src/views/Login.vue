@@ -78,6 +78,33 @@
           </div>
         </div>
       </el-form>
+
+      <!-- 注册弹窗 -->
+      <el-dialog v-model="registerDialogVisible" title="注册新账号" width="400px" :append-to-body="true" class="register-dialog">
+        <el-form :model="registerForm" :rules="registerRules" ref="registerFormRef" label-position="top">
+          <el-form-item prop="phone" label="手机号">
+            <el-input v-model="registerForm.phone" placeholder="请输入手机号" prefix-icon="Phone"></el-input>
+          </el-form-item>
+          <el-form-item prop="code" label="验证码">
+            <el-input v-model="registerForm.code" placeholder="请输入验证码" prefix-icon="Message">
+              <template #append>
+                <el-button @click="getRegisterCode" :disabled="registerCountdown > 0" class="code-button" :class="{ 'counting': registerCountdown > 0 }">
+                  {{ registerCountdown > 0 ? `${registerCountdown}秒` : '获取验证码' }}
+                </el-button>
+              </template>
+            </el-input>
+          </el-form-item>
+          <el-form-item prop="password" label="密码">
+            <el-input type="password" v-model="registerForm.password" placeholder="请设置密码（至少6位）" prefix-icon="Lock" show-password></el-input>
+          </el-form-item>
+          <el-form-item prop="confirmPassword" label="确认密码">
+            <el-input type="password" v-model="registerForm.confirmPassword" placeholder="请再次输入密码" prefix-icon="Lock" show-password></el-input>
+          </el-form-item>
+          <el-form-item class="form-item">
+            <el-button type="primary" @click="submitRegister" class="login-button" :loading="registerLoading">注册</el-button>
+          </el-form-item>
+        </el-form>
+      </el-dialog>
     </div>
   </div>
 </template>
@@ -119,6 +146,41 @@ export default {
         code: [
           { required: true, message: '请输入验证码', trigger: 'blur' },
           { length: 6, message: '验证码长度为6位', trigger: 'blur' }
+        ]
+      },
+      registerDialogVisible: false,
+      registerLoading: false,
+      registerCountdown: 0,
+      registerForm: {
+        phone: '',
+        code: '',
+        password: '',
+        confirmPassword: ''
+      },
+      registerRules: {
+        phone: [
+          { required: true, message: '请输入手机号', trigger: 'blur' },
+          { pattern: /^1[3-9]\d{9}$/, message: '请输入正确的手机号', trigger: 'blur' }
+        ],
+        code: [
+          { required: true, message: '请输入验证码', trigger: 'blur' }
+        ],
+        password: [
+          { required: true, message: '请输入密码', trigger: 'blur' },
+          { min: 6, message: '密码长度不能少于6位', trigger: 'blur' }
+        ],
+        confirmPassword: [
+          { required: true, message: '请再次输入密码', trigger: 'blur' },
+          {
+            validator: (rule, value, callback) => {
+              if (value !== this.registerForm.password) {
+                callback(new Error('两次输入的密码不一致'))
+              } else {
+                callback()
+              }
+            },
+            trigger: 'blur'
+          }
         ]
       }
     }
@@ -217,7 +279,60 @@ export default {
       })
     },
     goRegister() {
-      this.$message.info('注册功能开发中')
+      this.registerDialogVisible = true
+    },
+    getRegisterCode() {
+      if (!this.registerForm.phone || !/^1[3-9]\d{9}$/.test(this.registerForm.phone)) {
+        this.$message.error('请输入正确的手机号')
+        return
+      }
+      userApi.sendSmsCode(this.registerForm.phone).then(response => {
+        if (response.data.code === 1) {
+          this.$message.success('验证码已发送')
+          this.registerCountdown = 60
+          const timer = setInterval(() => {
+            this.registerCountdown--
+            if (this.registerCountdown <= 0) {
+              clearInterval(timer)
+            }
+          }, 1000)
+        } else {
+          this.$message.error(response.data.msg || '验证码发送失败')
+        }
+      }).catch(error => {
+        this.$message.error('网络错误，请稍后重试')
+        console.error('发送注册验证码失败:', error)
+      })
+    },
+    submitRegister() {
+      this.$refs.registerFormRef.validate((valid) => {
+        if (!valid) return
+        this.registerLoading = true
+        userApi.register({
+          phone: this.registerForm.phone,
+          password: this.registerForm.password,
+          code: this.registerForm.code
+        }).then(response => {
+          this.registerLoading = false
+          if (response.data.code === 1) {
+            this.$message.success('注册成功，请登录')
+            this.registerDialogVisible = false
+            this.loginForm.phone = this.registerForm.phone
+            this.activeTab = 'password'
+            this.loginForm.password = ''
+            this.registerForm = { phone: '', code: '', password: '', confirmPassword: '' }
+            if (this.$refs.registerFormRef) {
+              this.$refs.registerFormRef.resetFields()
+            }
+          } else {
+            this.$message.error(response.data.msg || '注册失败')
+          }
+        }).catch(error => {
+          this.registerLoading = false
+          this.$message.error('网络错误，请稍后重试')
+          console.error('注册失败:', error)
+        })
+      })
     }
   }
 }

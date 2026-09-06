@@ -33,6 +33,9 @@ public class User {
     private String avatar;
     // 创建时间
     private LocalDateTime createTime;
+    // 短信验证码（瞬态入参，仅注册/登录校验用，不持久化：Mapper insert 为显式列清单）
+    @JsonProperty(access = JsonProperty.Access.WRITE_ONLY)
+    private String code;
 
 
 }

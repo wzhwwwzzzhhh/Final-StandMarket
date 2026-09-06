@@ -21,6 +21,8 @@ docs/workpack/
 | 阶段 | 切片 | 状态 | 需求源 | Plan | Review | Evidence |
 |---|---|---|---|---|---|---|
 | B0 | credential-log-safety | AC1-AC5 与 CI 已通过；AC6 阻塞 Issue #4、B11 与生产发布，不阻塞 B1-B10 本地开发 | [阶段 B B0](../plans/阶段B-P0P1交易链路修复.md#b0密码token-与日志安全p0) / [Issue #4](https://github.com/wzhwwwzzzhhh/Final-StandMarket/issues/4) | [plan](B0-credential-log-safety/plan.md) | [PASS](B0-credential-log-safety/review.md) | [evidence](B0-credential-log-safety/evidence.md) |
+| B11 | test-review-delivery | 进行中（plan 已确认，执行验证中） | [阶段 B B11](../plans/阶段B-P0P1交易链路修复.md#b11测试审查和交付p0-门禁) | [plan](B11-test-review-delivery/plan.md) | pending | [evidence](B11-test-review-delivery/evidence.md) |
+| B11 | register-login-flow | 进行中 | [阶段 B B11](../plans/阶段B-P0P1交易链路修复.md#b11测试审查和交付p0-门禁) | [plan](B11-register-login-flow/plan.md) | pending | [evidence](B11-register-login-flow/evidence.md) |
 
 ## 已归档
 
